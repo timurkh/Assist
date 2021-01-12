@@ -1,0 +1,147 @@
+package main
+
+import (
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+
+	"context"
+
+	"firebase.google.com/go/auth"
+
+	"cloud.google.com/go/firestore"
+	firebase "firebase.google.com/go"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+)
+
+var (
+	firebaseTmpl = parseTemplate("firebase.html")
+	loginTmpl    = parseTemplate("login.html")
+	homeTmpl     = parseBodyTemplate("home.html")
+	userinfoTmpl = parseBodyTemplate("userinfo.html")
+)
+
+// trick to conver my functions to http.Handler
+type appHandler func(http.ResponseWriter, *http.Request) error
+
+func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if e := fn(w, r); e != nil {
+		log.Println("appHandler error:" + e.Error())
+	}
+}
+
+func initApp() (*App, error) {
+	app := App{
+		logWriter: os.Stderr,
+	}
+
+	ctx := context.Background()
+
+	// init fireapp
+	/*	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+		var sa option.ClientOption = nil
+		if projectID == "" {
+			projectID = "tactica-club"
+			log.Println("GOOGLE_CLOUD_PROJECT is not set, using '" + projectID + "' as id and locally saved credentials")
+
+			sa = option.WithCredentialsFile("auth/tactica.json")
+		}
+		config := &firebase.Config{ProjectID: projectID}
+	*/
+	fireapp, err := firebase.NewApp(ctx, nil)
+	if err != nil {
+		log.Fatalf("firebase.NewApp: %v", err)
+	}
+
+	// init firestore
+	client, err := fireapp.Firestore(ctx)
+	if err != nil {
+		log.Fatalf("fireapp.Firestore: %v", err)
+	}
+
+	err = client.RunTransaction(ctx, func(ctx context.Context, t *firestore.Transaction) error {
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("firestoredb: could not connect: %v", err)
+	}
+
+	app.db = newFirestoreDB(client)
+
+	// init firebase auth
+	app.authClient, err = fireapp.Auth(ctx)
+	if err != nil {
+		log.Fatalf("firebase.Auth: %v", err)
+	}
+
+	return &app, nil
+}
+
+type App struct {
+	logWriter  io.Writer
+	db         *firestoreDB
+	authClient *auth.Client
+}
+
+func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {
+	return homeTmpl.Execute(app, w, r, struct {
+		Session string
+		Data    string
+	}{
+		"John Doe", app.getCurrentUID(r)})
+}
+
+func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
+
+	ctx := context.Background()
+	users := app.db.getUsersDatabase()
+	user, _ := users.GetUser(ctx, "test_id")
+
+	return userinfoTmpl.Execute(app, w, r, struct {
+		Session string
+		Data    *UserInfo
+	}{"John Doe", user})
+}
+
+func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) error {
+	return loginTmpl.Execute(app, w, r, nil)
+}
+
+func (app *App) registerHandlers() {
+	r := mux.NewRouter().StrictSlash(true)
+
+	r.Use(app.authMiddleware)
+
+	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.sessionLogin))
+	r.Methods("POST").Path("/sessionLogout").Handler(appHandler(app.sessionLogout))
+
+	r.Methods("GET").Path("/home").Handler(appHandler(app.homeHandler))
+	r.Methods("GET").Path("/login").Handler(appHandler(app.loginHandler))
+	r.Methods("GET").Path("/userinfo").Handler(appHandler(app.userinfoHandler))
+
+	r.Handle("/", http.RedirectHandler("/home", http.StatusFound))
+	http.Handle("/", handlers.CombinedLoggingHandler(app.logWriter, r))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+}
+
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	app, err := initApp()
+	if err != nil {
+		log.Fatalf("Failed to init app: %v", err)
+	}
+
+	app.registerHandlers()
+
+	log.Printf("Listening on localhost: %s", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Fatal(err)
+	}
+}

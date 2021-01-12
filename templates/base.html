@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tactica</title>
+
+<!-- Firebase init -->
+<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-analytics.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.js"></script>
+
+<script>
+	const postSignOut = function() {
+		// POST to session login endpoint.
+		$.ajax({
+			type:'POST',
+			url: '/sessionLogout',
+			contentType: 'application/x-www-form-urlencoded'
+		})
+		.then(function() {
+			// Redirect to profile on success.
+			window.location.assign('/login');
+		}, function(error) {
+			// Refresh page on error.
+			// In all cases, client side state should be lost due to in-memory
+			// persistence.
+			console.log(error);
+		});
+	}
+	  // Your web app's Firebase configuration
+	  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+	  var firebaseConfig = {
+			  apiKey: "AIzaSyANaKrz1ulZggkDKIHQCRWmkKyCEFinQHc",
+			  authDomain: "tactica-club.firebaseapp.com",
+			  projectId: "tactica-club",
+			  storageBucket: "tactica-club.appspot.com",
+			  messagingSenderId: "1558150092",
+			  appId: "1:1558150092:web:d594c5c18e86545dc77b69",
+			  measurementId: "G-82VX5YJKPK"
+			};
+	// Initialize Firebase
+	firebase.initializeApp(firebaseConfig);
+	firebase.analytics();
+	firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</head>
+
+<body>
+	<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+		<a class="navbar-brand" href="#">Tactica</a>
+
+		<ul class="navbar-nav">
+			<li><a class="nav-link" href="/home">Home</a></li>
+			<li><a class="nav-link" href="/users">Users</a></li>
+			<li><a class="nav-link" href="/events">Events</a></li>
+		</ul>
+			
+		<a class="navbar-brand ml-auto" href="userinfo" id="sign-in-status">{{.Session}}</a>
+		<ul class="navbar-nav">
+			<li><a class="nav-link" href="#" onclick="postSignOut()">Sign out</a></li>
+		</ul>
+
+	</nav>
+
+	<div class="container-fluid">
+	  {{template "body" .Data}}
+	</div>
+</body>
+</html>
+
+
+

@@ -1,0 +1,12 @@
+<script type="text/javascript">
+	firebase.auth().onAuthStateChanged(user => {
+		if (!user.emailVerified) {
+			  user.sendEmailVerification();
+		}
+		document.getElementById('user').textContent = JSON.stringify(user, null, 4);
+	})
+</script>
+<h4>{{.DisplayName}}</h4>
+<h4>{{.}}</h4>
+<div id="user">
+</div>
