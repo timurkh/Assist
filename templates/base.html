@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-analytics.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.js"></script>
+<script src="static/firebase.js?rndstr=<%= getRandomStr() %>"></script>
 
 <script>
 	const postSignOut = function() {
@@ -28,23 +29,13 @@
 			console.log(error);
 		});
 	}
-	  // Your web app's Firebase configuration
-	  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-	  var firebaseConfig = {
-			  apiKey: "AIzaSyANaKrz1ulZggkDKIHQCRWmkKyCEFinQHc",
-			  authDomain: "tactica-club.firebaseapp.com",
-			  projectId: "tactica-club",
-			  storageBucket: "tactica-club.appspot.com",
-			  messagingSenderId: "1558150092",
-			  appId: "1:1558150092:web:d594c5c18e86545dc77b69",
-			  measurementId: "G-82VX5YJKPK"
-			};
+
 	// Initialize Firebase
 	firebase.initializeApp(firebaseConfig);
 	firebase.analytics();
-	firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
 
 </script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -57,24 +48,70 @@
 	<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
 		<a class="navbar-brand" href="#">Tactica</a>
 
+{{if .Session.EmailVerified}}
 		<ul class="navbar-nav">
 			<li><a class="nav-link" href="/home">Home</a></li>
 			<li><a class="nav-link" href="/users">Users</a></li>
 			<li><a class="nav-link" href="/events">Events</a></li>
 		</ul>
-			
-		<a class="navbar-brand ml-auto" href="userinfo" id="sign-in-status">{{.Session}}</a>
+{{end}}			
+		<a class="navbar-brand ml-auto" href="userinfo" id="sign-in-status">{{.Session.DisplayName}} ({{.Session.Email}})</a>
 		<ul class="navbar-nav">
 			<li><a class="nav-link" href="#" onclick="postSignOut()">Sign out</a></li>
 		</ul>
 
 	</nav>
 
+{{if .Session.EmailVerified}}
 	<div class="container-fluid">
 	  {{template "body" .Data}}
 	</div>
+
+{{else}}
+	<script>
+		firebase.auth().onAuthStateChanged(user => {
+			if (user) {
+				console.log("now firebase thinks that we are logged in");
+				document.getElementById('btnSendVerEmail').disabled = false;
+			}
+		})
+
+		const sendVerificationEmail = function() {
+			user = firebase.auth().currentUser;
+			user.sendEmailVerification().then(
+				function() {
+					// Show redirection notice.
+					document.getElementById('verEmailSent').style.visibility = 'visible';
+					document.getElementById('sendVerEmail').style.visibility = 'hidden';
+					// Disable button
+					document.getElementById('btnSendVerEmail').style.visibility = 'hidden';
+				}
+			).catch(function(error) {
+				console.log(error);
+			});
+		}
+	</script>
+	<div class="container">
+		<div class="row h-25"> 
+			<div class="col text-center">
+				&nbsp;
+			</div>
+		</div>
+		<div class="row align-items-center">
+			<div class="col text-center">
+				<div class="alert alert-primary" role="alert">
+					<div id="sendVerEmail">
+					Your email {{.Session.Email}} is not verified yet. Click button below and you will recieve a verification link.
+					</div>
+					<div id="verEmailSent" style="visibility:hidden">
+						Verification email successfully sent. Check your mailbox and follow instructions.
+					</div>
+					<button id="btnSendVerEmail" type="button" class="btn btn-info" disabled="true" onclick="sendVerificationEmail()">Get verification email</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{{end}}
+
 </body>
 </html>
-
-
-

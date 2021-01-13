@@ -5,7 +5,8 @@ import "context"
 type StatusTypes int
 
 const (
-	pendingApprove StatusTypes = iota
+	pendingEmailVerification StatusTypes = iota
+	pendingApprove
 	guest
 	cadet
 	member

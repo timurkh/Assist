@@ -1,15 +1,3 @@
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-var firebaseConfig = {
-	apiKey: "AIzaSyANaKrz1ulZggkDKIHQCRWmkKyCEFinQHc",
-	authDomain: "tactica-club.firebaseapp.com",
-	projectId: "tactica-club",
-	storageBucket: "tactica-club.appspot.com",
-	messagingSenderId: "1558150092",
-	appId: "1:1558150092:web:d594c5c18e86545dc77b69",
-	measurementId: "G-82VX5YJKPK"
-	};
-
 function getCookie(name) {
   const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
   return v ? v[2] : null;
@@ -18,7 +6,7 @@ function getCookie(name) {
 const handleSignedInUser = function(user) {
 
 	// Show redirection notice.
-	document.getElementById('redirecting').classList.remove('hidden');
+	document.getElementById('redirecting').style.visibility = 'visible';
 	// Set session cookie
 	user.getIdToken().then(function(idToken) {
 		// Session login endpoint is queried and the session cookie is set.
@@ -80,12 +68,13 @@ const initApp = function() {
 	ui.start('#firebaseui-auth-container', getUiConfig());
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
-firebase.analytics();
-
 window.addEventListener('load', function() {
 	initApp()
 });
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+//firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
+firebase.analytics();
+
 

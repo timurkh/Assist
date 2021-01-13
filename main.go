@@ -41,16 +41,6 @@ func initApp() (*App, error) {
 	ctx := context.Background()
 
 	// init fireapp
-	/*	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-		var sa option.ClientOption = nil
-		if projectID == "" {
-			projectID = "tactica-club"
-			log.Println("GOOGLE_CLOUD_PROJECT is not set, using '" + projectID + "' as id and locally saved credentials")
-
-			sa = option.WithCredentialsFile("auth/tactica.json")
-		}
-		config := &firebase.Config{ProjectID: projectID}
-	*/
 	fireapp, err := firebase.NewApp(ctx, nil)
 	if err != nil {
 		log.Fatalf("firebase.NewApp: %v", err)
@@ -88,11 +78,14 @@ type App struct {
 }
 
 func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {
+
+	u, _ := app.getCurrentUserInfo(r)
 	return homeTmpl.Execute(app, w, r, struct {
-		Session string
+		Session *SessionData
 		Data    string
 	}{
-		"John Doe", app.getCurrentUID(r)})
+		app.getSessionData(r),
+		fmt.Sprintf("%+v<br>%+v", u, u.ProviderUserInfo[0])})
 }
 
 func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
@@ -102,9 +95,9 @@ func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 	user, _ := users.GetUser(ctx, "test_id")
 
 	return userinfoTmpl.Execute(app, w, r, struct {
-		Session string
+		Session *SessionData
 		Data    *UserInfo
-	}{"John Doe", user})
+	}{app.getSessionData(r), user})
 }
 
 func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) error {
@@ -124,8 +117,13 @@ func (app *App) registerHandlers() {
 	r.Methods("GET").Path("/userinfo").Handler(appHandler(app.userinfoHandler))
 
 	r.Handle("/", http.RedirectHandler("/home", http.StatusFound))
+
 	http.Handle("/", handlers.CombinedLoggingHandler(app.logWriter, r))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/favicon.ico")
+	})
 }
 
 func main() {

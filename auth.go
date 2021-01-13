@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,6 +11,12 @@ import (
 	guuid "github.com/google/uuid"
 	gorilla_context "github.com/gorilla/context"
 )
+
+type SessionData struct {
+	DisplayName   string
+	Email         string
+	EmailVerified bool
+}
 
 func (app *App) sessionLogin(w http.ResponseWriter, r *http.Request) error {
 	// Get the tokens sent by the client
@@ -60,10 +67,11 @@ func (app *App) sessionLogin(w http.ResponseWriter, r *http.Request) error {
 
 	// Set cookie policy for session cookie.
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
+		Name:     "firebaseSession",
 		Value:    cookie,
 		MaxAge:   int(expiresIn.Seconds()),
 		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
 		//Secure:   true,
 	})
 	w.Write([]byte(`{"status": "success"}`))
@@ -73,9 +81,10 @@ func (app *App) sessionLogin(w http.ResponseWriter, r *http.Request) error {
 
 func (app *App) sessionLogout(w http.ResponseWriter, r *http.Request) error {
 	http.SetCookie(w, &http.Cookie{
-		Name:   "session",
-		Value:  "",
-		MaxAge: 0,
+		Name:     "firebaseSession",
+		Value:    "",
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   0,
 	})
 	http.Redirect(w, r, "/login", http.StatusFound)
 	return nil
@@ -91,11 +100,12 @@ func (app *App) authMiddleware(next http.Handler) http.Handler {
 				Value: guuid.New().String(),
 				//HttpOnly: true,
 				//Secure:   true,
+				SameSite: http.SameSiteStrictMode,
 			}
 			http.SetCookie(w, &cookie)
 		default:
 			// Get the ID token sent by the client
-			cookie, err := r.Cookie("session")
+			cookie, err := r.Cookie("firebaseSession")
 			if err != nil {
 				// Session cookie is unavailable. Force user to login.
 				http.Redirect(w, r, "/login", http.StatusFound)
@@ -119,4 +129,20 @@ func (app *App) authMiddleware(next http.Handler) http.Handler {
 func (app *App) getCurrentUID(r *http.Request) string {
 	sessionToken := gorilla_context.Get(r, "SessionToken")
 	return sessionToken.(*auth.Token).UID
+}
+
+func (app *App) getCurrentUserInfo(r *http.Request) (*auth.UserRecord, error) {
+	ctx := context.Background()
+
+	return app.authClient.GetUser(ctx, app.getCurrentUID(r))
+}
+
+func (app *App) getSessionData(r *http.Request) *SessionData {
+	u, _ := app.getCurrentUserInfo(r)
+
+	return &SessionData{
+		u.DisplayName,
+		u.Email,
+		u.EmailVerified}
+
 }
