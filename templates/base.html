@@ -38,24 +38,24 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css"/>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 </head>
 
 <body>
 	<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-		<a class="navbar-brand" href="#">Tactica</a>
+		<a class="navbar-brand" href="/home">Tactica</a>
 
 {{if .Session.EmailVerified}}
 		<ul class="navbar-nav">
-			<li><a class="nav-link" href="/home">Home</a></li>
-			<li><a class="nav-link" href="/users">Users</a></li>
+			<li><a class="nav-link" href="/squads">Squads</a></li>
 			<li><a class="nav-link" href="/events">Events</a></li>
+			<li><a class="nav-link" href="/places">Places</a></li>
 		</ul>
-{{end}}			
 		<a class="navbar-brand ml-auto" href="userinfo" id="sign-in-status">{{.Session.DisplayName}} ({{.Session.Email}})</a>
+{{end}}			
 		<ul class="navbar-nav">
 			<li><a class="nav-link" href="#" onclick="postSignOut()">Sign out</a></li>
 		</ul>
@@ -64,14 +64,13 @@
 
 {{if .Session.EmailVerified}}
 	<div class="container-fluid">
-	  {{template "body" .Data}}
+	  {{template "body" . }}
 	</div>
 
 {{else}}
 	<script>
 		firebase.auth().onAuthStateChanged(user => {
 			if (user) {
-				console.log("now firebase thinks that we are logged in");
 				document.getElementById('btnSendVerEmail').disabled = false;
 			}
 		})
@@ -81,10 +80,9 @@
 			user.sendEmailVerification().then(
 				function() {
 					// Show redirection notice.
-					document.getElementById('verEmailSent').style.visibility = 'visible';
-					document.getElementById('sendVerEmail').style.visibility = 'hidden';
-					// Disable button
-					document.getElementById('btnSendVerEmail').style.visibility = 'hidden';
+					document.getElementById('verEmailSent').style.display = '';
+					document.getElementById('sendVerEmail').style.display = 'none';
+					document.getElementById('btnSendVerEmailDiv').style.display = 'none';
 				}
 			).catch(function(error) {
 				console.log(error);
@@ -92,21 +90,29 @@
 		}
 	</script>
 	<div class="container">
-		<div class="row h-25"> 
-			<div class="col text-center">
-				&nbsp;
-			</div>
-		</div>
+		<div class="alert alert-primary mt-2" role="alert">
 		<div class="row align-items-center">
 			<div class="col text-center">
-				<div class="alert alert-primary" role="alert">
-					<div id="sendVerEmail">
-					Your email {{.Session.Email}} is not verified yet. Click button below and you will recieve a verification link.
+				<div id="sendVerEmail" class="row align-items-center">
+					<div class="col">
+						<i class="far fa-user" style="font-size:64px;color:red;"></i>
 					</div>
-					<div id="verEmailSent" style="visibility:hidden">
+					<div class="col-11">
+						Hello, {{.Session.DisplayName}}. Your email {{.Session.Email}} is not verified yet. Click button below and you will recieve a verification link.
+					</div>
+				</div>
+				<div class="row align-items-center" id="verEmailSent" style="display:none">
+					<div class="col">
+						<i class="far fa-user" style="font-size:64px;color:green"></i>
+					</div>
+					<div class="col-11">
 						Verification email successfully sent. Check your mailbox and follow instructions.
 					</div>
+				</div>
+				<div id="btnSendVerEmailDiv" class="row">
+					<div class="col">
 					<button id="btnSendVerEmail" type="button" class="btn btn-info" disabled="true" onclick="sendVerificationEmail()">Get verification email</button>
+					</div>
 				</div>
 			</div>
 		</div>

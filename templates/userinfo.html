@@ -1,4 +1,125 @@
-<h4>{{.DisplayName}}</h4>
-<h4>{{.}}</h4>
+<script src="static/userinfo.js?rndstr=<%= getRandomStr() %>"></script>
 
-<div id="user"> ... user info ... </div>
+<div class="container mt-6">
+	<div class="row justify-content-center align-items-center">
+		<div class="col-10 col-md-8 col-lg-6 justify-content-center align-items-center">
+
+			<div class="card mt-2">
+				<div class="card-header">
+					Contact Info
+				</div>
+				<form id="userInfo" >
+
+					<div class="form-group ml-2 mr-2 mb-2 mt-2" >
+						{{ if .Session.Admin }}
+						<label for="displayName">Name</label>
+						<div class="input-group" >
+							<input type="text" class="form-control" id="displayName" placeholder="" value="" required disabled>
+							<div class="input-group-append">
+								<button id="displayNameBtn" class="btn btn-outline-secondary" type="button" onClick="editInput('displayName')"><i class="fas fa-pen" title="Edit"></i></button>
+							</div>
+						</div>
+						<small id="displayNameError" class="error text-danger"></small>
+					</div>
+
+					<div class="form-group ml-2 mr-2 mb-2 mt-2" >
+						{{ end }}
+
+						<label for="email">Email</label>
+						<div class="input-group" >
+							<input type="email" class="form-control" id="email" value="" required disabled>
+							<div class="input-group-append">
+								<button id="emailBtn" class="btn btn-outline-secondary" type="button" onClick="editInput('email')"><i class="fas fa-pen" title="Edit"></i></button>
+							</div>
+						</div>
+						<small id="emailError" class="error text-danger"></small>
+					</div>
+
+					<div class="form-group ml-2 mr-2 mb-2 mt-2" >
+						<label for="phoneNumber">Phone</label>
+						<div class="input-group" >
+							<input class="form-control" name="phoneNumber" id="phoneNumber" value="" disabled>
+							<div class="input-group-append">
+								<button id="phoneNumberBtn" class="btn btn-outline-secondary" type="button" onClick="editInput('phoneNumber')"><i class="fas fa-pen" title="Edit"></i></button>
+							</div>
+						</div>
+					</div>
+
+					{{ if .Session.Admin }}
+					<div class="form-group ml-2 mr-2 mb-2 mt-2" >
+						<label for="role">Role</label>
+						<div class="input-group" >
+							<input class="form-control" name="role" id="role" value="" disabled>
+						</div>
+					</div>
+					{{end}}
+				</form>
+
+			</div>
+
+			<div class="card mt-2">
+				<div class="card-header"> Authentication Providers </div>
+				<form id="providers">
+					<div class="form-row ">
+						<div class="col"> 
+							<div class="form-group ml-2 mr-2 mt-2" >
+								<div class="input-group mb-3">
+									<div class="input-group-prepend">
+										<div class="input-group-text">
+											<input type="checkbox" id="facebook" onclick="toggleIDProvider(this)">
+										</div>
+										<div class="input-group-text border-0">
+											<i id="facebookIcon" class="fab fa-facebook-f" style="color:blue"></i>
+										</div>
+									</div>
+									<input type="text" class="form-control border-0" disabled placeholder="Sign in with Facebook">
+								</div>
+								<small id="facebookError" class="error text-danger"></small>
+							</div>
+						</div>
+					</div>
+
+					<div class="form-row ">
+						<div class="col"> 
+							<div class="form-group ml-2 mr-2 " >
+								<div class="input-group mb-3">
+									<div class="input-group-prepend">
+										<div class="input-group-text">
+											<input type="checkbox" id="google" onclick="toggleIDProvider(this)">
+										</div>
+										<div class="input-group-text border-0">
+											<i id="googleIcon" class="fab fa-google" style="color:red"></i>
+										</div>
+									</div>
+									<input type="text" class="form-control border-0" disabled placeholder="Sign in with Google">
+								</div>
+								<small id="googleError" class="error text-danger"></small>
+							</div>
+						</div>
+					</div>
+
+					<div class="form-row ">
+						<div class="col"> 
+							<div class="form-group ml-2 mr-2" >
+								<div class="input-group mb-3">
+									<div class="input-group-prepend">
+										<div class="input-group-text">
+											<input type="checkbox" id="password" onclick="toggleIDProvider(this)">
+										</div>
+										<div class="input-group-text border-0">
+											<i id="passwordIcon" class="fas fa-key" style="color:green"></i>
+										</div>
+									</div>
+									<input type="text" class="form-control border-0" disabled placeholder="Sign in with email and passsword">
+									<div class="input-group-append">
+										<button id="passwordBtn" class="btn btn-secondary" type="button">Reset password</button>
+									</div>
+								</div>
+								<small id="passwordError" class="error text-danger"></small>
+							</div>
+						</div>
+					</div>
+				</form>
+			</div>
+	</div>
+</div>

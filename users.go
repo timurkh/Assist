@@ -1,32 +1,22 @@
 package main
 
-import "context"
+import (
+	"context"
+)
 
-type StatusTypes int
+type MemberStatus int
 
 const (
-	pendingEmailVerification StatusTypes = iota
-	pendingApprove
-	guest
-	cadet
+	pendingApprove MemberStatus = iota
 	member
-	instructor
 	admin
 )
 
-type UserInfo struct {
-	DisplayName string
-	Email       string
-	Phone       string
-	Status      StatusTypes
+type UserDetails struct {
+	UID    string
+	squads map[string]MemberStatus
 }
 
 type UsersDatabase interface {
-	ListUsers(context.Context) ([]*UserInfo, error)
-	GetUser(ctx context.Context, id string) (u *UserInfo, err error)
-	UpdateUser(ctx context.Context, u *UserInfo) (id string, err error)
-}
-
-type Users struct {
-	DB UsersDatabase
+	GetUserDetails(ctx context.Context, id string) (u *UserDetails, err error)
 }

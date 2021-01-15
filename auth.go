@@ -13,9 +13,9 @@ import (
 )
 
 type SessionData struct {
-	DisplayName   string
-	Email         string
-	EmailVerified bool
+	*auth.UserRecord
+	Role  string
+	Admin bool
 }
 
 func (app *App) sessionLogin(w http.ResponseWriter, r *http.Request) error {
@@ -140,9 +140,14 @@ func (app *App) getCurrentUserInfo(r *http.Request) (*auth.UserRecord, error) {
 func (app *App) getSessionData(r *http.Request) *SessionData {
 	u, _ := app.getCurrentUserInfo(r)
 
-	return &SessionData{
-		u.DisplayName,
-		u.Email,
-		u.EmailVerified}
+	sd := &SessionData{
+		UserRecord: u,
+	}
 
+	if role, ok := u.CustomClaims["Role"]; ok {
+		sd.Role = role.(string)
+		sd.Admin = sd.Role == "Admin"
+	}
+
+	return sd
 }

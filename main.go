@@ -92,12 +92,14 @@ func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := context.Background()
 	users := app.db.getUsersDatabase()
-	user, _ := users.GetUser(ctx, "test_id")
+
+	sessionData := app.getSessionData(r)
+	user, _ := users.GetUserDetails(ctx, sessionData.UID)
 
 	return userinfoTmpl.Execute(app, w, r, struct {
 		Session *SessionData
-		Data    *UserInfo
-	}{app.getSessionData(r), user})
+		Data    *UserDetails
+	}{sessionData, user})
 }
 
 func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) error {

@@ -24,25 +24,6 @@ func (db *firestoreDB) getUsersDatabase() UsersDatabase {
 	return db
 }
 
-func (db *firestoreDB) ListUsers(context.Context) ([]*UserInfo, error) {
-
-	return []*UserInfo{&UserInfo{
-		"TestName",
-		"as@sa.ru",
-		"7-555-1234567",
-		pendingApprove,
-	}}, nil
-}
-
-func (db *firestoreDB) GetUser(ctx context.Context, id string) (u *UserInfo, err error) {
-	return &UserInfo{
-		"TestName",
-		"as@sa.ru",
-		"7-555-1234567",
-		pendingApprove,
-	}, nil
-}
-
-func (db *firestoreDB) UpdateUser(ctx context.Context, u *UserInfo) (id string, err error) {
-	return "test_id", nil
+func (db *firestoreDB) GetUserDetails(ctx context.Context, uid string) (u *UserDetails, err error) {
+	return &UserDetails{UID: uid}, nil
 }
