@@ -1,4 +1,4 @@
-module tactica
+module assist
 
 go 1.14
 

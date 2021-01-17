@@ -43,6 +43,8 @@
 								<button id="phoneNumberBtn" class="btn btn-outline-secondary" type="button" onClick="editInput('phoneNumber')"><i class="fas fa-pen" title="Edit"></i></button>
 							</div>
 						</div>
+						<small id="phoneNumberError" class="error text-danger"></small>
+						<div id="recaptcha-container" visibility="hidden"></div>
 					</div>
 
 					{{ if .Session.Admin }}
@@ -66,7 +68,7 @@
 								<div class="input-group mb-3">
 									<div class="input-group-prepend">
 										<div class="input-group-text">
-											<input type="checkbox" id="facebook" onclick="toggleIDProvider(this)">
+											<input type="checkbox" id="facebook.com" onclick="toggleIDProvider(this)">
 										</div>
 										<div class="input-group-text border-0">
 											<i id="facebookIcon" class="fab fa-facebook-f" style="color:blue"></i>
@@ -74,7 +76,7 @@
 									</div>
 									<input type="text" class="form-control border-0" disabled placeholder="Sign in with Facebook">
 								</div>
-								<small id="facebookError" class="error text-danger"></small>
+								<small id="facebook.comError" class="error text-danger"></small>
 							</div>
 						</div>
 					</div>
@@ -101,7 +103,7 @@
 					<div class="form-row ">
 						<div class="col"> 
 							<div class="form-group ml-2 mr-2" >
-								<div class="input-group mb-3">
+								<div class="input-group">
 									<div class="input-group-prepend">
 										<div class="input-group-text">
 											<input type="checkbox" id="password" onclick="toggleIDProvider(this)">
@@ -112,13 +114,34 @@
 									</div>
 									<input type="text" class="form-control border-0" disabled placeholder="Sign in with email and passsword">
 									<div class="input-group-append">
-										<button id="passwordBtn" class="btn btn-secondary" type="button">Reset password</button>
+										<button id="passwordBtn" class="btn btn-secondary" type="button" onClick="sendPasswordReset()">Reset password</button>
 									</div>
 								</div>
+								<small id="passwordNotification"></small>
 								<small id="passwordError" class="error text-danger"></small>
 							</div>
 						</div>
 					</div>
+
+					<div class="form-row ">
+						<div class="col"> 
+							<div class="form-group ml-2 mr-2 " >
+								<div class="input-group mb-3">
+									<div class="input-group-prepend">
+										<div class="input-group-text">
+											<input type="checkbox" id="phone" onclick="toggleIDProvider(this)">
+										</div>
+										<div class="input-group-text border-0">
+											<i id="phoneIcon" class="fas fa-phone" style="color:red"></i>
+										</div>
+									</div>
+									<input type="text" class="form-control border-0" disabled placeholder="Sign in with Phone">
+								</div>
+								<small id="phoneError" class="error text-danger"></small>
+							</div>
+						</div>
+					</div>
+
 				</form>
 			</div>
 	</div>

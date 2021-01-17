@@ -27,7 +27,11 @@ firebase.auth().onAuthStateChanged(user => {
 		// init auth providers
 		var pd = user.providerData;
 		for(var i=0; i<pd.length; ++i) {
-			document.getElementById(pd[i].providerId).checked = true;
+			try {
+				document.getElementById(pd[i].providerId).checked = true;
+			} catch (error) {
+				console.log("Error while processing provider " + pd[i].providerId + ": " + error);
+			}
 		}
 		if(pd.length == 1) {
 			document.getElementById(pd[0].providerId).disabled = true;
@@ -37,19 +41,21 @@ firebase.auth().onAuthStateChanged(user => {
 
 const editInput = function(id) {
 	var input = document.getElementById(id);
+	var user = firebase.auth().currentUser;
 	if(input.disabled) {
 		input.disabled = false;
 	} else {
+		document.getElementById(id + 'Error').textContent = '';
 		switch(id){
 			case 'displayName':
-				firebase.auth().currentUser.updateProfile(
+				user.updateProfile(
 					{displayName: escapeHtml(input.value)}).then(function(){
 					}, function(error) {
-						document.getElementById(id + 'Error').value = error;
+						document.getElementById(id + 'Error').textContent = error;
 					});
 				break;
 			case 'email':
-				firebase.auth().currentUser.verifyBeforeUpdateEmail(
+				user.verifyBeforeUpdateEmail(
 					escapeHtml(input.value)).then(function(){
 						document.getElementById(id + 'Error').textContent = "Please check your inbox. After you complete verification, email setting will updated.";
 					}, function(error) {
@@ -57,6 +63,25 @@ const editInput = function(id) {
 					});
 				break;
 			case 'phoneNumber':
+				var appVerifier = new firebase.auth.RecaptchaVerifier( "recaptcha-container", { size: "invisible" });
+				var provider = new firebase.auth.PhoneAuthProvider();
+				provider.verifyPhoneNumber(input.value, appVerifier)
+					.then(function (verificationId) {
+						var verificationCode = window.prompt('Please enter the verification ' +
+															 'code that was sent to your mobile device.');
+						phoneCredential = firebase.auth.PhoneAuthProvider.credential(verificationId, verificationCode);
+						user.updatePhoneNumber(phoneCredential);
+					})
+					.then((result) => {
+						// Phone credential now linked to current user.
+						// User now can sign in with new phone upon logging out.
+						console.log(result);
+					})
+					.catch((error) => {
+						// Error occurred.
+						document.getElementById(id + 'Error').textContent = error;
+					})
+				appVerifier.clear();
 				break;
 		}
 
@@ -76,7 +101,7 @@ const toggleIDProvider = function(checkBox) {
 				arg = firebase.auth.EmailAuthProvider.credential(user.email, Math.random().toString(36).slice(-8));
 				func = 'linkWithCredential';
 				break;
-			case "facebook":
+			case "facebook.com":
 				arg = new firebase.auth.FacebookAuthProvider();
 				func = 'linkWithPopup';
 				break;
@@ -86,6 +111,7 @@ const toggleIDProvider = function(checkBox) {
 				break;
 		}
 
+		document.getElementById(checkBox.id + 'Error').textContent = "";
 		user[func](arg).then (function(){
 					}, function(error) {
 						document.getElementById(checkBox.id + 'Error').textContent = error;
@@ -123,5 +149,17 @@ const checkIfLastProviderLeft = function() {
 	if(moreThanOne == false) {
 		inputs[lastCheckedOne].disabled = true;
 	}
+}
+
+const sendPasswordReset = function() {
+	document.getElementById('passwordNotification').value = "";
+	document.getElementById('passwordError').value = "";
+
+	var auth = firebase.auth();
+	auth.sendPasswordResetEmail(auth.currentUser.email).then(function() {
+		document.getElementById('passwordNotification').textContent = "Email with instructions sent to " + auth.currentUser.email + ", please check your inbox";
+	}).catch(function(error) {
+		document.getElementById('passwordError').textContent = error;
+	});
 }
 	
