@@ -1,0 +1,65 @@
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"> </script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+<!-- TODO: use production version <script src="https://cdn.jsdelivr.net/npm/vue@2"></script> -->
+
+<div id="app" class="container-lg mt-2">
+	<div v-cloak v-if="noSquadsAtAll" class="alert alert-primary mt-2" role="alert" >
+							You are not a member of any squad. Go ahead and create your own one.
+	</div>
+	<div v-if="squadError.length > 0" class="alert alert-danger mt-2" role="alert">
+		[[ squadError ]]
+	</div>
+
+	<div class="table-responsive-lg table-body">
+		<div class="table-wrapper">
+			<div class="table-title">
+				<div class="row">
+					<div class="col-sm-8"><h2>My Squads</h2></div>
+					<div class="col-sm-4" align=right>
+						<button type="button" class="btn btn-info add-new" v-on:click="addNewSquad" :disabled="addNewSquadMode"><i class="fa fa-plus"></i> Create New Squad</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="form-group">
+				<form v-on:submit="submitNewSquad">
+					<table class="table table-bordered">
+						<thead>
+							<tr>
+								<th>Squad</th>
+								<th>Members Count</th>
+								<th>My Status</th>
+								<th>Actions</th>
+
+						</thead>
+						<tbody>
+							<tr v-for="(squad, index) in squads"  :key="index">
+
+								<td>[[squad.name]]</td>
+								<td>[[squad.membersCount]]</td>
+								<td>[[squad.myStatus]]</td>
+								<td>
+									<a class="details" title="Details" data-toggle="tooltip" v-on:click="deleteSquad(squad.id, index)" href="#"><i class="fas fa-info-circle"></i></a>
+								</td>
+							</tr>
+							<template v-if="addNewSquadMode">
+								<tr>
+									<td><input v-model="squadName" class="form-control"></td>
+									<td>1</td>
+									<td>Owner</td>
+									<td><button type="submit" class="btn btn-success">
+											<i class="fa fa-arrow-circle-right fa-lg"></i> Submit
+										</button>
+									</td>
+								</tr>
+							</template>
+						</tbody>
+					</table>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script src="static/squads.js"></script>
