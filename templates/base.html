@@ -9,7 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-analytics.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.js"></script>
-<script src="static/firebase.js?rndstr=<%= getRandomStr() %>"></script>
+<script src="static/firebase.js"></script>
 
 <script>
 	const postSignOut = function() {
@@ -49,13 +49,15 @@
 		<a class="navbar-brand" href="/home">Assist</a>
 
 {{if .Session.EmailVerified}}
+{{if .Session.Role}}
 		<ul class="navbar-nav">
 			<li><a class="nav-link" href="/squads">Squads</a></li>
 			<li><a class="nav-link" href="/events">Events</a></li>
 			<li><a class="nav-link" href="/places">Places</a></li>
 		</ul>
-		<a class="navbar-brand ml-auto" href="userinfo" id="sign-in-status">{{.Session.DisplayName}} ({{.Session.Email}})</a>
+{{end}}
 {{end}}			
+		<a class="navbar-brand ml-auto" href="userinfo" id="sign-in-status">{{.Session.DisplayName}} ({{.Session.Email}})</a>
 		<ul class="navbar-nav">
 			<li><a class="nav-link" href="#" onclick="postSignOut()">Sign out</a></li>
 		</ul>
@@ -63,10 +65,28 @@
 	</nav>
 
 {{if .Session.EmailVerified}}
+{{if .Session.Role}}
 	<div class="container-fluid">
 	  {{template "body" . }}
 	</div>
-
+{{else}}
+	
+	<div class="container">
+		<div class="alert alert-primary mt-2" role="alert">
+		<div class="row align-items-center">
+			<div class="col text-center">
+				<div id="pendingApproval" class="row align-items-center">
+					<div class="col">
+						<i class="far fa-user" style="font-size:64px;color:red;"></i>
+					</div>
+					<div class="col-11">
+						Hello, {{.Session.DisplayName}}. Your account is pending approval. Please come back in few hours.
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+{{end}}
 {{else}}
 	<script>
 		firebase.auth().onAuthStateChanged(user => {

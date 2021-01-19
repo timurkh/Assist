@@ -4,17 +4,17 @@ import (
 	"context"
 )
 
-type MemberStatus int
+type MemberStatusType int
 
 const (
-	pendingApprove MemberStatus = iota
+	pendingApprove MemberStatusType = iota
 	member
 	admin
 )
 
 type UserDetails struct {
 	UID    string
-	squads map[string]MemberStatus
+	squads map[string]MemberStatusType
 }
 
 type UsersDatabase interface {

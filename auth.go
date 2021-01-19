@@ -126,7 +126,7 @@ func (app *App) authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (app *App) getCurrentUID(r *http.Request) string {
+func (app *App) getCurrentUserID(r *http.Request) string {
 	sessionToken := gorilla_context.Get(r, "SessionToken")
 	return sessionToken.(*auth.Token).UID
 }
@@ -134,7 +134,7 @@ func (app *App) getCurrentUID(r *http.Request) string {
 func (app *App) getCurrentUserInfo(r *http.Request) (*auth.UserRecord, error) {
 	ctx := context.Background()
 
-	return app.authClient.GetUser(ctx, app.getCurrentUID(r))
+	return app.authClient.GetUser(ctx, app.getCurrentUserID(r))
 }
 
 func (app *App) getSessionData(r *http.Request) *SessionData {
