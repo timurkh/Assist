@@ -35,10 +35,8 @@ func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {
 func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := context.Background()
-	users := app.db.getUsersDatabase()
-
 	sessionData := app.getSessionData(r)
-	user, _ := users.GetUserDetails(ctx, sessionData.UID)
+	user, _ := app.dbUsers.GetUserDetails(ctx, sessionData.UID)
 
 	return userinfoTmpl.Execute(app, w, r, struct {
 		Session *SessionData

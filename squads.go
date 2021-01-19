@@ -5,13 +5,19 @@ import (
 )
 
 type SquadType struct {
-	SquadId      string
-	Name         string
-	MembersCount int
-	MemberStatus MemberStatusType
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Owner        string `json:"owner"`
+	MembersCount int    `json:"membersCount"`
 }
 
-type SquadsDataInterface interface {
+type SquadInfo struct {
+	*SquadType
+}
+
+type SquadsDatabase interface {
 	CreateSquad(ctx context.Context, name string, uid string) (squadId string, err error)
-	GetSquads(ctx context.Context, userId string) (*[]SquadType, error)
+	GetSquads(ctx context.Context, userId string) ([]*SquadType, error)
+	DeleteSquad(ctx context.Context, ID string) error
+	GetSquad(ctx context.Context, ID string) (*SquadInfo, error)
 }

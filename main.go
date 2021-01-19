@@ -42,7 +42,9 @@ func initApp() (*App, error) {
 		return nil, fmt.Errorf("firestoredb: could not connect: %v", err)
 	}
 
-	app.db = newFirestoreDB(client)
+	db := newFirestoreDB(client)
+	app.dbUsers = db
+	app.dbSquads = db
 
 	// init firebase auth
 	app.authClient, err = fireapp.Auth(ctx)
@@ -55,7 +57,8 @@ func initApp() (*App, error) {
 
 type App struct {
 	logWriter  io.Writer
-	db         *firestoreDB
+	dbUsers    UsersDatabase
+	dbSquads   SquadsDatabase
 	authClient *auth.Client
 }
 

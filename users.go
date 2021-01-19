@@ -10,6 +10,7 @@ const (
 	pendingApprove MemberStatusType = iota
 	member
 	admin
+	owner
 )
 
 type UserDetails struct {
