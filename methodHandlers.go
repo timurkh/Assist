@@ -28,7 +28,7 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(struct{ id string }{squadId})
+	err = json.NewEncoder(w).Encode(struct{ ID string }{squadId})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -40,7 +40,14 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := context.Background()
-	squads, err := app.dbSquads.GetSquads(ctx, app.getCurrentUserID(r))
+
+	query := r.URL.Query()
+	userId := query.Get("userId")
+	if userId == "me" {
+		userId = app.getCurrentUserID(r)
+	}
+	my_squads, other_squads, err := app.dbSquads.GetSquads(ctx, userId)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -48,7 +55,11 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(squads)
+
+	err = json.NewEncoder(w).Encode(struct {
+		My    interface{}
+		Other interface{}
+	}{my_squads, other_squads})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

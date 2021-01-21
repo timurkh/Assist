@@ -4,6 +4,7 @@ const app = new Vue({
 	delimiters: ['[[', ']]'],
 	data:{
 		squads:[],
+		other_squads:[],
 		addNewSquadMode:false,
 		squadError:"",
 		squadName:"",
@@ -12,22 +13,21 @@ const app = new Vue({
 	},
 	created:function() {
 		axios({
-			  method: 'GET',
-			  url: '/methods/squads',
+			method: 'GET',
+			url: '/methods/squads',
+			params: {
+				userId : 'me' 
+			}
 		})
 		.then(res => {
-			this.squads = res.data; 
+			this.squads = res.data['My']; 
+			this.other_squads = res.data['Other']; 
 			this.noSquadsAtAll = this.squads.length == 0;	
 		})
 		.catch(error => {console.log("get-squads failed: " + error)})
 	},
 	methods: {
-		addNewSquad:function() {
-			this.addNewSquadMode = true;
-		},
-
-		submitNewSquad:function(e) {
-			e.preventDefault();
+		submitNewSquad:function() {
 
 			axios({
 				method: 'post',
@@ -37,9 +37,11 @@ const app = new Vue({
 				}
 			})
 			.then( res => {
-				var squad = res.data;
-				squad['name'] = this.squadName;
-				squad['membersCount'] = 1;
+				var squad = {
+					id: res.data.ID,
+					name: this.squadName, 
+					membersCount: 1
+				};
 				this.squadError = "";
 				this.addNewSquadMode = false;
 				this.squads.push(squad);
@@ -64,6 +66,8 @@ const app = new Vue({
 			.catch(err => {
 				this.squadError = "Error while removing squad " + id + ": " + err;
 			});
-		}
+		},
+		joinSquad:function() {
+		},
 	},
 })

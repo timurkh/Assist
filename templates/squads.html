@@ -3,63 +3,108 @@
 
 <!-- TODO: use production version <script src="https://cdn.jsdelivr.net/npm/vue@2"></script> -->
 
+
 <div id="app" class="container-lg mt-2">
-	<div v-cloak v-if="noSquadsAtAll" class="alert alert-primary mt-2" role="alert" >
-							You are not a member of any squad. Go ahead and create your own one.
-	</div>
-	<div v-if="squadError.length > 0" class="alert alert-danger mt-2" role="alert">
-		[[ squadError ]]
-	</div>
 
-	<div class="table-responsive-lg table-body">
-		<div class="table-wrapper">
-			<div class="table-title">
-				<div class="row">
-					<div class="col-sm-8"><h2>My Squads</h2></div>
-					<div class="col-sm-4" align=right>
-						<button type="button" class="btn btn-info add-new" v-on:click="addNewSquad" :disabled="addNewSquadMode"><i class="fa fa-plus"></i> Create New Squad</button>
-					</div>
+	<!-- Modal windows-->
+	<div class="modal fade" id="addNewSquadModal" tabindex="-1" role="dialog">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="addNewSquadModalLabel">Add New Squad</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
 				</div>
-			</div>
-
-			<div class="form-group">
-				<form v-on:submit="submitNewSquad">
-					<table class="table table-bordered">
-						<thead>
-							<tr>
-								<th>Squad</th>
-								<th>Members Count</th>
-								<th>My Status</th>
-								<th>Actions</th>
-
-						</thead>
-						<tbody>
-							<tr v-for="(squad, index) in squads"  :key="index">
-
-								<td>[[squad.name]]</td>
-								<td>[[squad.membersCount]]</td>
-								<td>[[squad.myStatus]]</td>
-								<td>
-									<a class="details" title="Details" data-toggle="tooltip" v-on:click="deleteSquad(squad.id, index)" href="#"><i class="fas fa-info-circle"></i></a>
-								</td>
-							</tr>
-							<template v-if="addNewSquadMode">
-								<tr>
-									<td><input v-model="squadName" class="form-control"></td>
-									<td>1</td>
-									<td>Owner</td>
-									<td><button type="submit" class="btn btn-success">
-											<i class="fa fa-arrow-circle-right fa-lg"></i> Submit
-										</button>
-									</td>
-								</tr>
-							</template>
-						</tbody>
-					</table>
-				</form>
+				<div class="modal-body">
+					<form>
+						<div class="form-group" >
+							<label for="squadName">Squad Name</label>
+							<input type="text" id="squadName" class="form-control" v-model="squadName">
+						</div>
+					</form>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-primary" v-on:click="submitNewSquad()" data-dismiss="modal">Create Squad</button>
+				</div>
 			</div>
 		</div>
 	</div>
+
+	<div class="modal fade" id="joinSquadModal" tabindex="-1" role="dialog">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="joinSquadModalLabel">Join Existing Squad</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body">
+					<form>
+						<div class="form-group">
+							<select class="form-control" size="3">
+								<option  v-for="(squad) in other_squads" :value="squad.id">[[squad.name]]</option>
+							</select>
+						</div>
+					</form>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-primary" v-on:click="joinSquad()" data-dismiss="modal">Join Selected Squad</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Main View -->
+	<div v-cloak v-if="noSquadsAtAll" class="alert alert-primary mt-2" role="alert" >
+		You are not a member of any squad. Go ahead and join existing one or create your own.
+	</div>
+		<div v-if="squadError.length > 0" class="alert alert-danger mt-2" role="alert">
+			[[ squadError ]]
+		</div>
+
+		<div class="table-responsive-lg table-body">
+			<div class="table-wrapper">
+				<div class="table-title">
+					<div class="row">
+						<div class="col-sm-8"><h2>My Squads</h2></div>
+						<div class="col-sm-4" align=right>
+							<button type="button" class="btn btn-info add-new" data-toggle="modal" data-target="#joinSquadModal"><i class="fas fa-user-plus"></i> Join Squad</button>
+							<button type="button" class="btn btn-info add-new" data-toggle="modal" data-target="#addNewSquadModal"><i class="fa fa-plus"></i> Create New Squad</button>
+						</div>
+					</div>
+				</div>
+
+				<div >
+					<table class="table table-bordered">
+						<thead class="thead-dark">
+							<tr class="d-flex">
+								<th class="col-5">Squad</th>
+								<th class="col-3">Members Count</th>
+								<th class="col-3">My Status</th>
+								<th class="col-1">Actions</th>
+
+						</thead>
+						<tbody>
+							<tr class="d-flex" v-for="(squad, index) in squads"  :key="index">
+
+								<td class="col-5">
+									[[squad.name]]
+								</td>
+								<td class="col-3">[[squad.membersCount]]</td>
+								<td class="col-3">[[squad.myStatus]]</td>
+								<td class="col-1" align="center">
+									<a title="Details" data-toggle="tooltip" v-on:click="showSquadDetails(squad.id, index)" href="#"><i class="fas fa-info-circle"></i></a>
+									<a title="Edit" data-toggle="tooltip" v-on:click="editSquad(squad.id, index)" href="#"><i class="fas fa-edit"></i></a>
+									<a title="Delete" data-toggle="tooltip" v-on:click="deleteSquad(squad.id, index)" href="#"><i class="fas fa-minus-circle"></i></a>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
 </div>
 
 <script src="static/squads.js"></script>

@@ -17,7 +17,7 @@ type SquadInfo struct {
 
 type SquadsDatabase interface {
 	CreateSquad(ctx context.Context, name string, uid string) (squadId string, err error)
-	GetSquads(ctx context.Context, userId string) ([]*SquadType, error)
+	GetSquads(ctx context.Context, userId string) (mySquads []*SquadType, otherSquads []*SquadType, err error)
 	DeleteSquad(ctx context.Context, ID string) error
 	GetSquad(ctx context.Context, ID string) (*SquadInfo, error)
 }
