@@ -3,13 +3,13 @@ const app = new Vue({
 	el:'#app',
 	delimiters: ['[[', ']]'],
 	data:{
-		squads:[],
+		initialized:false,
+		own_squads:[],
+		member_squads:[],
 		other_squads:[],
-		addNewSquadMode:false,
 		squadError:"",
 		squadName:"",
-		message:"aaa",
-		noSquadsAtAll:false
+		squadToJoin:"",
 	},
 	created:function() {
 		axios({
@@ -20,11 +20,12 @@ const app = new Vue({
 			}
 		})
 		.then(res => {
-			this.squads = res.data['My']; 
+			this.own_squads = res.data['Own']; 
+			this.member_squads = res.data['Member']; 
 			this.other_squads = res.data['Other']; 
-			this.noSquadsAtAll = this.squads.length == 0;	
 		})
 		.catch(error => {console.log("get-squads failed: " + error)})
+		initialized = true;
 	},
 	methods: {
 		submitNewSquad:function() {
@@ -43,31 +44,59 @@ const app = new Vue({
 					membersCount: 1
 				};
 				this.squadError = "";
-				this.addNewSquadMode = false;
-				this.squads.push(squad);
-				this.noSquadsAtAll = false;
+				this.own_squads.push(squad);
 			})
 			.catch(err => {
 				this.squadError = "Error while adding new squad: " + err;
 			});
 		},
 		deleteSquad:function(id, index) {
-
 			axios({
 				method: 'delete',
 				url: '/methods/squads/' + id,
 			})
 			.then( res => {
 				this.squadError = "";
-				this.addNewSquadMode = false;
-				this.squads.splice(index, 1);
-				this.noSquadsAtAll = this.squads.length == 0;	
+				this.own_squads.splice(index, 1);
+			})
+			.catch(err => {
+				this.squadError = "Error while removing squad " + id + ": " + err;
+			});
+		},
+		leaveSquad:function(id, index) {
+			index = index;
+			axios({
+				method: 'delete',
+				url: '/methods/squads/' + id + '/members/me',
+			})
+			.then( res => {
+				this.squadError = "";
+				var squad = this.member_squads[index];
+				squad.membersCount--;
+				this.other_squads.push(squad);
+				this.member_squads.splice(index, 1);
 			})
 			.catch(err => {
 				this.squadError = "Error while removing squad " + id + ": " + err;
 			});
 		},
 		joinSquad:function() {
+			var id = this.squadToJoin.id;
+			var index = this.squadToJoin.index;
+			axios({
+				method: 'put',
+				url: '/methods/squads/' + id + '/members/me',
+			})
+			.then( res => {
+				this.squadError = "";
+				var squad = this.other_squads[index];
+				squad.membersCount++;
+				this.member_squads.push(squad);
+				this.other_squads.splice(index, 1);
+			})
+			.catch(err => {
+				this.squadError = "Error while joining squad: " + err;
+			});
 		},
 	},
 })

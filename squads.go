@@ -12,12 +12,14 @@ type SquadType struct {
 }
 
 type SquadInfo struct {
-	*SquadType
+	SquadType
 }
 
 type SquadsDatabase interface {
-	CreateSquad(ctx context.Context, name string, uid string) (squadId string, err error)
-	GetSquads(ctx context.Context, userId string) (mySquads []*SquadType, otherSquads []*SquadType, err error)
-	DeleteSquad(ctx context.Context, ID string) error
 	GetSquad(ctx context.Context, ID string) (*SquadInfo, error)
+	GetSquads(ctx context.Context, userId string) (ownSquads []*SquadType, memberSquads []*SquadType, otherSquads []*SquadType, err error)
+	CreateSquad(ctx context.Context, name string, uid string) (squadId string, err error)
+	DeleteSquad(ctx context.Context, ID string) error
+	AddMemberToSquad(ctx context.Context, squadId string, userId string, userInfo *UserInfo) error
+	DeleteMemberFromSquad(ctx context.Context, squadId string, userId string) error
 }

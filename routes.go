@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/handlers"
@@ -73,13 +74,15 @@ func (app *App) registerHandlers() {
 	r.Handle("/", http.RedirectHandler("/home", http.StatusFound))
 
 	// methods
+	r.Methods("PUT").Path("/methods/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
+	r.Methods("DELETE").Path("/methods/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
 	r.Methods("POST").Path("/methods/squads").Handler(appHandler(app.methodCreateSquad))
 	r.Methods("GET").Path("/methods/squads").Handler(appHandler(app.methodGetSquads))
 	r.Methods("DELETE").Path("/methods/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
 	r.Methods("GET").Path("/methods/squads/{id}").Handler(appHandler(app.methodGetSquad))
 
 	// setup logging
-	http.Handle("/", handlers.CombinedLoggingHandler(app.logWriter, r))
+	http.Handle("/", handlers.CombinedLoggingHandler(os.Stdout, r))
 
 	// server js files & turn off caching
 	http.Handle("/static/", NoCache(http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))))

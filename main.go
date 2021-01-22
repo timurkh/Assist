@@ -16,9 +16,14 @@ import (
 )
 
 func initApp() (*App, error) {
+	//
 	app := App{
 		logWriter: os.Stderr,
 	}
+
+	// init logs
+	log.SetOutput(os.Stderr)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	ctx := context.Background()
 

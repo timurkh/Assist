@@ -13,11 +13,13 @@ const (
 	owner
 )
 
-type UserDetails struct {
-	UID    string
-	squads map[string]MemberStatusType
+type UserInfo struct {
+	DisplayName string
 }
 
 type UsersDatabase interface {
-	GetUserDetails(ctx context.Context, id string) (u *UserDetails, err error)
+	AddUser(ctx context.Context, userId string, userInfo *UserInfo) error
+	GetUser(ctx context.Context, userId string) (u *UserInfo, err error)
+	AddSquadToMember(ctx context.Context, userId string, squadId string, squadInfo *SquadInfo) error
+	DeleteSquadFromMember(ctx context.Context, userId string, squadId string) error
 }

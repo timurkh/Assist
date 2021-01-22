@@ -36,11 +36,11 @@ func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := context.Background()
 	sessionData := app.getSessionData(r)
-	user, _ := app.dbUsers.GetUserDetails(ctx, sessionData.UID)
+	user, _ := app.dbUsers.GetUser(ctx, sessionData.UID)
 
 	return userinfoTmpl.Execute(app, w, r, struct {
 		Session *SessionData
-		Data    *UserDetails
+		Data    *UserInfo
 	}{sessionData, user})
 }
 

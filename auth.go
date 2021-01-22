@@ -1,9 +1,9 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -19,6 +19,8 @@ type SessionData struct {
 }
 
 func (app *App) sessionLogin(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
 	// Get the tokens sent by the client
 	idToken := r.FormValue("idToken")
 	csrfToken := r.FormValue("csrfToken")
@@ -36,7 +38,7 @@ func (app *App) sessionLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Decode the IDToken
-	decoded, err := app.authClient.VerifyIDToken(r.Context(), idToken)
+	decoded, err := app.authClient.VerifyIDToken(ctx, idToken)
 	if err != nil {
 		str := err.Error()
 		http.Error(w, str, http.StatusUnauthorized)
@@ -58,7 +60,7 @@ func (app *App) sessionLogin(w http.ResponseWriter, r *http.Request) error {
 	// The session cookie will have the same claims as the ID token.
 	// To only allow session cookie setting on recent sign-in, auth_time in ID token
 	// can be checked to ensure user was recently signed in before creating a session cookie.
-	cookie, err := app.authClient.SessionCookie(r.Context(), idToken, expiresIn)
+	cookie, err := app.authClient.SessionCookie(ctx, idToken, expiresIn)
 	if err != nil {
 		err = errors.New("Failed to create a session cookie: " + err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -75,6 +77,24 @@ func (app *App) sessionLogin(w http.ResponseWriter, r *http.Request) error {
 		//Secure:   true,
 	})
 	w.Write([]byte(`{"status": "success"}`))
+
+	// Check if user exists in DB, add record otherwise
+	userId := decoded.UID
+	_, err = app.dbUsers.GetUser(ctx, userId)
+	if err != nil {
+		log.Println("Failed to get user " + userId + " from DB, adding new record to users collection")
+		userRecord, err := app.authClient.GetUser(ctx, userId)
+		if err != nil {
+			return fmt.Errorf("Failed to get user record: %w", err)
+		}
+
+		userInfo := &UserInfo{userRecord.DisplayName}
+		app.dbUsers.AddUser(ctx, userId, userInfo)
+
+		if err != nil {
+			return fmt.Errorf("Failed to add user to database: %w", err)
+		}
+	}
 
 	return nil
 }
@@ -132,7 +152,7 @@ func (app *App) getCurrentUserID(r *http.Request) string {
 }
 
 func (app *App) getCurrentUserInfo(r *http.Request) (*auth.UserRecord, error) {
-	ctx := context.Background()
+	ctx := r.Context()
 
 	return app.authClient.GetUser(ctx, app.getCurrentUserID(r))
 }
