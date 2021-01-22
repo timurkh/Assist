@@ -3,7 +3,7 @@ const app = new Vue({
 	el:'#app',
 	delimiters: ['[[', ']]'],
 	data:{
-		initialized:false,
+		no_squads:false,
 		own_squads:[],
 		member_squads:[],
 		other_squads:[],
@@ -23,9 +23,9 @@ const app = new Vue({
 			this.own_squads = res.data['Own']; 
 			this.member_squads = res.data['Member']; 
 			this.other_squads = res.data['Other']; 
+			this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
 		})
 		.catch(error => {console.log("get-squads failed: " + error)})
-		initialized = true;
 	},
 	methods: {
 		submitNewSquad:function() {
@@ -45,6 +45,7 @@ const app = new Vue({
 				};
 				this.squadError = "";
 				this.own_squads.push(squad);
+				this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
 			})
 			.catch(err => {
 				this.squadError = "Error while adding new squad: " + err;
@@ -58,6 +59,7 @@ const app = new Vue({
 			.then( res => {
 				this.squadError = "";
 				this.own_squads.splice(index, 1);
+				this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
 			})
 			.catch(err => {
 				this.squadError = "Error while removing squad " + id + ": " + err;
@@ -75,6 +77,7 @@ const app = new Vue({
 				squad.membersCount--;
 				this.other_squads.push(squad);
 				this.member_squads.splice(index, 1);
+				this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
 			})
 			.catch(err => {
 				this.squadError = "Error while removing squad " + id + ": " + err;
@@ -93,6 +96,7 @@ const app = new Vue({
 				squad.membersCount++;
 				this.member_squads.push(squad);
 				this.other_squads.splice(index, 1);
+				this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
 			})
 			.catch(err => {
 				this.squadError = "Error while joining squad: " + err;
