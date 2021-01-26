@@ -3,11 +3,11 @@ const app = new Vue({
 	el:'#app',
 	delimiters: ['[[', ']]'],
 	data:{
-		no_squads:false,
+		loading:true,
 		own_squads:[],
 		member_squads:[],
 		other_squads:[],
-		squadError:"",
+		error_message:"",
 		squadName:"",
 		squadToJoin:"",
 	},
@@ -23,9 +23,12 @@ const app = new Vue({
 			this.own_squads = res.data['Own']; 
 			this.member_squads = res.data['Member']; 
 			this.other_squads = res.data['Other']; 
-			this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
+			this.loading = false;
 		})
-		.catch(error => {console.log("get-squads failed: " + error)})
+		.catch(error => {
+			this.error_message = "Failed to retrieve list of squads: " + error;
+			this.loading = false;
+		})
 	},
 	methods: {
 		submitNewSquad:function() {
@@ -43,12 +46,11 @@ const app = new Vue({
 					name: this.squadName, 
 					membersCount: 1
 				};
-				this.squadError = "";
+				this.error_message = "";
 				this.own_squads.push(squad);
-				this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
 			})
 			.catch(err => {
-				this.squadError = "Error while adding new squad: " + err;
+				this.error_message = "Error while adding new squad: " + err;
 			});
 		},
 		deleteSquad:function(id, index) {
@@ -57,12 +59,11 @@ const app = new Vue({
 				url: '/methods/squads/' + id,
 			})
 			.then( res => {
-				this.squadError = "";
+				this.error_message = "";
 				this.own_squads.splice(index, 1);
-				this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
 			})
 			.catch(err => {
-				this.squadError = "Error while removing squad " + id + ": " + err;
+				this.error_message = "Error while removing squad " + id + ": " + err;
 			});
 		},
 		leaveSquad:function(id, index) {
@@ -72,15 +73,14 @@ const app = new Vue({
 				url: '/methods/squads/' + id + '/members/me',
 			})
 			.then( res => {
-				this.squadError = "";
+				this.error_message = "";
 				var squad = this.member_squads[index];
 				squad.membersCount--;
 				this.other_squads.push(squad);
 				this.member_squads.splice(index, 1);
-				this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
 			})
 			.catch(err => {
-				this.squadError = "Error while removing squad " + id + ": " + err;
+				this.error_message = "Error while removing squad " + id + ": " + err;
 			});
 		},
 		joinSquad:function() {
@@ -91,15 +91,14 @@ const app = new Vue({
 				url: '/methods/squads/' + id + '/members/me',
 			})
 			.then( res => {
-				this.squadError = "";
+				this.error_message = "";
 				var squad = this.other_squads[index];
 				squad.membersCount++;
 				this.member_squads.push(squad);
 				this.other_squads.splice(index, 1);
-				this.no_squads = this.own_squads.length == 0 && this.member_squads.length == 0;
 			})
 			.catch(err => {
-				this.squadError = "Error while joining squad: " + err;
+				this.error_message = "Error while joining squad: " + err;
 			});
 		},
 		showSquadDetails:function(squadId, index) {

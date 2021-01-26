@@ -21,11 +21,12 @@ func (app *App) squadsHandler(w http.ResponseWriter, r *http.Request) error {
 
 	return squadsTmpl.Execute(app, w, r, struct {
 		Session *SessionData
-	}{app.getSessionData(r)})
+	}{app.su.getSessionData(r)})
 }
 
 func (app *App) squadHandler(w http.ResponseWriter, r *http.Request) error {
 	keys, ok := r.URL.Query()["squadId"]
+	var err error
 
 	if !ok || len(keys[0]) < 1 {
 		err := fmt.Errorf("Missing Squad ID")
@@ -37,42 +38,39 @@ func (app *App) squadHandler(w http.ResponseWriter, r *http.Request) error {
 	// we only want the single item.
 	squadId := keys[0]
 
-	ctx := r.Context()
-	squadInfo, err := app.dbSquads.GetSquad(ctx, squadId)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return err
-	}
-
-	userId := "me"
-	if app.checkAuthorization(r, &userId, squadInfo, squadOwner|squadMember) == 0 {
+	_, squadInfo, authLevel := app.checkAuthorization(r, "me", squadId, squadOwner|squadMember)
+	if authLevel == 0 {
 		err = fmt.Errorf("Current user is not authorized to get squad %v info", squadId)
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return err
 	}
 
+	var squadInfoRecord SquadInfoRecord
+	squadInfoRecord.ID = squadId
+	squadInfoRecord.SquadInfo = *squadInfo
+
 	return squadTmpl.Execute(app, w, r, struct {
 		Session *SessionData
-		Squad   *SquadInfo
-	}{app.getSessionData(r), squadInfo})
+		Squad   *SquadInfoRecord
+	}{app.su.getSessionData(r), &squadInfoRecord})
 }
 
 func (app *App) eventsHandler(w http.ResponseWriter, r *http.Request) error {
 
 	return eventsTmpl.Execute(app, w, r, struct {
 		Session *SessionData
-	}{app.getSessionData(r)})
+	}{app.su.getSessionData(r)})
 }
 
 func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {
 
-	u, _ := app.getCurrentUserInfo(r)
+	u, _ := app.su.getCurrentUserInfo(r)
 	return homeTmpl.Execute(app, w, r, struct {
 		Session *SessionData
 		Data    string
 	}{
-		app.getSessionData(r),
+		app.su.getSessionData(r),
 		fmt.Sprintf("%+v<br>%+v", u, u.ProviderUserInfo[0])})
 }
 
@@ -81,14 +79,14 @@ func (app *App) aboutHandler(w http.ResponseWriter, r *http.Request) error {
 	return aboutTmpl.Execute(app, w, r, struct {
 		Session *SessionData
 	}{
-		app.getSessionData(r),
+		app.su.getSessionData(r),
 	})
 }
 
 func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := r.Context()
-	sessionData := app.getSessionData(r)
+	sessionData := app.su.getSessionData(r)
 	user, _ := app.dbUsers.GetUser(ctx, sessionData.UID)
 
 	return userinfoTmpl.Execute(app, w, r, struct {

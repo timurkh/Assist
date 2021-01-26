@@ -9,8 +9,6 @@ import (
 
 	"context"
 
-	"firebase.google.com/go/auth"
-
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
 )
@@ -52,19 +50,20 @@ func initApp() (*App, error) {
 	app.dbSquads = db
 
 	// init firebase auth
-	app.authClient, err = fireapp.Auth(ctx)
+	authClient, err := fireapp.Auth(ctx)
 	if err != nil {
 		log.Fatalf("firebase.Auth: %v", err)
 	}
+	app.su = initSessionUtil(authClient, db)
 
 	return &app, nil
 }
 
 type App struct {
-	logWriter  io.Writer
-	dbUsers    UsersDatabase
-	dbSquads   SquadsDatabase
-	authClient *auth.Client
+	logWriter io.Writer
+	dbUsers   UsersDatabase
+	dbSquads  SquadsDatabase
+	su        *SessionUtil
 }
 
 func main() {

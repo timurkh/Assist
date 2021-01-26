@@ -59,11 +59,11 @@ func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (app *App) registerHandlers() {
 	r := mux.NewRouter().StrictSlash(true)
 
-	r.Use(app.authMiddleware)
+	r.Use(app.su.authMiddleware)
 
 	// auth handlers
-	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.sessionLogin))
-	r.Methods("POST").Path("/sessionLogout").Handler(appHandler(app.sessionLogout))
+	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.su.sessionLogin))
+	r.Methods("POST").Path("/sessionLogout").Handler(appHandler(app.su.sessionLogout))
 
 	// tab handlers
 	r.Methods("GET").Path("/home").Handler(appHandler(app.homeHandler))
@@ -83,6 +83,7 @@ func (app *App) registerHandlers() {
 	r.Methods("GET").Path("/methods/squads").Handler(appHandler(app.methodGetSquads))
 	r.Methods("DELETE").Path("/methods/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
 	r.Methods("GET").Path("/methods/squads/{id}").Handler(appHandler(app.methodGetSquad))
+	r.Methods("GET").Path("/methods/squads/{id}/members").Handler(appHandler(app.methodGetSquadMembers))
 
 	// setup logging
 	http.Handle("/", handlers.CombinedLoggingHandler(os.Stdout, r))

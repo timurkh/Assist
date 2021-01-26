@@ -1,143 +1,151 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>Assist</title>
+	<head>
+		<meta charset="utf-8">
+		<title>Assist</title>
 
-<!-- Firebase init -->
-<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-analytics.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.js"></script>
-<script src="static/firebase.js"></script>
+		<!-- Firebase init -->
+		<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-app.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-analytics.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-auth.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.js"></script>
+		<script src="static/firebase.js"></script>
 
-<script>
-	const postSignOut = function() {
-		// POST to session login endpoint.
-		$.ajax({
-			type:'POST',
-			url: '/sessionLogout',
-			contentType: 'application/x-www-form-urlencoded'
-		})
-		.then(function() {
-			// Redirect to profile on success.
-			window.location.assign('/login');
-		}, function(error) {
-			// Refresh page on error.
-			// In all cases, client side state should be lost due to in-memory
-			// persistence.
-			console.log(error);
-		});
-	}
+		<style> [v-cloak] { display: none; } </style>
 
-	// Initialize Firebase
-	firebase.initializeApp(firebaseConfig);
-	firebase.analytics();
-
-</script>
-
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css"/>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
-</head>
-
-<body>
-	<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-
-{{if .Session.EmailVerified}}
-{{if .Session.Role}}
-		<ul class="navbar-nav">
-			<li><a id="navbar-home" class="nav-link" href="/home">Assist</a></li>
-			<li><a id="navbar-squads" class="nav-link" href="/squads">Squads</a></li>
-			<li><a id="navbar-events" class="nav-link" href="/events">Events</a></li>
-			<li><a id="navbar-about" class="nav-link" href="/about">About</a></li>
-		</ul>
-{{end}}
-{{end}}			
-		<ul class="navbar-nav ml-auto">
-			<li> <a id="navbar-userinfo" class="nav-link" href="userinfo">{{.Session.DisplayName}} ({{.Session.Email}})</a> </li>
-			<li><a class="nav-link" href="#" onclick="postSignOut()">Sign out</a></li>
-		</ul>
-
-	</nav>
-
-{{if .Session.EmailVerified}}
-{{if .Session.Role}}
-	<div class="container-fluid">
-	  {{template "body" . }}
-	</div>
-{{else}}
-	
-	<div class="container">
-		<div class="alert alert-primary mt-2" role="alert">
-		<div class="row align-items-center">
-			<div class="col text-center">
-				<div id="pendingApproval" class="row align-items-center">
-					<div class="col">
-						<i class="far fa-user" style="font-size:64px;color:red;"></i>
-					</div>
-					<div class="col-11">
-						Hello, {{.Session.DisplayName}}. Your account is pending approval. Please come back in few hours.
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-{{end}}
-{{else}}
-	<script>
-		firebase.auth().onAuthStateChanged(user => {
-			if (user) {
-				document.getElementById('btnSendVerEmail').disabled = false;
+		<script>
+			const postSignOut = function() {
+				// POST to session login endpoint.
+				$.ajax({
+					type:'POST',
+					url: '/sessionLogout',
+					contentType: 'application/x-www-form-urlencoded'
+				})
+					.then(function() {
+						// Redirect to profile on success.
+						window.location.assign('/login');
+					}, function(error) {
+						// Refresh page on error.
+						// In all cases, client side state should be lost due to in-memory
+						// persistence.
+						console.log(error);
+					});
 			}
-		})
 
-		const sendVerificationEmail = function() {
-			user = firebase.auth().currentUser;
-			user.sendEmailVerification().then(
-				function() {
-					// Show redirection notice.
-					document.getElementById('verEmailSent').style.display = '';
-					document.getElementById('sendVerEmail').style.display = 'none';
-					document.getElementById('btnSendVerEmailDiv').style.display = 'none';
-				}
-			).catch(function(error) {
-				console.log(error);
-			});
-		}
-	</script>
-	<div class="container">
-		<div class="alert alert-primary mt-2" role="alert">
-		<div class="row align-items-center">
-			<div class="col text-center">
-				<div id="sendVerEmail" class="row align-items-center">
-					<div class="col">
-						<i class="far fa-user" style="font-size:64px;color:red;"></i>
-					</div>
-					<div class="col-11">
-						Hello, {{.Session.DisplayName}}. Your email {{.Session.Email}} is not verified yet. Click button below and you will recieve a verification link.
-					</div>
-				</div>
-				<div class="row align-items-center" id="verEmailSent" style="display:none">
-					<div class="col">
-						<i class="far fa-user" style="font-size:64px;color:green"></i>
-					</div>
-					<div class="col-11">
-						Verification email successfully sent. Check your mailbox and follow instructions.
-					</div>
-				</div>
-				<div id="btnSendVerEmailDiv" class="row">
-					<div class="col">
-					<button id="btnSendVerEmail" type="button" class="btn btn-info" disabled="true" onclick="sendVerificationEmail()">Get verification email</button>
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+firebase.analytics();
+
+		</script>
+
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css"/>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+	</head>
+
+	<body>
+		<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+			<a class="navbar-brand" href="#">Assist</a>
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#main_nav">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+
+			<div class="navbar-collapse collapse" id="main_nav">
+				{{if .Session.EmailVerified}}
+				{{if .Session.Role}}
+				<ul class="nav navbar-nav">
+					<li><a id="navbar-home" class="nav-link" href="/home">Home</a></li>
+					<li><a id="navbar-squads" class="nav-link" href="/squads">Squads</a></li>
+					<li><a id="navbar-events" class="nav-link" href="/events">Events</a></li>
+					<li><a id="navbar-about" class="nav-link" href="/about">About</a></li>
+				</ul>
+				{{end}}
+				{{end}}			
+				<ul class="nav navbar-nav ml-auto">
+				    <li class="nav-item"><hr class="border-top"></li>
+					<li> <a id="navbar-userinfo" class="nav-link" href="userinfo">{{.Session.DisplayName}} ({{.Session.Email}})</a> </li>
+					<li><a class="nav-link" href="#" onclick="postSignOut()">Sign out</a></li>
+				</ul>
+			</div>
+		</nav>
+
+		{{if .Session.EmailVerified}}
+		{{if .Session.Role}}
+		<div class="container-fluid">
+			{{template "body" . }}
+		</div>
+		{{else}}
+
+		<div class="container">
+			<div class="alert alert-primary mt-2" role="alert">
+				<div class="row align-items-center">
+					<div class="col text-center">
+						<div id="pendingApproval" class="row align-items-center">
+							<div class="col">
+								<i class="far fa-user" style="font-size:64px;color:red;"></i>
+							</div>
+							<div class="col-11">
+								Hello, {{.Session.DisplayName}}. Your account is pending approval. Please come back in few hours.
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	</div>
-{{end}}
+			{{end}}
+			{{else}}
+			<script>
+				firebase.auth().onAuthStateChanged(user => {
+					if (user) {
+						document.getElementById('btnSendVerEmail').disabled = false;
+					}
+				})
 
-</body>
+const sendVerificationEmail = function() {
+	user = firebase.auth().currentUser;
+	user.sendEmailVerification().then(
+		function() {
+			// Show redirection notice.
+			document.getElementById('verEmailSent').style.display = '';
+			document.getElementById('sendVerEmail').style.display = 'none';
+			document.getElementById('btnSendVerEmailDiv').style.display = 'none';
+		}
+	).catch(function(error) {
+		console.log(error);
+	});
+}
+			</script>
+			<div class="container">
+				<div class="alert alert-primary mt-2" role="alert">
+					<div class="row align-items-center">
+						<div class="col text-center">
+							<div id="sendVerEmail" class="row align-items-center">
+								<div class="col">
+									<i class="far fa-user" style="font-size:64px;color:red;"></i>
+								</div>
+								<div class="col-11">
+									Hello, {{.Session.DisplayName}}. Your email {{.Session.Email}} is not verified yet. Click button below and you will recieve a verification link.
+								</div>
+							</div>
+							<div class="row align-items-center" id="verEmailSent" style="display:none">
+								<div class="col">
+									<i class="far fa-user" style="font-size:64px;color:green"></i>
+								</div>
+								<div class="col-11">
+									Verification email successfully sent. Check your mailbox and follow instructions.
+								</div>
+							</div>
+							<div id="btnSendVerEmailDiv" class="row">
+								<div class="col">
+									<button id="btnSendVerEmail" type="button" class="btn btn-info" disabled="true" onclick="sendVerificationEmail()">Get verification email</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				{{end}}
+
+	</body>
 </html>
