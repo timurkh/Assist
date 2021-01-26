@@ -2,11 +2,47 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
 )
+
+type AuthenticatedLevel uint8
+
+const (
+	authenticatedUser AuthenticatedLevel = 1 << iota
+	squadMember
+	squadOwner
+	admin
+)
+
+func (app *App) checkAuthorization(r *http.Request, userId *string, squadInfo *SquadInfo, requiredLevel AuthenticatedLevel) AuthenticatedLevel {
+
+	var level AuthenticatedLevel = 0
+	sd := app.getSessionData(r)
+	if sd.Admin {
+		level = admin
+	}
+
+	if *userId == "me" {
+		*userId = app.getCurrentUserID(r)
+		level = level | authenticatedUser
+	}
+
+	if squadInfo != nil {
+		if requiredLevel&squadOwner != 0 && squadInfo.Owner == *userId {
+			return level | squadOwner
+		}
+
+		if requiredLevel&squadMember != 0 {
+			// return squadMember
+		}
+	}
+
+	return level
+}
 
 // method handlers
 func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error {
@@ -45,8 +81,14 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 
 	query := r.URL.Query()
 	userId := query.Get("userId")
-	if userId == "me" {
-		userId = app.getCurrentUserID(r)
+
+	// authorization check
+	if app.checkAuthorization(r, &userId, nil, authenticatedUser) == 0 {
+		// operation is not authorized, return error
+		err := fmt.Errorf("Current user is not authorized to get squads for user %v", userId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
 	}
 
 	log.Println("Getting squads for user " + userId)
@@ -80,9 +122,23 @@ func (app *App) methodDeleteSquad(w http.ResponseWriter, r *http.Request) error 
 	ctx := r.Context()
 
 	squadId := params["id"]
+	squadInfo, err := app.dbSquads.GetSquad(r.Context(), squadId)
+	if err != nil {
+		return err
+	}
+
+	// authorization check
+	userId := "me"
+	if app.checkAuthorization(r, &userId, squadInfo, squadOwner) == 0 {
+		err = fmt.Errorf("Current user is not authorized to delete squad " + squadId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
 	log.Println("Deleting squad " + squadId)
 
-	err := app.dbSquads.DeleteSquad(ctx, squadId)
+	err = app.dbSquads.DeleteSquad(ctx, squadId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -99,17 +155,26 @@ func (app *App) methodGetSquad(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
 	squadId := params["id"]
+
 	log.Println("Getting details for squad " + squadId)
 
-	squad, err := app.dbSquads.GetSquad(ctx, squadId)
+	squadInfo, err := app.dbSquads.GetSquad(ctx, squadId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 
+	userId := app.getCurrentUserID(r)
+	if authLevel := app.checkAuthorization(r, &userId, squadInfo, squadMember|squadOwner); authLevel == 0 {
+		err = fmt.Errorf("Current user is not authenticated to get squad " + squadId + " details")
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(squad)
+	err = json.NewEncoder(w).Encode(squadInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -125,9 +190,29 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 
 	squadId := params["squadId"]
 	userId := params["userId"]
-	if userId == "me" {
-		userId = app.getCurrentUserID(r)
+
+	squadInfo, err := app.dbSquads.GetSquad(ctx, squadId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
 	}
+
+	var squadUserInfo SquadUserInfo
+
+	switch authLevel := app.checkAuthorization(r, &userId, squadInfo, authenticatedUser|squadOwner); authLevel {
+	case authenticatedUser:
+		squadUserInfo.Status = pendingApproveFromOwner
+	case admin:
+		squadUserInfo.Status = member
+	case squadOwner:
+		squadUserInfo.Status = pendingApproveFromMember
+	default:
+		err = fmt.Errorf("Current user is not authorized to to add user " + userId + " to squad " + squadId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
 	log.Println("Adding user " + userId + " to squad " + squadId)
 
 	userInfo, err := app.dbUsers.GetUser(ctx, userId)
@@ -135,14 +220,9 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
+	squadUserInfo.UserInfo = *userInfo
 
-	err = app.dbSquads.AddMemberToSquad(ctx, squadId, userId, userInfo)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return err
-	}
-
-	squadInfo, err := app.dbSquads.GetSquad(ctx, squadId)
+	err = app.dbSquads.AddMemberToSquad(ctx, squadId, userId, &squadUserInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -167,12 +247,25 @@ func (app *App) methodDeleteMemberFromSquad(w http.ResponseWriter, r *http.Reque
 
 	squadId := params["squadId"]
 	userId := params["userId"]
-	if userId == "me" {
-		userId = app.getCurrentUserID(r)
+
+	squadInfo, err := app.dbSquads.GetSquad(ctx, squadId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
 	}
+
+	// authorization check
+	if app.checkAuthorization(r, &userId, squadInfo, authenticatedUser|squadOwner) == 0 {
+		// operation is not authorized, return error
+		err = fmt.Errorf("Current user is not authorized to remove user " + userId + " from squad " + squadId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
 	log.Println("Removing user " + userId + " from squad " + squadId)
 
-	err := app.dbUsers.DeleteSquadFromMember(ctx, userId, squadId)
+	err = app.dbUsers.DeleteSquadFromMember(ctx, userId, squadId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err

@@ -70,6 +70,9 @@ func (app *App) registerHandlers() {
 	r.Methods("GET").Path("/login").Handler(appHandler(app.loginHandler))
 	r.Methods("GET").Path("/userinfo").Handler(appHandler(app.userinfoHandler))
 	r.Methods("GET").Path("/squads").Handler(appHandler(app.squadsHandler))
+	r.Methods("GET").Path("/squad").Handler(appHandler(app.squadHandler))
+	r.Methods("GET").Path("/events").Handler(appHandler(app.eventsHandler))
+	r.Methods("GET").Path("/about").Handler(appHandler(app.aboutHandler))
 
 	r.Handle("/", http.RedirectHandler("/home", http.StatusFound))
 

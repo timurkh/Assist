@@ -4,15 +4,6 @@ import (
 	"context"
 )
 
-type MemberStatusType int
-
-const (
-	pendingApprove MemberStatusType = iota
-	member
-	admin
-	owner
-)
-
 type UserInfo struct {
 	DisplayName string
 }

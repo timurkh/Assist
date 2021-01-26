@@ -1,3 +1,5 @@
+<script> document.getElementById("navbar-squads").classList.add("active"); </script>
+
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"> </script>
 <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
@@ -66,13 +68,13 @@
 
 		<div class="table-responsive-lg table-body">
 			<div class="table-wrapper">
-				<div class="table-title">
-					<div class="row">
-						<div class="col-sm-8"><h2>My Squads</h2></div>
-						<div class="col-sm-4" align=right>
-							<button type="button" class="btn btn-info add-new" data-toggle="modal" data-target="#joinSquadModal"><i class="fas fa-user-plus"></i> Join Squad</button>
-							<button type="button" class="btn btn-info add-new" data-toggle="modal" data-target="#addNewSquadModal"><i class="fa fa-plus"></i> Create New Squad</button>
-						</div>
+				<div class="breadcrumb d-flex justify-content-between align-items-center pt-0 pb-0 pr-0 mb-1">
+					<ol class="breadcrumb mb-0 p-0">
+						<li class="breadcrumb-item active">My Squads</li>
+					</ol>
+					<div class="mb-0 mt-0 pb-0 pt-0">
+						<button type="button" class="btn btn-info add-new" data-toggle="modal" data-target="#joinSquadModal"><i class="fas fa-user-plus"></i> Join Squad</button>
+						<button type="button" class="btn btn-info add-new" data-toggle="modal" data-target="#addNewSquadModal"><i class="fa fa-plus"></i> Create New Squad</button>
 					</div>
 				</div>
 

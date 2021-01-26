@@ -157,7 +157,7 @@ func (db *firestoreDB) GetSquad(ctx context.Context, ID string) (*SquadInfo, err
 	return s, nil
 }
 
-func (db *firestoreDB) AddMemberToSquad(ctx context.Context, squadId string, userId string, userInfo *UserInfo) error {
+func (db *firestoreDB) AddMemberToSquad(ctx context.Context, squadId string, userId string, userInfo *SquadUserInfo) error {
 
 	batch := db.client.Batch()
 

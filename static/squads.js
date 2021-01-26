@@ -102,5 +102,8 @@ const app = new Vue({
 				this.squadError = "Error while joining squad: " + err;
 			});
 		},
+		showSquadDetails:function(squadId, index) {
+			window.location.href = `/squad?squadId=${squadId}`;
+		}
 	},
 })

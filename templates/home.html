@@ -1,16 +1,52 @@
-<div class="container-fluid">
-	<h1>About</h1>
+<script> document.getElementById("navbar-home").classList.add("active"); </script>
 
-	<p>
-	There have been several reasons to create this portal:
-	<ul>
-		<li> <s>Because I can</s> To get experience of developing web app using modern frameworks and technologies: Google Application Engine (Cloud Firestore, Firebase Auth) + Go + <s>modern vanilla JS</s>Vue + Bootstrap.</li>
-		<li> I've got vague feeling that modern web is missing a platform, that would allow to define (or better identify itself) entities which surround us and actually form our life (people, places, events, needs), link them with each other and define actions on top of these entities intersection. Here I try to build working model for my ideas.</li>
-		<li> Being able to create code should definitely have positive day-to-day outcome. Here I will implement automation for certain scenarios that drive me mad for years.</li>
-	</ul>
-	</p>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"> </script>
+<!-- TODO: use production version <script src="https://cdn.jsdelivr.net/npm/vue@2"></script> -->
 
-	<p>
-	Author is available <a href="https://www.linkedin.com/in/timur-k/"><i class="fab fa-linkedin"></i> here</a>. Source codes are available <a href="https://github.com/timurkh/Assist"><i class="fab fa-github"></i> here</a>. App is using GAE free tier, this is BTW the only reason to have manual approve of the new user (which I hope is a temporary limitation).
-	</p>
+<div id="app" class="container-lg mt-2">
+	<div class="table-responsive-lg table-body">
+		<div class="table-wrapper">
+			<div class="breadcrumb d-flex justify-content-between align-items-center pt-0 pb-0 pr-0 mb-1">
+				<ol class="breadcrumb mb-0 p-0">
+					<li class="breadcrumb-item">Home</li>
+				</ol>
+			</div>
+
+			<div class="row mt-3">
+				<div class="col-xl-4 col-sm-6 py-2">
+					<div class="card bg-success text-white h-100">
+						<div class="card-body bg-success">
+							<div class="rotate">
+								<i class="fa fa-user fa-4x"></i>
+							</div>
+							<h6 class="text-uppercase">Users</h6>
+							<h1 class="display-4">134</h1>
+						</div>
+					</div>
+				</div>
+				<div class="col-xl-4 col-sm-6 py-2">
+					<div class="card text-white bg-danger h-100">
+						<div class="card-body bg-danger">
+							<div class="rotate">
+								<i class="fa fa-list fa-4x"></i>
+							</div>
+							<h6 class="text-uppercase">Posts</h6>
+							<h1 class="display-4">87</h1>
+						</div>
+					</div>
+				</div>
+				<div class="col-xl-4 col-sm-6 py-2">
+					<div class="card text-white bg-warning h-100">
+						<div class="card-body">
+							<div class="rotate">
+								<i class="fa fa-share fa-4x"></i>
+							</div>
+							<h6 class="text-uppercase">Shares</h6>
+							<h1 class="display-4">36</h1>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
