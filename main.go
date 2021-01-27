@@ -32,12 +32,12 @@ func initApp() (*App, error) {
 	}
 
 	// init firestore
-	client, err := fireapp.Firestore(ctx)
+	dbClient, err := fireapp.Firestore(ctx)
 	if err != nil {
 		log.Fatalf("fireapp.Firestore: %v", err)
 	}
 
-	err = client.RunTransaction(ctx, func(ctx context.Context, t *firestore.Transaction) error {
+	err = dbClient.RunTransaction(ctx, func(ctx context.Context, t *firestore.Transaction) error {
 		return nil
 	})
 
@@ -45,24 +45,21 @@ func initApp() (*App, error) {
 		return nil, fmt.Errorf("firestoredb: could not connect: %v", err)
 	}
 
-	db := newFirestoreDB(client)
-	app.dbUsers = db
-	app.dbSquads = db
+	app.db = newFirestoreDB(dbClient)
 
 	// init firebase auth
 	authClient, err := fireapp.Auth(ctx)
 	if err != nil {
 		log.Fatalf("firebase.Auth: %v", err)
 	}
-	app.su = initSessionUtil(authClient, db)
+	app.su = initSessionUtil(authClient, app.db)
 
 	return &app, nil
 }
 
 type App struct {
 	logWriter io.Writer
-	dbUsers   UsersDatabase
-	dbSquads  SquadsDatabase
+	db        *firestoreDB
 	su        *SessionUtil
 }
 

@@ -6,7 +6,7 @@ import (
 )
 
 func (db *firestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo, err error) {
-	doc, err := db.client.Collection("users").Doc(userId).Get(ctx)
+	doc, err := db.users.Doc(userId).Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get user "+userId+": %w", err)
 	}
@@ -19,7 +19,7 @@ func (db *firestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo,
 
 func (db *firestoreDB) AddSquadToMember(ctx context.Context, userId string, squadId string, squadInfo *SquadInfo) error {
 
-	doc := db.client.Collection("users").Doc(userId).Collection("member_squads").Doc(squadId)
+	doc := db.users.Doc(userId).Collection("member_squads").Doc(squadId)
 
 	_, err := doc.Set(ctx, squadInfo)
 	if err != nil {
@@ -30,7 +30,7 @@ func (db *firestoreDB) AddSquadToMember(ctx context.Context, userId string, squa
 }
 
 func (db *firestoreDB) AddUser(ctx context.Context, userId string, userInfo *UserInfo) error {
-	doc := db.client.Collection("users").Doc(userId)
+	doc := db.users.Doc(userId)
 
 	_, err := doc.Set(ctx, userInfo)
 	if err != nil {
@@ -42,7 +42,7 @@ func (db *firestoreDB) AddUser(ctx context.Context, userId string, userInfo *Use
 
 func (db *firestoreDB) DeleteSquadFromMember(ctx context.Context, userId string, squadId string) error {
 
-	doc := db.client.Collection("users").Doc(userId).Collection("member_squads").Doc(squadId)
+	doc := db.users.Doc(userId).Collection("member_squads").Doc(squadId)
 
 	_, err := doc.Delete(ctx)
 	if err != nil {

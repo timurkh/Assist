@@ -87,7 +87,7 @@ func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := r.Context()
 	sessionData := app.su.getSessionData(r)
-	user, _ := app.dbUsers.GetUser(ctx, sessionData.UID)
+	user, _ := app.db.GetUser(ctx, sessionData.UID)
 
 	return userinfoTmpl.Execute(app, w, r, struct {
 		Session *SessionData

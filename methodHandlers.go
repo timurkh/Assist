@@ -33,7 +33,7 @@ func (app *App) checkAuthorization(r *http.Request, userId_ string, squadId stri
 
 	if requiredLevel&squadOwner != 0 {
 		var err error
-		squadInfo, err = app.dbSquads.GetSquad(r.Context(), squadId)
+		squadInfo, err = app.db.GetSquad(r.Context(), squadId)
 		if err != nil {
 			log.Println("Error while checking user authorization: " + err.Error())
 		} else if squadInfo.Owner == userId {
@@ -42,7 +42,7 @@ func (app *App) checkAuthorization(r *http.Request, userId_ string, squadId stri
 	}
 
 	if requiredLevel&squadMember != 0 {
-		err := app.dbSquads.CheckIfUserIsSquadMember(r.Context(), userId, squadId)
+		err := app.db.CheckIfUserIsSquadMember(r.Context(), userId, squadId)
 		if err == nil {
 			level = level | squadMember
 		}
@@ -65,7 +65,7 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 	log.Println("Creating squad " + squad.Name)
 
 	ctx := r.Context()
-	squadId, err := app.dbSquads.CreateSquad(ctx, squad.Name, app.su.getCurrentUserID(r))
+	squadId, err := app.db.CreateSquad(ctx, squad.Name, app.su.getCurrentUserID(r))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -101,7 +101,7 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 
 	log.Println("Getting squads for user " + userId)
 
-	own_squads, member_squads, other_squads, err := app.dbSquads.GetSquads(ctx, userId)
+	own_squads, member_squads, other_squads, err := app.db.GetSquads(ctx, userId)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -140,7 +140,7 @@ func (app *App) methodDeleteSquad(w http.ResponseWriter, r *http.Request) error 
 
 	log.Println("Deleting squad " + squadId)
 
-	err := app.dbSquads.DeleteSquad(ctx, squadId)
+	err := app.db.DeleteSquad(ctx, squadId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -193,7 +193,7 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 	}
 
 	log.Println("Getting members of the squad " + squadId)
-	squadMembers, err := app.dbSquads.GetSquadMembers(ctx, squadId)
+	squadMembers, err := app.db.GetSquadMembers(ctx, squadId)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -201,7 +201,7 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 	}
 
 	log.Println("Getting info about owner of the squad " + squadId)
-	squadOwner, err := app.dbUsers.GetUser(ctx, squadInfo.Owner)
+	squadOwner, err := app.db.GetUser(ctx, squadInfo.Owner)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -249,20 +249,20 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 
 	log.Println("Adding user " + userId + " to squad " + squadId)
 
-	userInfo, err := app.dbUsers.GetUser(ctx, userId)
+	userInfo, err := app.db.GetUser(ctx, userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 	squadUserInfo.UserInfo = *userInfo
 
-	err = app.dbSquads.AddMemberToSquad(ctx, squadId, userId, &squadUserInfo)
+	err = app.db.AddMemberToSquad(ctx, squadId, userId, &squadUserInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 
-	err = app.dbUsers.AddSquadToMember(ctx, userId, squadId, squadInfo)
+	err = app.db.AddSquadToMember(ctx, userId, squadId, squadInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -294,13 +294,13 @@ func (app *App) methodDeleteMemberFromSquad(w http.ResponseWriter, r *http.Reque
 
 	log.Println("Removing user " + userId + " from squad " + squadId)
 
-	err := app.dbUsers.DeleteSquadFromMember(ctx, userId, squadId)
+	err := app.db.DeleteSquadFromMember(ctx, userId, squadId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 
-	err = app.dbSquads.DeleteMemberFromSquad(ctx, squadId, userId)
+	err = app.db.DeleteMemberFromSquad(ctx, squadId, userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err

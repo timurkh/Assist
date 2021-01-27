@@ -8,9 +8,11 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+const ALL_USERS_SQUAD = "ALL_USERS"
+
 func (db *firestoreDB) CreateSquad(ctx context.Context, name string, owner string) (newSquadId string, err error) {
 
-	newSquadId = db.client.Collection("squads").NewDoc().ID
+	newSquadId = db.squads.NewDoc().ID
 	squadDescription := map[string]interface{}{
 		"name":         name,
 		"owner":        owner,
@@ -19,8 +21,8 @@ func (db *firestoreDB) CreateSquad(ctx context.Context, name string, owner strin
 
 	batch := db.client.Batch()
 
-	batch.Set(db.client.Collection("squads").Doc(newSquadId), squadDescription)
-	batch.Set(db.client.Collection("users").Doc(owner).Collection("own_squads").Doc(newSquadId), squadDescription)
+	batch.Set(db.squads.Doc(newSquadId), squadDescription)
+	batch.Set(db.users.Doc(owner).Collection("own_squads").Doc(newSquadId), squadDescription)
 
 	_, err = batch.Commit(ctx)
 	if err != nil {
@@ -46,7 +48,7 @@ func (db *firestoreDB) GetSquads(ctx context.Context, userId string) ([]*SquadIn
 	user_own_squads := make([]*SquadInfoRecord, 0, len(user_own_squads_map))
 	user_member_squads := make([]*SquadInfoRecord, 0, len(user_member_squads_map))
 
-	iter := db.client.Collection("squads").Documents(ctx)
+	iter := db.squads.Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -88,7 +90,7 @@ func (db *firestoreDB) GetUserSquads(ctx context.Context, userID string, collect
 
 	squads_map := make(map[string]*SquadInfoRecord, 0)
 
-	iter := db.client.Collection("users").Doc(userID).Collection(collection + "_squads").Documents(ctx)
+	iter := db.users.Doc(userID).Collection(collection + "_squads").Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -115,7 +117,7 @@ func (db *firestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 
 	squadMembers := make([]*SquadUserInfo, 0)
 
-	iter := db.client.Collection("squads").Doc(squadId).Collection("members").Documents(ctx)
+	iter := db.squads.Doc(squadId).Collection("members").Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -140,7 +142,7 @@ func (db *firestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 
 func (db *firestoreDB) DeleteSquad(ctx context.Context, ID string) error {
 
-	doc, err := db.client.Collection("squads").Doc(ID).Get(ctx)
+	doc, err := db.squads.Doc(ID).Get(ctx)
 	if err != nil {
 		return fmt.Errorf("FirestoreDB.DeleteSquad: failed to get squad "+ID+": %w", err)
 	}
@@ -153,14 +155,12 @@ func (db *firestoreDB) DeleteSquad(ctx context.Context, ID string) error {
 	owner_id := owner.(string)
 
 	//TODO launch go routine to remove this squad from all members
-
-	//following part should go to users interface
-	db.client.Collection("users").Doc(owner_id).Collection("own_squads").Doc(ID).Delete(ctx)
+	db.users.Doc(owner_id).Collection("own_squads").Doc(ID).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("Error while deleting records about squad "+ID+" from owner "+owner_id+": %w", err)
 	}
 
-	_, err = db.client.Collection("squads").Doc(ID).Delete(ctx)
+	_, err = db.squads.Doc(ID).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("Error while deleting squad "+ID+": %w", err)
 	}
@@ -170,7 +170,7 @@ func (db *firestoreDB) DeleteSquad(ctx context.Context, ID string) error {
 
 func (db *firestoreDB) GetSquad(ctx context.Context, ID string) (*SquadInfo, error) {
 
-	doc, err := db.client.Collection("squads").Doc(ID).Get(ctx)
+	doc, err := db.squads.Doc(ID).Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get squad "+ID+": %w", err)
 	}
@@ -188,9 +188,9 @@ func (db *firestoreDB) AddMemberToSquad(ctx context.Context, squadId string, use
 
 	batch := db.client.Batch()
 
-	docMember := db.client.Collection("squads").Doc(squadId).Collection("members").Doc(userId)
+	docMember := db.squads.Doc(squadId).Collection("members").Doc(userId)
 	batch.Set(docMember, userInfo)
-	docSquad := db.client.Collection("squads").Doc(squadId)
+	docSquad := db.squads.Doc(squadId)
 	batch.Update(docSquad, []firestore.Update{
 		{Path: "membersCount", Value: firestore.Increment(1)},
 	})
@@ -207,9 +207,9 @@ func (db *firestoreDB) DeleteMemberFromSquad(ctx context.Context, squadId string
 
 	batch := db.client.Batch()
 
-	docMember := db.client.Collection("squads").Doc(squadId).Collection("members").Doc(userId)
+	docMember := db.squads.Doc(squadId).Collection("members").Doc(userId)
 	batch.Delete(docMember)
-	docSquad := db.client.Collection("squads").Doc(squadId)
+	docSquad := db.squads.Doc(squadId)
 	batch.Update(docSquad, []firestore.Update{
 		{Path: "membersCount", Value: firestore.Increment(-1)},
 	})
@@ -224,7 +224,7 @@ func (db *firestoreDB) DeleteMemberFromSquad(ctx context.Context, squadId string
 
 func (db *firestoreDB) CheckIfUserIsSquadMember(ctx context.Context, userId string, squadId string) error {
 
-	_, err := db.client.Collection("squads").Doc(squadId).Collection("members").Doc(userId).Get(ctx)
+	_, err := db.squads.Doc(squadId).Collection("members").Doc(userId).Get(ctx)
 
 	return err
 }

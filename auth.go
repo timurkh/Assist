@@ -20,10 +20,10 @@ type SessionData struct {
 
 type SessionUtil struct {
 	authClient *auth.Client
-	dbUsers    UsersDatabase
+	db         *firestoreDB
 }
 
-func initSessionUtil(ac *auth.Client, db UsersDatabase) *SessionUtil {
+func initSessionUtil(ac *auth.Client, db *firestoreDB) *SessionUtil {
 	mdlwr := SessionUtil{
 		ac, db}
 
@@ -92,7 +92,7 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 
 	// Check if user exists in DB, add record otherwise
 	userId := decoded.UID
-	_, err = am.dbUsers.GetUser(ctx, userId)
+	_, err = am.db.GetUser(ctx, userId)
 	if err != nil {
 		log.Println("Failed to get user " + userId + " from DB, adding new record to users collection")
 		userRecord, err := am.authClient.GetUser(ctx, userId)
@@ -105,7 +105,7 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 			Email:       userRecord.Email,
 			PhoneNumber: userRecord.PhoneNumber,
 		}
-		am.dbUsers.AddUser(ctx, userId, userInfo)
+		am.db.AddUser(ctx, userId, userInfo)
 
 		if err != nil {
 			return fmt.Errorf("Failed to add user to database: %w", err)
