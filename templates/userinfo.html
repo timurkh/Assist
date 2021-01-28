@@ -1,7 +1,7 @@
 <script> document.getElementById("navbar-userinfo").classList.add("active"); </script>
+
 <script src="static/userinfo.js"></script>
 
-<div id="recaptcha" visibility="hidden"></div>
 <div>
 	<div class="row justify-content-center align-items-center">
 		<div class="col-10 col-md-8 col-lg-6 justify-content-center align-items-center">
@@ -46,6 +46,9 @@
 							</div>
 						</div>
 						<small id="phoneNumberError" class="error text-danger"></small>
+						<div id="recaptcha" visibility="hidden"></div>
+
+
 					</div>
 
 					{{ if .Session.Admin }}
@@ -130,7 +133,7 @@
 								<div class="input-group mb-3">
 									<div class="input-group-prepend">
 										<div class="input-group-text">
-											<input type="checkbox" id="phone" onclick="toggleIDProvider(this)">
+											<input type="checkbox" id="phone" disabled="true">
 										</div>
 										<div class="input-group-text border-0">
 											<i id="phoneIcon" class="fas fa-phone" style="color:red"></i>

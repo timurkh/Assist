@@ -40,7 +40,6 @@ firebase.auth().onAuthStateChanged(user => {
 				console.log("Error while disabling provider " + pd[i].providerId + ": " + error);
 			}
 		}
-		disablePhoneCheckbox();
 	}
 })
 
@@ -67,36 +66,37 @@ const editInput = function(id) {
 						document.getElementById(id + 'Error').textContent = error;
 					});
 				break;
-			case 'phoneNumber':
-				var appVerifier = new firebase.auth.RecaptchaVerifier( "recaptcha", { 
-					'size': "invisible",
-					'callback': function(response) {
-						console.log('callback executed');
-						console.log(response);
-					},
-					'expired-callback': function() {
-						console.log('expired');
-					},
-				});
-				console.log(appVerifier);
+			case 'phoneNumber': 
+				document.getElementById(id + 'Error').textContent = "";
 				var provider = new firebase.auth.PhoneAuthProvider();
-				provider.verifyPhoneNumber(input.value, appVerifier)
-					.then(function (verificationId) {
-						var verificationCode = window.prompt('Please enter the verification ' +
-															 'code that was sent to your mobile device.');
-						phoneCredential = firebase.auth.PhoneAuthProvider.credential(verificationId, verificationCode);
-						user.updatePhoneNumber(phoneCredential);
-					})
-					.then((result) => {
-						// Phone credential now linked to current user.
-						// User now can sign in with new phone upon logging out.
-						console.log(result);
-					})
-					.catch((error) => {
-						// Error occurred.
-						document.getElementById(id + 'Error').textContent = "Failed to validate that you are a human: " + error;
-					})
-				appVerifier.clear();
+				var phoneNumber = input.value;
+
+				if (phoneNumber.length == 0) {
+					user.unlink("phone").then(function() {
+						document.getElementById('phone').checked = false;
+						document.getElementById(id + 'Error').textContent = "";
+					}).catch(function(error) {
+						document.getElementById(id + 'Error').textContent = "Failed to unlink phone from account: " + error;
+					});
+				} else {
+					provider.verifyPhoneNumber(input.value, appVerifier)
+						.then( function(verificationId) {
+							var verificationCode = window.prompt('Please enter the verification ' +
+																 'code that was sent to your mobile device.');
+							var phoneCredential = firebase.auth.PhoneAuthProvider.credential(verificationId, verificationCode);
+							return user.updatePhoneNumber(phoneCredential);
+						})
+						.then((result) => {
+							// Phone credential now linked to current user.
+							document.getElementById('phone').checked = true;
+							appVerifier.reset();
+						})
+						.catch((error) => {
+							// Error occurred.
+							document.getElementById(id + 'Error').textContent = "Failed to validate that you own provided phone number: " + error;
+							appVerifier.reset();
+						})
+				}
 				break;
 		}
 
@@ -127,7 +127,6 @@ const toggleIDProvider = function(checkBox) {
 			case "phone":
 				console.log("Phone checkbox should not be enabled when phone is not available");	
 				checkBox.checked = false;
-				checkBox.disabled = true;
 				return;
 		}
 
@@ -162,21 +161,16 @@ const checkIfLastProviderLeft = function() {
 					lastCheckedOne = i;
 				}
 			}
-			inputs[i].disabled = false;
+			if(inputs[i].id != "phone") { 
+				// phone checkbox is always disabled
+				// to unlink phone just set empty number
+				inputs[i].disabled = false;
+			}
 		}
 	}
 
 	if(moreThanOne == false) {
 		inputs[lastCheckedOne].disabled = true;
-	}
-	disablePhoneCheckbox();
-}
-
-// phone is not OAuth provider, we can only disable it
-const disablePhoneCheckbox = function() {
-	var phoneCheckbox = document.getElementById('phone');
-	if(phoneCheckbox.checked == false) {
-		phoneCheckbox.disabled = true;
 	}
 }
 
@@ -191,4 +185,11 @@ const sendPasswordReset = function() {
 		document.getElementById('passwordError').textContent = error;
 	});
 }
+
+// init appVerifier
+var appVerifier;
+window.addEventListener('load', function() {
+	appVerifier = new firebase.auth.RecaptchaVerifier( "recaptcha", { size: "invisible" });
+});
+
 	
