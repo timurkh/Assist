@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"context"
@@ -8,31 +8,19 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-const ALL_USERS_SQUAD = "ALL_USERS"
+func (db *FirestoreDB) CreateSquad(ctx context.Context, squadInfo *SquadInfo) (newSquadId string, err error) {
 
-func (db *firestoreDB) CreateSquad(ctx context.Context, name string, owner string) (newSquadId string, err error) {
+	newSquadId = db.Squads.NewDoc().ID
 
-	newSquadId = db.squads.NewDoc().ID
-	squadDescription := map[string]interface{}{
-		"name":         name,
-		"owner":        owner,
-		"membersCount": 1,
-	}
-
-	batch := db.client.Batch()
-
-	batch.Set(db.squads.Doc(newSquadId), squadDescription)
-	batch.Set(db.users.Doc(owner).Collection("own_squads").Doc(newSquadId), squadDescription)
-
-	_, err = batch.Commit(ctx)
+	_, err = db.Squads.Doc(newSquadId).Set(ctx, squadInfo)
 	if err != nil {
-		return "", err
+		return newSquadId, fmt.Errorf("Failed to create squad %v: %w", squadInfo.Name, err)
 	}
 
 	return newSquadId, nil
 }
 
-func (db *firestoreDB) GetSquads(ctx context.Context, userId string) ([]*SquadInfoRecord, []*SquadInfoRecord, []*SquadInfoRecord, error) {
+func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]*SquadInfoRecord, []*SquadInfoRecord, []*SquadInfoRecord, error) {
 
 	user_own_squads_map, err := db.GetUserOwnSquads(ctx, userId)
 	if err != nil {
@@ -48,7 +36,7 @@ func (db *firestoreDB) GetSquads(ctx context.Context, userId string) ([]*SquadIn
 	user_own_squads := make([]*SquadInfoRecord, 0, len(user_own_squads_map))
 	user_member_squads := make([]*SquadInfoRecord, 0, len(user_member_squads_map))
 
-	iter := db.squads.Documents(ctx)
+	iter := db.Squads.Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -78,19 +66,19 @@ func (db *firestoreDB) GetSquads(ctx context.Context, userId string) ([]*SquadIn
 	return user_own_squads, user_member_squads, other_squads, nil
 }
 
-func (db *firestoreDB) GetUserOwnSquads(ctx context.Context, userID string) (map[string]*SquadInfoRecord, error) {
+func (db *FirestoreDB) GetUserOwnSquads(ctx context.Context, userID string) (map[string]*SquadInfoRecord, error) {
 	return db.GetUserSquads(ctx, userID, "own")
 }
 
-func (db *firestoreDB) GetUserMemberSquads(ctx context.Context, userID string) (map[string]*SquadInfoRecord, error) {
+func (db *FirestoreDB) GetUserMemberSquads(ctx context.Context, userID string) (map[string]*SquadInfoRecord, error) {
 	return db.GetUserSquads(ctx, userID, "member")
 }
 
-func (db *firestoreDB) GetUserSquads(ctx context.Context, userID string, collection string) (map[string]*SquadInfoRecord, error) {
+func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string, collection string) (map[string]*SquadInfoRecord, error) {
 
 	squads_map := make(map[string]*SquadInfoRecord, 0)
 
-	iter := db.users.Doc(userID).Collection(collection + "_squads").Documents(ctx)
+	iter := db.Users.Doc(userID).Collection(collection + "_squads").Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -113,11 +101,11 @@ func (db *firestoreDB) GetUserSquads(ctx context.Context, userID string, collect
 	return squads_map, nil
 }
 
-func (db *firestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*SquadUserInfo, error) {
+func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*SquadUserInfoRecord, error) {
 
-	squadMembers := make([]*SquadUserInfo, 0)
+	squadMembers := make([]*SquadUserInfoRecord, 0)
 
-	iter := db.squads.Doc(squadId).Collection("members").Documents(ctx)
+	iter := db.Squads.Doc(squadId).Collection("members").Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -128,7 +116,7 @@ func (db *firestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 			return nil, fmt.Errorf("Failed to get squad members: %w", err)
 		}
 
-		s := &SquadUserInfo{}
+		s := &SquadUserInfoRecord{}
 		err = doc.DataTo(s)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get squad members: %w", err)
@@ -140,9 +128,9 @@ func (db *firestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 	return squadMembers, nil
 }
 
-func (db *firestoreDB) DeleteSquad(ctx context.Context, ID string) error {
+func (db *FirestoreDB) DeleteSquad(ctx context.Context, ID string) error {
 
-	doc, err := db.squads.Doc(ID).Get(ctx)
+	doc, err := db.Squads.Doc(ID).Get(ctx)
 	if err != nil {
 		return fmt.Errorf("FirestoreDB.DeleteSquad: failed to get squad "+ID+": %w", err)
 	}
@@ -155,12 +143,12 @@ func (db *firestoreDB) DeleteSquad(ctx context.Context, ID string) error {
 	owner_id := owner.(string)
 
 	//TODO launch go routine to remove this squad from all members
-	db.users.Doc(owner_id).Collection("own_squads").Doc(ID).Delete(ctx)
+	db.Users.Doc(owner_id).Collection("own_squads").Doc(ID).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("Error while deleting records about squad "+ID+" from owner "+owner_id+": %w", err)
 	}
 
-	_, err = db.squads.Doc(ID).Delete(ctx)
+	_, err = db.Squads.Doc(ID).Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("Error while deleting squad "+ID+": %w", err)
 	}
@@ -168,9 +156,9 @@ func (db *firestoreDB) DeleteSquad(ctx context.Context, ID string) error {
 	return nil
 }
 
-func (db *firestoreDB) GetSquad(ctx context.Context, ID string) (*SquadInfo, error) {
+func (db *FirestoreDB) GetSquad(ctx context.Context, ID string) (*SquadInfo, error) {
 
-	doc, err := db.squads.Doc(ID).Get(ctx)
+	doc, err := db.Squads.Doc(ID).Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get squad "+ID+": %w", err)
 	}
@@ -184,13 +172,13 @@ func (db *firestoreDB) GetSquad(ctx context.Context, ID string) (*SquadInfo, err
 	return s, nil
 }
 
-func (db *firestoreDB) AddMemberToSquad(ctx context.Context, squadId string, userId string, userInfo *SquadUserInfo) error {
+func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, squadId string, userId string, userInfo *SquadUserInfo) error {
 
-	batch := db.client.Batch()
+	batch := db.Client.Batch()
 
-	docMember := db.squads.Doc(squadId).Collection("members").Doc(userId)
+	docMember := db.Squads.Doc(squadId).Collection("members").Doc(userId)
 	batch.Set(docMember, userInfo)
-	docSquad := db.squads.Doc(squadId)
+	docSquad := db.Squads.Doc(squadId)
 	batch.Update(docSquad, []firestore.Update{
 		{Path: "membersCount", Value: firestore.Increment(1)},
 	})
@@ -203,13 +191,13 @@ func (db *firestoreDB) AddMemberToSquad(ctx context.Context, squadId string, use
 	return nil
 }
 
-func (db *firestoreDB) DeleteMemberFromSquad(ctx context.Context, squadId string, userId string) error {
+func (db *FirestoreDB) DeleteMemberFromSquad(ctx context.Context, squadId string, userId string) error {
 
-	batch := db.client.Batch()
+	batch := db.Client.Batch()
 
-	docMember := db.squads.Doc(squadId).Collection("members").Doc(userId)
+	docMember := db.Squads.Doc(squadId).Collection("members").Doc(userId)
 	batch.Delete(docMember)
-	docSquad := db.squads.Doc(squadId)
+	docSquad := db.Squads.Doc(squadId)
 	batch.Update(docSquad, []firestore.Update{
 		{Path: "membersCount", Value: firestore.Increment(-1)},
 	})
@@ -222,9 +210,9 @@ func (db *firestoreDB) DeleteMemberFromSquad(ctx context.Context, squadId string
 	return nil
 }
 
-func (db *firestoreDB) CheckIfUserIsSquadMember(ctx context.Context, userId string, squadId string) error {
+func (db *FirestoreDB) CheckIfUserIsSquadMember(ctx context.Context, userId string, squadId string) error {
 
-	_, err := db.squads.Doc(squadId).Collection("members").Doc(userId).Get(ctx)
+	_, err := db.Squads.Doc(squadId).Collection("members").Doc(userId).Get(ctx)
 
 	return err
 }

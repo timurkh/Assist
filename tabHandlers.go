@@ -1,6 +1,7 @@
 package main
 
 import (
+	"assist/db"
 	"fmt"
 	"log"
 	"net/http"
@@ -46,13 +47,13 @@ func (app *App) squadHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	var squadInfoRecord SquadInfoRecord
+	var squadInfoRecord db.SquadInfoRecord
 	squadInfoRecord.ID = squadId
 	squadInfoRecord.SquadInfo = *squadInfo
 
 	return squadTmpl.Execute(app, w, r, struct {
 		Session *SessionData
-		Squad   *SquadInfoRecord
+		Squad   *db.SquadInfoRecord
 	}{app.su.getSessionData(r), &squadInfoRecord})
 }
 
@@ -91,7 +92,7 @@ func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 
 	return userinfoTmpl.Execute(app, w, r, struct {
 		Session *SessionData
-		Data    *UserInfo
+		Data    *db.UserInfo
 	}{sessionData, user})
 }
 

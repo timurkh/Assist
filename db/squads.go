@@ -1,11 +1,11 @@
-package main
+package db
 
 type MemberStatusType int
 
 const (
-	pendingApproveFromOwner MemberStatusType = iota
-	pendingApproveFromMember
-	member
+	PendingApproveFromOwner MemberStatusType = iota
+	PendingApproveFromMember
+	Member
 	//admin - will add some time later
 )
 
@@ -21,6 +21,11 @@ type SquadInfoRecord struct {
 }
 
 type SquadUserInfo struct {
+	UserInfo
+	Status MemberStatusType `json:"status"`
+}
+
+type SquadUserInfoRecord struct {
 	UserInfoRecord
 	Status MemberStatusType `json:"status"`
 }

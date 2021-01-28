@@ -1,6 +1,7 @@
 package main
 
 import (
+	"assist/db"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -18,7 +19,7 @@ const (
 	admin
 )
 
-func (app *App) checkAuthorization(r *http.Request, userId_ string, squadId string, requiredLevel AuthenticatedLevel) (userId string, squadInfo *SquadInfo, level AuthenticatedLevel) {
+func (app *App) checkAuthorization(r *http.Request, userId_ string, squadId string, requiredLevel AuthenticatedLevel) (userId string, squadInfo *db.SquadInfo, level AuthenticatedLevel) {
 
 	sd := app.su.getSessionData(r)
 	if sd.Admin {
@@ -64,8 +65,21 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 
 	log.Println("Creating squad " + squad.Name)
 
+	ownerId := app.su.getCurrentUserID(r)
+	squadInfo := db.SquadInfo{
+		squad.Name,
+		ownerId,
+		1,
+	}
+
 	ctx := r.Context()
-	squadId, err := app.db.CreateSquad(ctx, squad.Name, app.su.getCurrentUserID(r))
+	squadId, err := app.db.CreateSquad(ctx, &squadInfo)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	err = app.db.AddSquadToUser(ctx, ownerId, "own", squadId, &squadInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -106,6 +120,24 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
+	}
+
+	if authLevel&admin != 0 {
+		uberSquadInfo, err := app.db.GetSquad(ctx, db.ALL_USERS_SQUAD)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return err
+		}
+
+		var uberSquad db.SquadInfoRecord
+		uberSquad.ID = db.ALL_USERS_SQUAD
+		uberSquad.SquadInfo = *uberSquadInfo
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return err
+		}
+
+		own_squads = append([]*db.SquadInfoRecord{&uberSquad}, own_squads...)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -194,18 +226,19 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 
 	log.Println("Getting members of the squad " + squadId)
 	squadMembers, err := app.db.GetSquadMembers(ctx, squadId)
-
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 
-	log.Println("Getting info about owner of the squad " + squadId)
-	squadOwner, err := app.db.GetUser(ctx, squadInfo.Owner)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return err
+	var squadOwner *db.UserInfo
+	if squadId == db.ALL_USERS_SQUAD {
+		log.Println("Getting info about owner of the squad " + squadId)
+		squadOwner, err = app.db.GetUser(ctx, squadInfo.Owner)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return err
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -230,16 +263,16 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 	squadId := params["squadId"]
 	userId := params["userId"]
 
-	var squadUserInfo SquadUserInfo
+	var squadUserInfo db.SquadUserInfo
 	userId, squadInfo, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadOwner)
 
 	switch authLevel {
 	case authenticatedUser:
-		squadUserInfo.Status = pendingApproveFromOwner
+		squadUserInfo.Status = db.PendingApproveFromOwner
 	case admin:
-		squadUserInfo.Status = member
+		squadUserInfo.Status = db.Member
 	case squadOwner:
-		squadUserInfo.Status = pendingApproveFromMember
+		squadUserInfo.Status = db.PendingApproveFromMember
 	default:
 		err := fmt.Errorf("Current user is not authorized to to add user " + userId + " to squad " + squadId)
 		log.Println(err.Error())
@@ -262,7 +295,7 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 
-	err = app.db.AddSquadToMember(ctx, userId, squadId, squadInfo)
+	err = app.db.AddSquadToUser(ctx, userId, "member", squadId, squadInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err

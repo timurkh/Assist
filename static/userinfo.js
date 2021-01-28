@@ -34,8 +34,13 @@ firebase.auth().onAuthStateChanged(user => {
 			}
 		}
 		if(pd.length == 1) {
-			document.getElementById(pd[0].providerId).disabled = true;
+			try {
+				document.getElementById(pd[0].providerId).disabled = true;
+			} catch (error) {
+				console.log("Error while disabling provider " + pd[i].providerId + ": " + error);
+			}
 		}
+		disablePhoneCheckbox();
 	}
 })
 
@@ -63,7 +68,17 @@ const editInput = function(id) {
 					});
 				break;
 			case 'phoneNumber':
-				var appVerifier = new firebase.auth.RecaptchaVerifier( "recaptcha-container", { size: "invisible" });
+				var appVerifier = new firebase.auth.RecaptchaVerifier( "recaptcha", { 
+					'size': "invisible",
+					'callback': function(response) {
+						console.log('callback executed');
+						console.log(response);
+					},
+					'expired-callback': function() {
+						console.log('expired');
+					},
+				});
+				console.log(appVerifier);
 				var provider = new firebase.auth.PhoneAuthProvider();
 				provider.verifyPhoneNumber(input.value, appVerifier)
 					.then(function (verificationId) {
@@ -79,7 +94,7 @@ const editInput = function(id) {
 					})
 					.catch((error) => {
 						// Error occurred.
-						document.getElementById(id + 'Error').textContent = error;
+						document.getElementById(id + 'Error').textContent = "Failed to validate that you are a human: " + error;
 					})
 				appVerifier.clear();
 				break;
@@ -105,10 +120,15 @@ const toggleIDProvider = function(checkBox) {
 				arg = new firebase.auth.FacebookAuthProvider();
 				func = 'linkWithPopup';
 				break;
-			case "google":
+			case "google.com":
 				arg = new firebase.auth.GoogleAuthProvider();
 				func = 'linkWithPopup';
 				break;
+			case "phone":
+				console.log("Phone checkbox should not be enabled when phone is not available");	
+				checkBox.checked = false;
+				checkBox.disabled = true;
+				return;
 		}
 
 		document.getElementById(checkBox.id + 'Error').textContent = "";
@@ -148,6 +168,15 @@ const checkIfLastProviderLeft = function() {
 
 	if(moreThanOne == false) {
 		inputs[lastCheckedOne].disabled = true;
+	}
+	disablePhoneCheckbox();
+}
+
+// phone is not OAuth provider, we can only disable it
+const disablePhoneCheckbox = function() {
+	var phoneCheckbox = document.getElementById('phone');
+	if(phoneCheckbox.checked == false) {
+		phoneCheckbox.disabled = true;
 	}
 }
 

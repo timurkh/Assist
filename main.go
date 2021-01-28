@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"assist/db"
 	"io"
 	"log"
 	"net/http"
@@ -9,7 +9,6 @@ import (
 
 	"context"
 
-	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
 )
 
@@ -32,34 +31,20 @@ func initApp() (*App, error) {
 	}
 
 	// init firestore
-	dbClient, err := fireapp.Firestore(ctx)
+	app.db, err = db.NewFirestoreDB(fireapp)
 	if err != nil {
-		log.Fatalf("fireapp.Firestore: %v", err)
+		log.Fatalf("Failed to init database: %v", err)
 	}
-
-	err = dbClient.RunTransaction(ctx, func(ctx context.Context, t *firestore.Transaction) error {
-		return nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("firestoredb: could not connect: %v", err)
-	}
-
-	app.db = newFirestoreDB(dbClient)
 
 	// init firebase auth
-	authClient, err := fireapp.Auth(ctx)
-	if err != nil {
-		log.Fatalf("firebase.Auth: %v", err)
-	}
-	app.su = initSessionUtil(authClient, app.db)
+	app.su = initSessionUtil(fireapp, app.db)
 
 	return &app, nil
 }
 
 type App struct {
 	logWriter io.Writer
-	db        *firestoreDB
+	db        *db.FirestoreDB
 	su        *SessionUtil
 }
 

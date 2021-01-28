@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"assist/db"
+
+	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
 	guuid "github.com/google/uuid"
 	gorilla_context "github.com/gorilla/context"
@@ -20,12 +24,19 @@ type SessionData struct {
 
 type SessionUtil struct {
 	authClient *auth.Client
-	db         *firestoreDB
+	db         *db.FirestoreDB
 }
 
-func initSessionUtil(ac *auth.Client, db *firestoreDB) *SessionUtil {
+// init firebase auth
+func initSessionUtil(fireapp *firebase.App, db *db.FirestoreDB) *SessionUtil {
+	ctx := context.Background()
+
+	authClient, err := fireapp.Auth(ctx)
+	if err != nil {
+		log.Fatalf("firebase.Auth: %v", err)
+	}
 	mdlwr := SessionUtil{
-		ac, db}
+		authClient, db}
 
 	return &mdlwr
 }
@@ -100,7 +111,7 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 			return fmt.Errorf("Failed to get user record: %w", err)
 		}
 
-		userInfo := &UserInfo{
+		userInfo := &db.UserInfo{
 			DisplayName: userRecord.DisplayName,
 			Email:       userRecord.Email,
 			PhoneNumber: userRecord.PhoneNumber,

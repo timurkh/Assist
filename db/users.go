@@ -1,4 +1,4 @@
-package main
+package db
 
 type UserInfo struct {
 	DisplayName string `json:"displayName"`
