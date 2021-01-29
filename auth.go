@@ -18,8 +18,11 @@ import (
 
 type SessionData struct {
 	*auth.UserRecord
-	Role  string
-	Admin bool
+	ContactInfoIssues    bool
+	DisplayNameNotUnique bool
+	PendingApproval      bool
+	Role                 string
+	Admin                bool
 }
 
 type SessionUtil struct {
@@ -103,15 +106,16 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 
 	// Check if user exists in DB, add record otherwise
 	userId := decoded.UID
-	_, err = am.db.GetUser(ctx, userId)
+	userRecord, err := am.authClient.GetUser(ctx, userId)
+	if err != nil {
+		return fmt.Errorf("Failed to get user record: %w", err)
+	}
+
+	userInfo, err := am.db.GetUser(ctx, userId)
 	if err != nil {
 		log.Println("Failed to get user " + userId + " from DB, adding new record to users collection")
-		userRecord, err := am.authClient.GetUser(ctx, userId)
-		if err != nil {
-			return fmt.Errorf("Failed to get user record: %w", err)
-		}
 
-		userInfo := &db.UserInfo{
+		userInfo = &db.UserInfo{
 			DisplayName: userRecord.DisplayName,
 			Email:       userRecord.Email,
 			PhoneNumber: userRecord.PhoneNumber,
@@ -120,6 +124,13 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 
 		if err != nil {
 			return fmt.Errorf("Failed to add user to database: %w", err)
+		}
+	} else {
+		if len(userRecord.Email) > 0 && userInfo.Email != userRecord.Email {
+			am.db.UpdateUser(ctx, userId, "Email", userRecord.Email)
+		}
+		if len(userRecord.PhoneNumber) > 0 && userInfo.PhoneNumber != userRecord.PhoneNumber {
+			am.db.UpdateUser(ctx, userId, "PhoneNumber", userRecord.PhoneNumber)
 		}
 	}
 
@@ -191,9 +202,29 @@ func (am *SessionUtil) getSessionData(r *http.Request) *SessionData {
 		UserRecord: u,
 	}
 
+	if !sd.EmailVerified {
+		sd.ContactInfoIssues = true
+	}
+
+	if len(sd.DisplayName) == 0 {
+		sd.ContactInfoIssues = true
+	}
+
+	users, err := am.db.GetUserByName(r.Context(), sd.DisplayName)
+	if users != nil && (len(users) > 1 || len(users) == 1 && users[0] != u.UID) {
+		sd.DisplayNameNotUnique = true
+		sd.ContactInfoIssues = true
+	}
+
+	if err != nil {
+		log.Printf("Got error while checking user name uniqueness: %v", err)
+	}
+
 	if role, ok := u.CustomClaims["Role"]; ok {
 		sd.Role = role.(string)
 		sd.Admin = sd.Role == "Admin"
+	} else {
+		sd.PendingApproval = true
 	}
 
 	return sd

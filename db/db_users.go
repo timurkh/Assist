@@ -3,6 +3,10 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
+
+	"cloud.google.com/go/firestore"
+	"google.golang.org/api/iterator"
 )
 
 func (db *FirestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo, err error) {
@@ -15,6 +19,25 @@ func (db *FirestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo,
 	doc.DataTo(s)
 
 	return s, nil
+}
+
+func (db *FirestoreDB) GetUserByName(ctx context.Context, userName string) (users []string, err error) {
+	users = make([]string, 0)
+	iter := db.Users.Where("DisplayName", "==", userName).Documents(ctx)
+
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		} else if err != nil {
+			log.Printf("Error while quering users by name: %v", err)
+			return users, err
+		}
+
+		users = append(users, doc.Ref.ID)
+	}
+
+	return users, nil
 }
 
 func (db *FirestoreDB) AddSquadToUser(ctx context.Context, userId string, collection string, squadId string, squadInfo *SquadInfo) error {
@@ -49,6 +72,23 @@ func (db *FirestoreDB) DeleteSquadFromMember(ctx context.Context, userId string,
 	_, err := doc.Delete(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to add squad to user "+userId+": %w", err)
+	}
+
+	return nil
+}
+
+func (db *FirestoreDB) UpdateUser(ctx context.Context, userId string, field string, val string) error {
+
+	doc := db.Users.Doc(userId)
+
+	_, err := doc.Update(ctx, []firestore.Update{
+		{
+			Path:  field,
+			Value: val,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to update user "+userId+": %w", err)
 	}
 
 	return nil

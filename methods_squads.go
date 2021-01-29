@@ -232,7 +232,7 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 	}
 
 	var squadOwner *db.UserInfo
-	if squadId == db.ALL_USERS_SQUAD {
+	if squadId != db.ALL_USERS_SQUAD {
 		log.Println("Getting info about owner of the squad " + squadId)
 		squadOwner, err = app.db.GetUser(ctx, squadInfo.Owner)
 		if err != nil {

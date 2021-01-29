@@ -72,80 +72,18 @@ firebase.analytics();
 			</div>
 		</nav>
 
-		{{if .Session.EmailVerified}}
 		{{if .Session.Role}}
-		<div class="container-lg mt-2 px-0 px-md-3">
-			{{template "body" . }}
-		</div>
 		{{else}}
-
-		<div class="container">
-			<div class="alert alert-primary mt-2" role="alert">
-				<div class="row align-items-center">
-					<div class="col text-center">
-						<div id="pendingApproval" class="row align-items-center">
-							<div class="col">
-								<i class="far fa-user" style="font-size:64px;color:red;"></i>
-							</div>
-							<div class="col-11">
-								Hello, {{.Session.DisplayName}}. Your account is pending approval. Please come back in few hours.
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-			{{end}}
-			{{else}}
 			<script>
-				firebase.auth().onAuthStateChanged(user => {
-					if (user) {
-						document.getElementById('btnSendVerEmail').disabled = false;
-					}
-				})
-
-const sendVerificationEmail = function() {
-	user = firebase.auth().currentUser;
-	user.sendEmailVerification().then(
-		function() {
-			// Show redirection notice.
-			document.getElementById('verEmailSent').style.display = '';
-			document.getElementById('sendVerEmail').style.display = 'none';
-			document.getElementById('btnSendVerEmailDiv').style.display = 'none';
-		}
-	).catch(function(error) {
-		console.log(error);
-	});
-}
+				var path = window.location.pathname+window.location.search;
+				if(path != '/userinfo') {
+					window.location.assign('/userinfo');
+				}
 			</script>
-			<div class="container">
-				<div class="alert alert-primary mt-2" role="alert">
-					<div class="row align-items-center">
-						<div class="col text-center">
-							<div id="sendVerEmail" class="row align-items-center">
-								<div class="col">
-									<i class="far fa-user" style="font-size:64px;color:red;"></i>
-								</div>
-								<div class="col-11">
-									Hello, {{.Session.DisplayName}}. Your email {{.Session.Email}} is not verified yet. Click button below and you will recieve a verification link.
-								</div>
-							</div>
-							<div class="row align-items-center" id="verEmailSent" style="display:none">
-								<div class="col">
-									<i class="far fa-user" style="font-size:64px;color:green"></i>
-								</div>
-								<div class="col-11">
-									Verification email successfully sent. Check your mailbox and follow instructions.
-								</div>
-							</div>
-							<div id="btnSendVerEmailDiv" class="row">
-								<div class="col">
-									<button id="btnSendVerEmail" type="button" class="btn btn-info" disabled="true" onclick="sendVerificationEmail()">Get verification email</button>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				{{end}}
+		{{end}}
+		<div class="container-lg mt-2 px-0 px-md-3">
+				{{template "body" . }}
+		</div>
 
 	</body>
 </html>

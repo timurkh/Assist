@@ -76,7 +76,7 @@ func (app *App) registerHandlers() {
 
 	r.Handle("/", http.RedirectHandler("/home", http.StatusFound))
 
-	// methods
+	// squads
 	r.Methods("PUT").Path("/methods/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
 	r.Methods("DELETE").Path("/methods/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
 	r.Methods("POST").Path("/methods/squads").Handler(appHandler(app.methodCreateSquad))
@@ -84,6 +84,9 @@ func (app *App) registerHandlers() {
 	r.Methods("DELETE").Path("/methods/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
 	r.Methods("GET").Path("/methods/squads/{id}").Handler(appHandler(app.methodGetSquad))
 	r.Methods("GET").Path("/methods/squads/{id}/members").Handler(appHandler(app.methodGetSquadMembers))
+
+	// users
+	r.Methods("PUT").Path("/methods/users/{id}").Handler(appHandler(app.methodSetUser))
 
 	// setup logging
 	http.Handle("/", handlers.CombinedLoggingHandler(os.Stdout, r))

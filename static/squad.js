@@ -5,7 +5,7 @@ const app = new Vue({
 		loading:true,
 		error_message:"",
 		squad_members:[],
-		squad_owner:[],
+		squad_owner:null,
 	},
 	created:function() {
 		axios({

@@ -28,6 +28,7 @@ firebase.auth().onAuthStateChanged(user => {
 		var pd = user.providerData;
 		for(var i=0; i<pd.length; ++i) {
 			try {
+				//console.log(pd[i].providerId);
 				document.getElementById(pd[i].providerId).checked = true;
 			} catch (error) {
 				console.log("Error while processing provider " + pd[i].providerId + ": " + error);
@@ -52,19 +53,43 @@ const editInput = function(id) {
 		document.getElementById(id + 'Error').textContent = '';
 		switch(id){
 			case 'displayName':
-				user.updateProfile(
-					{displayName: escapeHtml(input.value)}).then(function(){
+				var name = input.value
+				if(name.length) {
+					axios({
+						method: 'PUT',
+						url: `/methods/users/me`,
+						data: {
+							name: name,
+						}
+					})
+					.then( function() {
+						user.updateProfile( {displayName: escapeHtml(input.value)})
 					}, function(error) {
+						document.getElementById(id + 'Error').textContent = error.response.data;
+					})
+					.then( function() {
+						//name updated successfully
+					})
+					.catch( error => {
 						document.getElementById(id + 'Error').textContent = error;
 					});
+				} else {
+					document.getElementById(id + 'Error').textContent = "Please specify non-empty name.";
+				}
 				break;
 			case 'email':
-				user.verifyBeforeUpdateEmail(
-					escapeHtml(input.value)).then(function(){
-						document.getElementById(id + 'Error').textContent = "Please check your inbox. After you complete verification, email setting will updated.";
-					}, function(error) {
-						document.getElementById(id + 'Error').textContent = error;
-					});
+				var email = input.value;
+				if (email.length) {
+					user.verifyBeforeUpdateEmail(
+						escapeHtml(input.value)).then(function(){
+							document.getElementById(id + 'Error').textContent = "Please check your inbox. After you complete verification, email setting will be updated.";
+						}, function(error) {
+							document.getElementById(id + 'Error').textContent = error;
+						});
+				} else {
+					document.getElementById(id + 'Error').textContent = "Please specify valid email.";
+					input.value = user.email;
+				}
 				break;
 			case 'phoneNumber': 
 				document.getElementById(id + 'Error').textContent = "";
@@ -161,6 +186,7 @@ const checkIfLastProviderLeft = function() {
 					lastCheckedOne = i;
 				}
 			}
+
 			if(inputs[i].id != "phone") { 
 				// phone checkbox is always disabled
 				// to unlink phone just set empty number
@@ -193,3 +219,14 @@ window.addEventListener('load', function() {
 });
 
 	
+const sendVerificationEmail = function(e) {
+	e.preventDefault();
+	user = firebase.auth().currentUser;
+	user.sendEmailVerification().then(
+		function() {
+			document.getElementById('emailError').textContent = 'Verification email sent. Please check your inbox and follow instructions.';
+		}
+	).catch(error => {
+		document.getElementById('emailError').textContent = "Failed to send verification email: " + error + ". You can either change email or refresh this page and try once more."
+	});
+}

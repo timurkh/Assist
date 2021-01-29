@@ -1,6 +1,44 @@
 <script> document.getElementById("navbar-userinfo").classList.add("active"); </script>
 
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 <script src="static/userinfo.js"></script>
+
+{{if .Session.ContactInfoIssues}}
+
+<div class="container">
+	<div class="alert alert-primary mt-2" role="alert">
+		<div class="row align-items-center">
+			<div class="col text-center">
+				<div id="sendVerEmail" class="row align-items-center">
+					<div class="col">
+						<i class="far fa-user" style="font-size:64px;color:red;"></i>
+					</div>
+					<div class="col-11">
+						There are issues with you account, please check them below and fix to use this service.
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{{else if .Session.PendingApproval}}
+<div class="container">
+	<div class="alert alert-primary mt-2" role="alert">
+		<div class="row align-items-center">
+			<div class="col text-center">
+				<div id="pendingApproval" class="row align-items-center">
+					<div class="col">
+						<i class="far fa-user" style="font-size:64px;color:red;"></i>
+					</div>
+					<div class="col-11">
+						Hello! Your account is pending approval. Please come back in few hours.
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{{end}}
 
 <div>
 	<div class="row justify-content-center align-items-center">
@@ -13,7 +51,6 @@
 				<form id="userInfo" >
 
 					<div class="form-group ml-2 mr-2 mb-2 mt-2" >
-						{{ if .Session.Admin }}
 						<label for="displayName">Name</label>
 						<div class="input-group" >
 							<input type="text" class="form-control" id="displayName" placeholder="" value="" required disabled>
@@ -21,11 +58,17 @@
 								<button id="displayNameBtn" class="btn btn-outline-secondary" type="button" onClick="editInput('displayName')"><i class="fas fa-pen" title="Edit"></i></button>
 							</div>
 						</div>
-						<small id="displayNameError" class="error text-danger"></small>
+						<small id="displayNameError" class="error text-danger">
+							{{if .Session.DisplayNameNotUnique}}
+							This name is already taken. Please choose another name.
+							{{else if .Session.DisplayName}}
+							{{else}}
+							Please set name.
+							{{end}}
+						</small>
 					</div>
 
 					<div class="form-group ml-2 mr-2 mb-2 mt-2" >
-						{{ end }}
 
 						<label for="email">Email</label>
 						<div class="input-group" >
@@ -34,9 +77,16 @@
 								<button id="emailBtn" class="btn btn-outline-secondary" type="button" onClick="editInput('email')"><i class="fas fa-pen" title="Edit"></i></button>
 							</div>
 						</div>
-						<small id="emailError" class="error text-danger"></small>
-					</div>
+						<small id="emailError" class="error text-danger">
+							{{if .Session.EmailVerified}}
 
+							{{else if .Session.Email}}
+							Your email {{.Session.Email}} is not verified yet. Click <a href="#" onclick="sendVerificationEmail(event)">here</a> to recieve a verification link.
+							{{else}}
+							Please specify valid email address.
+							{{end}}
+						</small>
+					</div>
 					<div class="form-group ml-2 mr-2 mb-2 mt-2" >
 						<label for="phoneNumber">Phone</label>
 						<div class="input-group" >
@@ -74,9 +124,9 @@
 										<div class="input-group-text">
 											<input type="checkbox" id="facebook.com" onclick="toggleIDProvider(this)">
 										</div>
-										<div class="input-group-text border-0">
-											<i id="facebookIcon" class="fab fa-facebook-f" style="color:blue"></i>
-										</div>
+								<div class="input-group-text border-0">
+									<i id="facebookIcon" class="fab fa-facebook-f" style="color:blue"></i>
+								</div>
 									</div>
 									<input type="text" class="form-control border-0" disabled placeholder="Sign in with Facebook">
 								</div>
@@ -93,9 +143,9 @@
 										<div class="input-group-text">
 											<input type="checkbox" id="google.com" onclick="toggleIDProvider(this)">
 										</div>
-										<div class="input-group-text border-0">
-											<i id="googleIcon" class="fab fa-google" style="color:red"></i>
-										</div>
+								<div class="input-group-text border-0">
+									<i id="googleIcon" class="fab fa-google" style="color:red"></i>
+								</div>
 									</div>
 									<input type="text" class="form-control border-0" disabled placeholder="Sign in with Google">
 								</div>
@@ -112,9 +162,9 @@
 										<div class="input-group-text">
 											<input type="checkbox" id="password" onclick="toggleIDProvider(this)">
 										</div>
-										<div class="input-group-text border-0">
-											<i id="passwordIcon" class="fas fa-key" style="color:green"></i>
-										</div>
+								<div class="input-group-text border-0">
+									<i id="passwordIcon" class="fas fa-key" style="color:green"></i>
+								</div>
 									</div>
 									<input type="text" class="form-control border-0" disabled placeholder="Sign in with email and passsword">
 									<div class="input-group-append">
@@ -135,9 +185,9 @@
 										<div class="input-group-text">
 											<input type="checkbox" id="phone" disabled="true">
 										</div>
-										<div class="input-group-text border-0">
-											<i id="phoneIcon" class="fas fa-phone" style="color:red"></i>
-										</div>
+								<div class="input-group-text border-0">
+									<i id="phoneIcon" class="fas fa-phone" style="color:red"></i>
+								</div>
 									</div>
 									<input type="text" class="form-control border-0" disabled placeholder="Sign in with Phone">
 								</div>
@@ -148,5 +198,6 @@
 
 				</form>
 			</div>
+		</div>
 	</div>
 </div>
