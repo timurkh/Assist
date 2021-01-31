@@ -3,10 +3,10 @@ package db
 type MemberStatusType int
 
 const (
-	PendingApproveFromOwner MemberStatusType = iota
-	PendingApproveFromMember
+	PendingApprove MemberStatusType = iota
 	Member
-	//admin - will add some time later
+	Admin
+	Owner
 )
 
 type SquadInfo struct {
@@ -26,6 +26,16 @@ type SquadUserInfo struct {
 }
 
 type SquadUserInfoRecord struct {
-	UserInfoRecord
+	ID string `json:"id"`
+	SquadUserInfo
+}
+
+type MemberSquadInfo struct {
+	SquadInfo
 	Status MemberStatusType `json:"status"`
+}
+
+type MemberSquadInfoRecord struct {
+	ID string `json:"id"`
+	MemberSquadInfo
 }

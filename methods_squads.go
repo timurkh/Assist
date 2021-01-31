@@ -16,14 +16,14 @@ const (
 	authenticatedUser AuthenticatedLevel = 1 << iota
 	squadMember
 	squadOwner
-	admin
+	systemAdmin
 )
 
 func (app *App) checkAuthorization(r *http.Request, userId_ string, squadId string, requiredLevel AuthenticatedLevel) (userId string, squadInfo *db.SquadInfo, level AuthenticatedLevel) {
 
 	sd := app.su.getSessionData(r)
 	if sd.Admin {
-		level = admin
+		level = systemAdmin
 	}
 
 	userId = userId_
@@ -79,7 +79,11 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	err = app.db.AddSquadToUser(ctx, ownerId, "own", squadId, &squadInfo)
+	memberSquadInfo := db.MemberSquadInfo{
+		SquadInfo: squadInfo,
+		Status:    db.Owner,
+	}
+	err = app.db.AddSquadToMember(ctx, ownerId, squadId, &memberSquadInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -115,39 +119,39 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 
 	log.Println("Getting squads for user " + userId)
 
-	own_squads, member_squads, other_squads, err := app.db.GetSquads(ctx, userId)
+	own_squads, other_squads, err := app.db.GetSquads(ctx, userId)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 
-	if authLevel&admin != 0 {
+	if authLevel&systemAdmin != 0 {
 		uberSquadInfo, err := app.db.GetSquad(ctx, db.ALL_USERS_SQUAD)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return err
 		}
 
-		var uberSquad db.SquadInfoRecord
+		var uberSquad db.MemberSquadInfoRecord
 		uberSquad.ID = db.ALL_USERS_SQUAD
 		uberSquad.SquadInfo = *uberSquadInfo
+		uberSquad.Status = db.Owner
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return err
 		}
 
-		own_squads = append([]*db.SquadInfoRecord{&uberSquad}, own_squads...)
+		own_squads = append([]*db.MemberSquadInfoRecord{&uberSquad}, own_squads...)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	err = json.NewEncoder(w).Encode(struct {
-		Own    interface{}
-		Member interface{}
-		Other  interface{}
-	}{own_squads, member_squads, other_squads})
+		Own   interface{}
+		Other interface{}
+	}{own_squads, other_squads})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -231,16 +235,6 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	var squadOwner *db.UserInfo
-	if squadId != db.ALL_USERS_SQUAD {
-		log.Println("Getting info about owner of the squad " + squadId)
-		squadOwner, err = app.db.GetUser(ctx, squadInfo.Owner)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return err
-		}
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(struct {
@@ -263,16 +257,16 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 	squadId := params["squadId"]
 	userId := params["userId"]
 
-	var squadUserInfo db.SquadUserInfo
+	var memberStatus db.MemberStatusType
 	userId, squadInfo, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadOwner)
 
 	switch authLevel {
 	case authenticatedUser:
-		squadUserInfo.Status = db.PendingApproveFromOwner
-	case admin:
-		squadUserInfo.Status = db.Member
+		memberStatus = db.PendingApprove
+	case systemAdmin:
+		memberStatus = db.Member
 	case squadOwner:
-		squadUserInfo.Status = db.PendingApproveFromMember
+		memberStatus = db.Member
 	default:
 		err := fmt.Errorf("Current user is not authorized to to add user " + userId + " to squad " + squadId)
 		log.Println(err.Error())
@@ -287,15 +281,24 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
-	squadUserInfo.UserInfo = *userInfo
 
-	err = app.db.AddMemberToSquad(ctx, squadId, userId, &squadUserInfo)
+	squadUserInfo := &db.SquadUserInfo{
+		UserInfo: *userInfo,
+		Status:   memberStatus,
+	}
+
+	err = app.db.AddMemberToSquad(ctx, squadId, userId, squadUserInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}
 
-	err = app.db.AddSquadToUser(ctx, userId, "member", squadId, squadInfo)
+	memberSquadInfo := &db.MemberSquadInfo{
+		SquadInfo: *squadInfo,
+		Status:    memberStatus,
+	}
+
+	err = app.db.AddSquadToMember(ctx, userId, squadId, memberSquadInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err

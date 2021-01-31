@@ -40,9 +40,9 @@ func (db *FirestoreDB) GetUserByName(ctx context.Context, userName string) (user
 	return users, nil
 }
 
-func (db *FirestoreDB) AddSquadToUser(ctx context.Context, userId string, collection string, squadId string, squadInfo *SquadInfo) error {
+func (db *FirestoreDB) AddSquadToMember(ctx context.Context, userId string, squadId string, squadInfo *MemberSquadInfo) error {
 
-	doc := db.Users.Doc(userId).Collection(collection + "_squads").Doc(squadId)
+	doc := db.Users.Doc(userId).Collection("squads").Doc(squadId)
 
 	_, err := doc.Set(ctx, squadInfo)
 	if err != nil {
@@ -67,7 +67,7 @@ func (db *FirestoreDB) AddUser(ctx context.Context, userId string, userInfo *Use
 
 func (db *FirestoreDB) DeleteSquadFromMember(ctx context.Context, userId string, squadId string) error {
 
-	doc := db.Users.Doc(userId).Collection("member_squads").Doc(squadId)
+	doc := db.Users.Doc(userId).Collection("squads").Doc(squadId)
 
 	_, err := doc.Delete(ctx)
 	if err != nil {

@@ -124,6 +124,7 @@ func (app *App) flushUsersSquadInfo(ctx context.Context) {
 		log.Printf("Removing records about squads for user %v", doc.Ref.ID)
 		app.removeCollection(ctx, doc.Ref.Collection("member_squads"))
 		app.removeCollection(ctx, doc.Ref.Collection("own_squads"))
+		app.removeCollection(ctx, doc.Ref.Collection("squads"))
 	}
 }
 
@@ -153,18 +154,33 @@ func (app *App) populateUsersSquadInfo(ctx context.Context) {
 
 		log.Printf("Restoring records about squad %v:", doc.Ref.ID)
 
-		app.db.AddSquadToUser(ctx, squadInfo.Owner, "own", squadId, squadInfo)
+		// ensure there is record about squad owner in squad members
+		userInfo, err := app.db.GetUser(ctx, squadInfo.Owner)
 		if err != nil {
-			log.Fatal("Error while populating squads info to users: %w", err)
+			log.Fatal("Error while obtaining squad owner info: %w", err)
 		}
 		log.Printf("\towner : %v", squadInfo.Owner)
+
+		squadUserInfo := db.SquadUserInfo{
+			UserInfo: *userInfo,
+			Status:   db.Owner,
+		}
+		app.db.AddMemberToSquad(ctx, squadId, squadInfo.Owner, &squadUserInfo)
+
+		if err != nil {
+			log.Fatal("Error while populating squad owner info: %w", err)
+		}
 
 		squadMembers, err := app.db.GetSquadMembers(ctx, squadId)
 		if err != nil {
 			log.Fatal("Error while populating squads info to users: %w", err)
 		}
 		for _, member := range squadMembers {
-			err := app.db.AddSquadToUser(ctx, member.ID, "member", squadId, squadInfo)
+			memberSquadInfo := &db.MemberSquadInfo{
+				SquadInfo: *squadInfo,
+				Status:    member.Status,
+			}
+			err := app.db.AddSquadToMember(ctx, member.ID, squadId, memberSquadInfo)
 			if err != nil {
 				log.Fatal("Error while populating squads info to users: %w", err)
 			}
