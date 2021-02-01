@@ -9,6 +9,17 @@ const (
 	Owner
 )
 
+func (s MemberStatusType) String() string {
+	texts := []string{
+		"Pending Approve",
+		"Member",
+		"Admin",
+		"Owner",
+	}
+
+	return texts[s]
+}
+
 type SquadInfo struct {
 	Name         string `json:"name"`
 	Owner        string `json:"owner"`
@@ -27,7 +38,8 @@ type SquadUserInfo struct {
 
 type SquadUserInfoRecord struct {
 	ID string `json:"id"`
-	SquadUserInfo
+	UserInfo
+	Status string `json:"status"`
 }
 
 type MemberSquadInfo struct {
@@ -37,5 +49,6 @@ type MemberSquadInfo struct {
 
 type MemberSquadInfoRecord struct {
 	ID string `json:"id"`
-	MemberSquadInfo
+	SquadInfo
+	Status string `json:"status"`
 }

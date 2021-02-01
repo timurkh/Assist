@@ -136,7 +136,8 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 		var uberSquad db.MemberSquadInfoRecord
 		uberSquad.ID = db.ALL_USERS_SQUAD
 		uberSquad.SquadInfo = *uberSquadInfo
-		uberSquad.Status = db.Owner
+		owner := db.Owner
+		uberSquad.Status = owner.String()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return err

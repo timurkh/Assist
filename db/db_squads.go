@@ -41,17 +41,22 @@ func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]*MemberS
 			return nil, nil, fmt.Errorf("Failed to get squads: %w", err)
 		}
 
-		s := &MemberSquadInfoRecord{}
-		err = doc.DataTo(s)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to get squads: %w", err)
-		}
-		s.ID = doc.Ref.ID
-
 		if memberSI, ok := user_squads_map[doc.Ref.ID]; ok {
 			user_squads = append(user_squads, memberSI)
 		} else {
-			other_squads = append(other_squads, s)
+			s := &MemberSquadInfo{}
+			err = doc.DataTo(s)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Failed to get squads: %w", err)
+			}
+
+			sr := &MemberSquadInfoRecord{
+				ID:        doc.Ref.ID,
+				SquadInfo: s.SquadInfo,
+				Status:    s.Status.String(),
+			}
+
+			other_squads = append(other_squads, sr)
 		}
 	}
 
@@ -73,13 +78,18 @@ func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string) (map[st
 			return nil, fmt.Errorf("Failed to get user squads: %w", err)
 		}
 
-		s := &MemberSquadInfoRecord{}
+		s := &MemberSquadInfo{}
 		err = doc.DataTo(s)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get user squads: %w", err)
 		}
-		s.ID = doc.Ref.ID
-		squads_map[s.ID] = s
+
+		sr := &MemberSquadInfoRecord{
+			ID:        doc.Ref.ID,
+			SquadInfo: s.SquadInfo,
+			Status:    s.Status.String(),
+		}
+		squads_map[sr.ID] = sr
 	}
 
 	return squads_map, nil
@@ -100,13 +110,17 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 			return nil, fmt.Errorf("Failed to get squad members: %w", err)
 		}
 
-		s := &SquadUserInfoRecord{}
+		s := &SquadUserInfo{}
 		err = doc.DataTo(s)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get squad members: %w", err)
 		}
-		s.ID = doc.Ref.ID
-		squadMembers = append(squadMembers, s)
+		sr := &SquadUserInfoRecord{
+			ID:       doc.Ref.ID,
+			UserInfo: s.UserInfo,
+			Status:   s.Status.String(),
+		}
+		squadMembers = append(squadMembers, sr)
 	}
 
 	return squadMembers, nil

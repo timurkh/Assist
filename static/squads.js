@@ -101,6 +101,6 @@ const app = new Vue({
 		},
 		showSquadDetails:function(squadId, index) {
 			window.location.href = `/squad?squadId=${squadId}`;
-		}
+		},
 	},
 })
