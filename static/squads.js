@@ -91,6 +91,7 @@ const app = new Vue({
 			.then( res => {
 				this.error_message = "";
 				var squad = this.other_squads[index];
+				squad.status = res.data.Status;
 				squad.membersCount++;
 				this.own_squads.push(squad);
 				this.other_squads.splice(index, 1);

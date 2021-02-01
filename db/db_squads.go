@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
@@ -51,9 +52,8 @@ func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]*MemberS
 			}
 
 			sr := &MemberSquadInfoRecord{
-				ID:        doc.Ref.ID,
-				SquadInfo: s.SquadInfo,
-				Status:    s.Status.String(),
+				ID:              doc.Ref.ID,
+				MemberSquadInfo: *s,
 			}
 
 			other_squads = append(other_squads, sr)
@@ -85,11 +85,11 @@ func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string) (map[st
 		}
 
 		sr := &MemberSquadInfoRecord{
-			ID:        doc.Ref.ID,
-			SquadInfo: s.SquadInfo,
-			Status:    s.Status.String(),
+			ID:              doc.Ref.ID,
+			MemberSquadInfo: *s,
 		}
 		squads_map[sr.ID] = sr
+
 	}
 
 	return squads_map, nil
@@ -116,9 +116,8 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 			return nil, fmt.Errorf("Failed to get squad members: %w", err)
 		}
 		sr := &SquadUserInfoRecord{
-			ID:       doc.Ref.ID,
-			UserInfo: s.UserInfo,
-			Status:   s.Status.String(),
+			ID:            doc.Ref.ID,
+			SquadUserInfo: *s,
 		}
 		squadMembers = append(squadMembers, sr)
 	}
@@ -126,29 +125,33 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 	return squadMembers, nil
 }
 
-func (db *FirestoreDB) DeleteSquad(ctx context.Context, ID string) error {
+func (db *FirestoreDB) DeleteSquad(ctx context.Context, squadId string) error {
 
-	doc, err := db.Squads.Doc(ID).Get(ctx)
-	if err != nil {
-		return fmt.Errorf("FirestoreDB.DeleteSquad: failed to get squad "+ID+": %w", err)
+	docSquad := db.Squads.Doc(squadId)
+
+	//delete this squad from all members
+	iter := docSquad.Collection("members").Documents(ctx)
+	defer iter.Stop()
+	for {
+		docMember, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("Error while iterating through squad %v members: %v", squadId, err.Error())
+			break
+		}
+
+		log.Printf("Deleting squad %v from user %v", squadId, memberId)
+
+		memberId := docMember.Ref.ID
+		db.Users.Doc(memberId).Collection("squads").Doc(squadId).Delete(ctx)
 	}
 
-	owner, err := doc.DataAt("owner")
+	//delete squad itself
+	_, err := docSquad.Delete(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to get squad "+ID+" owner: %w", err)
-	}
-
-	owner_id := owner.(string)
-
-	//TODO launch go routine to remove this squad from all members
-	db.Users.Doc(owner_id).Collection("squads").Doc(ID).Delete(ctx)
-	if err != nil {
-		return fmt.Errorf("Error while deleting records about squad "+ID+" from owner "+owner_id+": %w", err)
-	}
-
-	_, err = db.Squads.Doc(ID).Delete(ctx)
-	if err != nil {
-		return fmt.Errorf("Error while deleting squad "+ID+": %w", err)
+		return fmt.Errorf("Error while deleting squad "+squadId+": %w", err)
 	}
 
 	return nil
@@ -202,7 +205,7 @@ func (db *FirestoreDB) DeleteMemberFromSquad(ctx context.Context, squadId string
 
 	_, err := batch.Commit(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to delete user "+userId+" from squad "+squadId+": %w", err)
+		return fmt.Errorf("Failed to delete user %v from squad %v: %w", userId, squadId, err)
 	}
 
 	return nil
@@ -213,4 +216,21 @@ func (db *FirestoreDB) CheckIfUserIsSquadMember(ctx context.Context, userId stri
 	_, err := db.Squads.Doc(squadId).Collection("members").Doc(userId).Get(ctx)
 
 	return err
+}
+
+func (db *FirestoreDB) FlushSquadSize(ctx context.Context, squadId string) error {
+
+	doc := db.Squads.Doc(squadId)
+
+	_, err := doc.Update(ctx, []firestore.Update{
+		{
+			Path:  "membersCount",
+			Value: 0,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to update squad %v: %w", squadId, err)
+	}
+
+	return nil
 }

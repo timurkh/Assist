@@ -1,10 +1,5 @@
 <script> document.getElementById("navbar-squads").classList.add("active"); </script>
 
-<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"> </script>
-<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-
-<!-- TODO: use production version <script src="https://cdn.jsdelivr.net/npm/vue@2"></script> -->
-
 <div id="app">
 
 	<div v-if="loading">
@@ -101,19 +96,30 @@
 					<tbody>
 						<tr class="d-flex" v-for="(squad, index) in own_squads">
 
-							<td class="col-lg-5 col-md-4 col-sm-5 text-truncate"><a href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.name]]<a></td>
+							<td class="col-lg-5 col-md-4 col-sm-5 text-truncate">
+								<a v-if="squad.status==3 || squad.status==2" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.name]]</a>
+								<div v-else>[[squad.name]]</div>
+							</td>
 							<td class="col-lg-2 col-md-3 d-none d-md-table-cell text-truncate">[[squad.membersCount]]</td>
-							<td class="col-lg-3 col-md-3 col-sm-4 text-truncate">[[squad.status]]</td>
+							<td class="col-lg-3 col-md-3 col-sm-4 text-truncate">[[getStatusText(squad.status)]]</td>
 							<td class="col-lg-2 col-md-2 col-sm-3" align="center text-truncate">
-								<div class="d-flex">
-									<div class="flex-fill">
-										<a title="Details" data-toggle="tooltip" v-on:click="showSquadDetails(squad.id, index)" href="#"><i class="fas fa-info-circle fa-lg"></i></a>
+								<div class="d-flex justify-content-center">
+{{if .Session.Admin}}
+									<div class="px-1">
+{{else}}
+									<div v-if="squad.status == 3 || squad.status == 2" class="px-1">
+{{end}}
+										<a title="Members" data-toggle="tooltip" v-on:click="showSquadDetails(squad.id, index)" href="#"><i class="fas fa-users fa-lg"></i></a>
 									</div>
-									<div class="flex-fill">
-										<a title="Edit" data-toggle="tooltip" v-on:click="editSquad(squad.id, index)" href="#"><i class="fas fa-edit fa-lg"></i></a>
-									</div>
-									<div class="flex-fill">
+{{if .Session.Admin}}
+									<div class="px-1">
+{{else}}
+									<div v-if="squad.status == 3" class="px-1">
+{{end}}
 										<a title="Delete" data-toggle="tooltip" v-on:click="deleteSquad(squad.id, index)" href="#"><i class="fas fa-minus-circle fa-lg"></i></a>
+									</div>
+									<div v-if="squad.status != 3" class="px-1">
+										<a title="Leave" data-toggle="tooltip" v-on:click="leaveSquad(squad.id, index)" href="#"><i class="fas fa-sign-out-alt fa-lg"></i></a>
 									</div>
 								</div>
 							</td>

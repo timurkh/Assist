@@ -136,8 +136,7 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 		var uberSquad db.MemberSquadInfoRecord
 		uberSquad.ID = db.ALL_USERS_SQUAD
 		uberSquad.SquadInfo = *uberSquadInfo
-		owner := db.Owner
-		uberSquad.Status = owner.String()
+		uberSquad.Status = db.Owner
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return err
@@ -261,14 +260,13 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 	var memberStatus db.MemberStatusType
 	userId, squadInfo, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadOwner)
 
-	switch authLevel {
-	case authenticatedUser:
+	if authLevel&systemAdmin != 0 {
+		memberStatus = db.Member
+	} else if authLevel&squadOwner != 0 {
+		memberStatus = db.Member
+	} else if authLevel&authenticatedUser != 0 {
 		memberStatus = db.PendingApprove
-	case systemAdmin:
-		memberStatus = db.Member
-	case squadOwner:
-		memberStatus = db.Member
-	default:
+	} else {
 		err := fmt.Errorf("Current user is not authorized to to add user " + userId + " to squad " + squadId)
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -298,6 +296,7 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 		SquadInfo: *squadInfo,
 		Status:    memberStatus,
 	}
+	memberSquadInfo.MembersCount++
 
 	err = app.db.AddSquadToMember(ctx, userId, squadId, memberSquadInfo)
 	if err != nil {
@@ -307,7 +306,11 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
+	err = json.NewEncoder(w).Encode(struct{ Status db.MemberStatusType }{memberStatus})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
 	return nil
 }
 

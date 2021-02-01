@@ -77,19 +77,47 @@ func (db *FirestoreDB) DeleteSquadFromMember(ctx context.Context, userId string,
 	return nil
 }
 
-func (db *FirestoreDB) UpdateUser(ctx context.Context, userId string, field string, val string) error {
-
-	doc := db.Users.Doc(userId)
-
+func (db *FirestoreDB) updateUserInfo(ctx context.Context, doc *firestore.DocumentRef, field string, val interface{}) error {
 	_, err := doc.Update(ctx, []firestore.Update{
 		{
 			Path:  field,
 			Value: val,
 		},
 	})
+	return err
+}
+
+func (db *FirestoreDB) UpdateUser(ctx context.Context, userId string, field string, val interface{}) error {
+
+	docUser := db.Users.Doc(userId)
+
+	err := db.updateUserInfo(ctx, docUser, field, val)
 	if err != nil {
 		return fmt.Errorf("Failed to update user "+userId+": %w", err)
 	}
+
+	go func() {
+		ctx := context.Background()
+		iter := docUser.Collection("squads").Documents(ctx)
+		defer iter.Stop()
+		for {
+			docSquad, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.Printf("Error while getting user %v squads: %v", userId, err.Error())
+				break
+			}
+
+			squadId := docSquad.Ref.ID
+			log.Printf("Updating user %v details in squad %v, setting '%v' to '%v':\n", userId, squadId, field, val)
+			db.updateUserInfo(ctx, db.Squads.Doc(squadId).Collection("members").Doc(userId), field, val)
+			if err != nil {
+				log.Printf("Error while updating member %v->%v: %v", squadId, userId, err.Error())
+			}
+		}
+	}()
 
 	return nil
 }

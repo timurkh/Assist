@@ -38,8 +38,7 @@ type SquadUserInfo struct {
 
 type SquadUserInfoRecord struct {
 	ID string `json:"id"`
-	UserInfo
-	Status string `json:"status"`
+	SquadUserInfo
 }
 
 type MemberSquadInfo struct {
@@ -49,6 +48,5 @@ type MemberSquadInfo struct {
 
 type MemberSquadInfoRecord struct {
 	ID string `json:"id"`
-	SquadInfo
-	Status string `json:"status"`
+	MemberSquadInfo
 }

@@ -108,7 +108,7 @@ func (app *App) removeCollection(ctx context.Context, collection *firestore.Coll
 }
 
 // cycle through users and delete member_squads and own_squads subcollections
-func (app *App) flushUsersSquadInfo(ctx context.Context) {
+func (app *App) flushSquadInfoFromUsers(ctx context.Context) {
 	iter := app.db.Users.Documents(ctx)
 	defer iter.Stop()
 	for {
@@ -129,7 +129,7 @@ func (app *App) flushUsersSquadInfo(ctx context.Context) {
 }
 
 // cycle through squads and update information in member_squads and own_squads subcollections of users
-func (app *App) populateUsersSquadInfo(ctx context.Context) {
+func (app *App) populateSquadInfoToUsers(ctx context.Context) {
 	iter := app.db.Squads.Documents(ctx)
 	defer iter.Stop()
 	for {
@@ -171,6 +171,13 @@ func (app *App) populateUsersSquadInfo(ctx context.Context) {
 			log.Fatal("Error while populating squad owner info: %w", err)
 		}
 
+		// later size will be recalculated while updating user info in squads
+		log.Printf("Flushing squad %v size", doc.Ref.ID)
+		app.db.FlushSquadSize(ctx, squadId)
+		if err != nil {
+			log.Fatal("Error while flushing squad %v size: %w", squadId, err)
+		}
+
 		squadMembers, err := app.db.GetSquadMembers(ctx, squadId)
 		if err != nil {
 			log.Fatal("Error while populating squads info to users: %w", err)
@@ -189,11 +196,37 @@ func (app *App) populateUsersSquadInfo(ctx context.Context) {
 	}
 }
 
+func (app *App) updateUsersInfoInSquads(ctx context.Context) {
+
+	allUsers, err := app.db.GetSquadMembers(ctx, db.ALL_USERS_SQUAD)
+	if err != nil {
+		log.Fatal("Error while getting list of users: %w", err)
+	}
+
+	for _, user := range allUsers {
+
+		log.Printf("Updating user %v details in squads:\n", user.ID)
+		userSquads, err := app.db.GetUserSquads(ctx, user.ID)
+		if err != nil {
+			log.Fatal("Error while getting user %v squads: %w", user.ID, err)
+		}
+		for squadId, squad := range userSquads {
+			log.Printf("\t%v\n", squadId)
+			squadUser := &db.SquadUserInfo{
+				UserInfo: user.UserInfo,
+				Status:   squad.Status,
+			}
+			app.db.AddMemberToSquad(ctx, squadId, user.ID, squadUser)
+		}
+	}
+}
+
 func (app *App) makeDBConsistent() {
 	ctx := context.Background()
 
-	app.flushUsersSquadInfo(ctx)
-	app.populateUsersSquadInfo(ctx)
+	app.flushSquadInfoFromUsers(ctx)
+	app.populateSquadInfoToUsers(ctx)
+	app.updateUsersInfoInSquads(ctx)
 }
 
 func printUsage() {

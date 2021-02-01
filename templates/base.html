@@ -13,36 +13,15 @@
 
 		<style> [v-cloak] { display: none; } </style>
 
-		<script>
-			const postSignOut = function() {
-				// POST to session login endpoint.
-				$.ajax({
-					type:'POST',
-					url: '/sessionLogout',
-					contentType: 'application/x-www-form-urlencoded'
-				})
-					.then(function() {
-						// Redirect to profile on success.
-						window.location.assign('/login');
-					}, function(error) {
-						// Refresh page on error.
-						// In all cases, client side state should be lost due to in-memory
-						// persistence.
-						console.log(error);
-					});
-			}
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-firebase.analytics();
-
-		</script>
-
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css"/>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"> </script>
+		<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+		<!-- TODO: use production version <script src="https://cdn.jsdelivr.net/npm/vue@2"></script> -->
+		<script src="static/base.js"></script>
 
 	</head>
 

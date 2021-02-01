@@ -36,9 +36,9 @@ func (app *App) methodSetUser(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	log.Println("Updating user %v name to %v ", userId, user.Name)
+	log.Printf("Updating user %v name to %v ", userId, user.Name)
 
-	app.db.UpdateUser(ctx, userId, "name", user.Name)
+	app.db.UpdateUser(ctx, userId, "DisplayName", user.Name)
 	if err != nil {
 		err := fmt.Errorf("Failed to update %v name: %w", userId, err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
