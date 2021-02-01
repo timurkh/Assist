@@ -5,7 +5,6 @@ const app = new Vue({
 	data:{
 		loading:true,
 		own_squads:[],
-		member_squads:[],
 		other_squads:[],
 		error_message:"",
 		squadName:"",
@@ -21,7 +20,6 @@ const app = new Vue({
 		})
 		.then(res => {
 			this.own_squads = res.data['Own']; 
-			this.member_squads = res.data['Member']; 
 			this.other_squads = res.data['Other']; 
 			this.loading = false;
 		})
@@ -74,10 +72,10 @@ const app = new Vue({
 			})
 			.then( res => {
 				this.error_message = "";
-				var squad = this.member_squads[index];
+				var squad = this.own_squads[index];
 				squad.membersCount--;
 				this.other_squads.push(squad);
-				this.member_squads.splice(index, 1);
+				this.own_squads.splice(index, 1);
 			})
 			.catch(err => {
 				this.error_message = "Error while removing squad " + id + ": " + err;
@@ -94,7 +92,7 @@ const app = new Vue({
 				this.error_message = "";
 				var squad = this.other_squads[index];
 				squad.membersCount++;
-				this.member_squads.push(squad);
+				this.own_squads.push(squad);
 				this.other_squads.splice(index, 1);
 			})
 			.catch(err => {

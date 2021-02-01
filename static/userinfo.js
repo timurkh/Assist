@@ -53,7 +53,7 @@ const editInput = function(id) {
 		document.getElementById(id + 'Error').textContent = '';
 		switch(id){
 			case 'displayName':
-				var name = input.value
+				var name = escapeHtml(input.value)
 				if(name.length) {
 					axios({
 						method: 'PUT',
@@ -63,7 +63,7 @@ const editInput = function(id) {
 						}
 					})
 					.then( function() {
-						user.updateProfile( {displayName: escapeHtml(input.value)})
+						user.updateProfile( {displayName: name})
 					}, function(error) {
 						document.getElementById(id + 'Error').textContent = error.response.data;
 					})
@@ -78,10 +78,10 @@ const editInput = function(id) {
 				}
 				break;
 			case 'email':
-				var email = input.value;
+				var email = escapeHtml(input.value);
 				if (email.length) {
 					user.verifyBeforeUpdateEmail(
-						escapeHtml(input.value)).then(function(){
+						email).then(function(){
 							document.getElementById(id + 'Error').textContent = "Please check your inbox. After you complete verification, email setting will be updated.";
 						}, function(error) {
 							document.getElementById(id + 'Error').textContent = error;
@@ -94,7 +94,7 @@ const editInput = function(id) {
 			case 'phoneNumber': 
 				document.getElementById(id + 'Error').textContent = "";
 				var provider = new firebase.auth.PhoneAuthProvider();
-				var phoneNumber = input.value;
+				var phoneNumber = escapeHtml(input.value);
 
 				if (phoneNumber.length == 0) {
 					user.unlink("phone").then(function() {
@@ -104,7 +104,7 @@ const editInput = function(id) {
 						document.getElementById(id + 'Error').textContent = "Failed to unlink phone from account: " + error;
 					});
 				} else {
-					provider.verifyPhoneNumber(input.value, appVerifier)
+					provider.verifyPhoneNumber(phoneNumber, appVerifier)
 						.then( function(verificationId) {
 							var verificationCode = window.prompt('Please enter the verification ' +
 																 'code that was sent to your mobile device.');

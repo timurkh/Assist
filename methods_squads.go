@@ -220,7 +220,7 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 
 	squadId := params["id"]
 
-	_, squadInfo, authLevel := app.checkAuthorization(r, "me", squadId, squadMember|squadOwner)
+	_, _, authLevel := app.checkAuthorization(r, "me", squadId, squadMember|squadOwner)
 	if authLevel == 0 {
 		err := fmt.Errorf("Current user is not authenticated to get squad " + squadId + " details")
 		log.Println(err.Error())

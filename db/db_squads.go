@@ -48,8 +48,8 @@ func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]*MemberS
 		}
 		s.ID = doc.Ref.ID
 
-		if _, ok := user_squads_map[doc.Ref.ID]; ok {
-			user_squads = append(user_squads, s)
+		if memberSI, ok := user_squads_map[doc.Ref.ID]; ok {
+			user_squads = append(user_squads, memberSI)
 		} else {
 			other_squads = append(other_squads, s)
 		}
@@ -58,9 +58,9 @@ func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]*MemberS
 	return user_squads, other_squads, nil
 }
 
-func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string) (map[string]*SquadInfoRecord, error) {
+func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string) (map[string]*MemberSquadInfoRecord, error) {
 
-	squads_map := make(map[string]*SquadInfoRecord, 0)
+	squads_map := make(map[string]*MemberSquadInfoRecord, 0)
 
 	iter := db.Users.Doc(userID).Collection("squads").Documents(ctx)
 	defer iter.Stop()
@@ -73,7 +73,7 @@ func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string) (map[st
 			return nil, fmt.Errorf("Failed to get user squads: %w", err)
 		}
 
-		s := &SquadInfoRecord{}
+		s := &MemberSquadInfoRecord{}
 		err = doc.DataTo(s)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get user squads: %w", err)
