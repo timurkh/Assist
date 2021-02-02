@@ -42,7 +42,8 @@ const app = new Vue({
 				var squad = {
 					id: res.data.ID,
 					name: this.squadName, 
-					membersCount: 1
+					membersCount: 1,
+					status: 3
 				};
 				this.error_message = "";
 				this.own_squads.push(squad);

@@ -142,9 +142,9 @@ func (db *FirestoreDB) DeleteSquad(ctx context.Context, squadId string) error {
 			break
 		}
 
+		memberId := docMember.Ref.ID
 		log.Printf("Deleting squad %v from user %v", squadId, memberId)
 
-		memberId := docMember.Ref.ID
 		db.Users.Doc(memberId).Collection("squads").Doc(squadId).Delete(ctx)
 	}
 

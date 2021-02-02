@@ -111,27 +111,9 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 		return fmt.Errorf("Failed to get user record: %w", err)
 	}
 
-	userInfo, err := am.db.GetUser(ctx, userId)
+	err = am.db.UpdateUserInfoFromFirebase(userRecord)
 	if err != nil {
-		log.Println("Failed to get user " + userId + " from DB, adding new record to users collection")
-
-		userInfo = &db.UserInfo{
-			DisplayName: userRecord.DisplayName,
-			Email:       userRecord.Email,
-			PhoneNumber: userRecord.PhoneNumber,
-		}
-		am.db.AddUser(ctx, userId, userInfo)
-
-		if err != nil {
-			return fmt.Errorf("Failed to add user to database: %w", err)
-		}
-	} else {
-		if len(userRecord.Email) > 0 && userInfo.Email != userRecord.Email {
-			am.db.UpdateUser(ctx, userId, "Email", userRecord.Email)
-		}
-		if len(userRecord.PhoneNumber) > 0 && userInfo.PhoneNumber != userRecord.PhoneNumber {
-			am.db.UpdateUser(ctx, userId, "PhoneNumber", userRecord.PhoneNumber)
-		}
+		return fmt.Errorf("Failed to update user info: %w", err)
 	}
 
 	return nil

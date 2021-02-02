@@ -69,6 +69,29 @@ func (app *App) listUsers() {
 	}
 }
 
+func (app *App) updateListOfUsers() {
+
+	ctx := context.Background()
+
+	pager := iterator.NewPager(app.authClient.Users(ctx, ""), 100, "")
+	for {
+		var users []*auth.ExportedUserRecord
+		nextPageToken, err := pager.NextPage(&users)
+		if err != nil {
+			log.Fatalf("paging error %v\n", err)
+		}
+		for _, u := range users {
+			if u.UserRecord.EmailVerified {
+				app.db.UpdateUserInfoFromFirebase(ctx, u.UserRecord)
+			}
+
+		}
+		if nextPageToken == "" {
+			break
+		}
+	}
+}
+
 func (app *App) setRole(uid string, name string) {
 	ctx := context.Background()
 
@@ -87,6 +110,11 @@ func (app *App) setRole(uid string, name string) {
 	err = app.authClient.SetCustomUserClaims(ctx, uid, user.CustomClaims)
 	if err != nil {
 		log.Fatalf("error setting custom claims %v\n", err)
+	}
+
+	app.db.UpdateUserStatusFromFirebase(ctx, uid, name)
+	if err != nil {
+		log.Fatalf("error updating user status %v\n", err)
 	}
 }
 
@@ -224,6 +252,7 @@ func (app *App) updateUsersInfoInSquads(ctx context.Context) {
 func (app *App) makeDBConsistent() {
 	ctx := context.Background()
 
+	app.updateListOfUsers()
 	app.flushSquadInfoFromUsers(ctx)
 	app.populateSquadInfoToUsers(ctx)
 	app.updateUsersInfoInSquads(ctx)

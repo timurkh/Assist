@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"cloud.google.com/go/firestore"
+	"firebase.google.com/go/auth"
 	"google.golang.org/api/iterator"
 )
 
@@ -118,6 +119,62 @@ func (db *FirestoreDB) UpdateUser(ctx context.Context, userId string, field stri
 			}
 		}
 	}()
+
+	return nil
+}
+
+func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecord *auth.UserRecord) error {
+	userId := userRecord.UID
+	userInfo, err := db.GetUser(ctx, userId)
+	if err != nil {
+		log.Println("Failed to get user " + userId + " from DB, adding new record to users collection")
+
+		userInfo = &UserInfo{
+			DisplayName: userRecord.DisplayName,
+			Email:       userRecord.Email,
+			PhoneNumber: userRecord.PhoneNumber,
+		}
+		db.AddUser(ctx, userId, userInfo)
+
+		if err != nil {
+			return fmt.Errorf("Failed to add user to database: %w", err)
+		}
+	} else {
+		if len(userRecord.Email) > 0 && userInfo.Email != userRecord.Email {
+			db.UpdateUser(ctx, userId, "Email", userRecord.Email)
+		}
+		if len(userRecord.PhoneNumber) > 0 && userInfo.PhoneNumber != userRecord.PhoneNumber {
+			db.UpdateUser(ctx, userId, "PhoneNumber", userRecord.PhoneNumber)
+		}
+	}
+
+	var role string
+	if r, ok := userRecord.CustomClaims["Role"]; ok {
+		role = r.(string)
+	}
+	db.UpdateUserStatusFromFirebase(ctx, userId, role)
+
+	return nil
+}
+
+func (db *FirestoreDB) UpdateUserStatusFromFirebase(ctx context.Context, uid string, role string) error {
+
+	status := PendingApprove
+	switch role {
+	case "Admin":
+		status = Admin
+	default:
+		status = Member
+	}
+	_, err := db.Users.Doc(uid).Update(ctx, []firestore.Update{
+		{
+			Path:  "Status",
+			Value: status,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("error while updating user %v status in DB: %v\n", uid, err.Error())
+	}
 
 	return nil
 }
