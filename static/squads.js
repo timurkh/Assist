@@ -40,8 +40,7 @@ const app = new Vue({
 			})
 			.then( res => {
 				var squad = {
-					id: res.data.ID,
-					name: this.squadName, 
+					id: this.squadName, 
 					membersCount: 1,
 					status: 3
 				};
@@ -49,6 +48,7 @@ const app = new Vue({
 				this.own_squads.push(squad);
 			})
 			.catch(err => {
+				console.log(error.response)
 				this.error_message = "Error while adding new squad: " + err;
 			});
 		},
@@ -86,7 +86,7 @@ const app = new Vue({
 			var id = this.squadToJoin.id;
 			var index = this.squadToJoin.index;
 			axios({
-				method: 'put',
+				method: 'POST',
 				url: '/methods/squads/' + id + '/members/me',
 			})
 			.then( res => {
@@ -102,7 +102,7 @@ const app = new Vue({
 			});
 		},
 		showSquadDetails:function(squadId, index) {
-			window.location.href = `/squad?squadId=${squadId}`;
+			window.location.href = `/squad?squadId=` + encodeURI(squadId);
 		},
 	},
 })

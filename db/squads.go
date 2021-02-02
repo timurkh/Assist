@@ -21,7 +21,6 @@ func (s MemberStatusType) String() string {
 }
 
 type SquadInfo struct {
-	Name         string `json:"name"`
 	Owner        string `json:"owner"`
 	MembersCount int    `json:"membersCount"`
 }

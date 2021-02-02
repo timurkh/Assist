@@ -1,7 +1,7 @@
 <script> document.getElementById("navbar-squads").classList.add("active"); </script>
 
 
-<script> var squadId = "{{.Squad.ID}}"; </script>
+<script> var squadId = "{{.SquadID}}"; </script>
 <div id="app">
 
 	<div v-if="loading">
@@ -13,6 +13,31 @@
 	</div>
 	<div v-if="!loading" v-cloak>
 
+		<!-- Modal Windows -->
+		<div class="modal fade" id="changeMemberStatusModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="changeMemberStatusModalLabel">[[changeStatusMember.displayName]] Status</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<form>
+							<div class="form-group">
+								<select v-model="statusToSet" class="form-control" size="3">
+									<option  v-for="i in 3" :value="i-1">[[getStatusText(i-1)]]</option>
+								</select>
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-primary" v-on:click="setMemberStatus()" data-dismiss="modal">Set Selected Status</button>
+					</div>
+				</div>
+			</div>
+		</div>
 		<!-- Main View -->
 		<div v-if="error_message.length > 0" class="alert alert-danger m-1" role="alert">
 			[[ error_message ]]
@@ -23,12 +48,11 @@
 				<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 m-1">
 					<ol class="breadcrumb mb-0 p-0">
 						<li class="breadcrumb-item">My Squads</li>
-						<li class="breadcrumb-item active">Squad "{{.Squad.Name}}"</li>
+						<li class="breadcrumb-item active">Squad "{{.SquadID}}"</li>
 					</ol>
 				</div>
 				<div class="ml-auto p-0 m-1">
-					<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#importSquadMembersModal"><i class="fas fa-user-plus"></i> Import Members</button>
-					<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#addSquadMemberModal"><i class="fa fa-plus"></i> Add Member</button>
+					<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#addSquadMemberModal"><i class="fa fa-plus"></i> Add New Member</button>
 				</div>
 			</div>
 
@@ -50,7 +74,17 @@
 							<td class="col-md-2 d-none d-md-table-cell text-truncate"> [[member.phoneNumber]] </td>
 							<td class="col-md-1 col-2 text-truncate"> [[getStatusText(member.status)]] </td>
 							<td class="col-md-2 col-3 text-truncate"> </td>
-							<td class="col-md-1 col-3 text-truncate"> </td>
+							<td class="col-md-1 col-3 text-truncate"> 
+								<div class="d-flex justify-content-center">
+									<div v-if="member.status != 3" class="px-1">
+										<a title="Change member status" data-toggle="tooltip" v-on:click="changeStatus(index, member)" href="#"><i class="fas fa-edit fa-lg"></i></a>
+									</div>
+									<div v-if="member.status != 3" class="px-1">
+										<a title="Remove Member" data-toggle="tooltip" v-on:click="removeMember(member.id, index)" href="#"><i class="fas fa-sign-out-alt fa-lg"></i></a>
+									</div>
+								</div>
+							
+							</td>
 						</tr>
 					</tbody>
 				</table>

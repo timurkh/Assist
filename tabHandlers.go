@@ -3,7 +3,6 @@ package main
 import (
 	"assist/db"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -27,7 +26,6 @@ func (app *App) squadsHandler(w http.ResponseWriter, r *http.Request) error {
 
 func (app *App) squadHandler(w http.ResponseWriter, r *http.Request) error {
 	keys, ok := r.URL.Query()["squadId"]
-	var err error
 
 	if !ok || len(keys[0]) < 1 {
 		err := fmt.Errorf("Missing Squad ID")
@@ -35,26 +33,12 @@ func (app *App) squadHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// Query()["key"] will return an array of items,
-	// we only want the single item.
 	squadId := keys[0]
-
-	_, squadInfo, authLevel := app.checkAuthorization(r, "me", squadId, squadOwner|squadMember)
-	if authLevel == 0 {
-		err = fmt.Errorf("Current user is not authorized to get squad %v info", squadId)
-		log.Println(err.Error())
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return err
-	}
-
-	var squadInfoRecord db.SquadInfoRecord
-	squadInfoRecord.ID = squadId
-	squadInfoRecord.SquadInfo = *squadInfo
 
 	return squadTmpl.Execute(app, w, r, struct {
 		Session *SessionData
-		Squad   *db.SquadInfoRecord
-	}{app.su.getSessionData(r), &squadInfoRecord})
+		SquadID string
+	}{app.su.getSessionData(r), squadId})
 }
 
 func (app *App) eventsHandler(w http.ResponseWriter, r *http.Request) error {

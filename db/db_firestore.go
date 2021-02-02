@@ -8,7 +8,7 @@ import (
 	firebase "firebase.google.com/go"
 )
 
-const ALL_USERS_SQUAD = "ALL_USERS"
+const ALL_USERS_SQUAD = "All Users"
 
 type FirestoreDB struct {
 	Client *firestore.Client

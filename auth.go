@@ -111,7 +111,7 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 		return fmt.Errorf("Failed to get user record: %w", err)
 	}
 
-	err = am.db.UpdateUserInfoFromFirebase(userRecord)
+	err = am.db.UpdateUserInfoFromFirebase(ctx, userRecord)
 	if err != nil {
 		return fmt.Errorf("Failed to update user info: %w", err)
 	}

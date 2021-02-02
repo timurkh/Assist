@@ -9,16 +9,10 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-func (db *FirestoreDB) CreateSquad(ctx context.Context, squadInfo *SquadInfo) (newSquadId string, err error) {
+func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, squadInfo *SquadInfo) (err error) {
 
-	newSquadId = db.Squads.NewDoc().ID
-
-	_, err = db.Squads.Doc(newSquadId).Set(ctx, squadInfo)
-	if err != nil {
-		return newSquadId, fmt.Errorf("Failed to create squad %v: %w", squadInfo.Name, err)
-	}
-
-	return newSquadId, nil
+	_, err = db.Squads.Doc(squadId).Create(ctx, squadInfo)
+	return err
 }
 
 func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]*MemberSquadInfoRecord, []*MemberSquadInfoRecord, error) {
@@ -40,6 +34,10 @@ func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]*MemberS
 		}
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to get squads: %w", err)
+		}
+
+		if doc.Ref.ID == ALL_USERS_SQUAD {
+			continue
 		}
 
 		if memberSI, ok := user_squads_map[doc.Ref.ID]; ok {
@@ -181,7 +179,7 @@ func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, squadId string, use
 	batch.Set(docMember, userInfo)
 	docSquad := db.Squads.Doc(squadId)
 	batch.Update(docSquad, []firestore.Update{
-		{Path: "membersCount", Value: firestore.Increment(1)},
+		{Path: "MembersCount", Value: firestore.Increment(1)},
 	})
 
 	_, err := batch.Commit(ctx)
@@ -200,7 +198,7 @@ func (db *FirestoreDB) DeleteMemberFromSquad(ctx context.Context, squadId string
 	batch.Delete(docMember)
 	docSquad := db.Squads.Doc(squadId)
 	batch.Update(docSquad, []firestore.Update{
-		{Path: "membersCount", Value: firestore.Increment(-1)},
+		{Path: "MembersCount", Value: firestore.Increment(-1)},
 	})
 
 	_, err := batch.Commit(ctx)
@@ -224,7 +222,7 @@ func (db *FirestoreDB) FlushSquadSize(ctx context.Context, squadId string) error
 
 	_, err := doc.Update(ctx, []firestore.Update{
 		{
-			Path:  "membersCount",
+			Path:  "MembersCount",
 			Value: 0,
 		},
 	})
@@ -232,5 +230,43 @@ func (db *FirestoreDB) FlushSquadSize(ctx context.Context, squadId string) error
 		return fmt.Errorf("Failed to update squad %v: %w", squadId, err)
 	}
 
+	return nil
+}
+
+func (db *FirestoreDB) updateStatus(ctx context.Context, doc *firestore.DocumentRef, status MemberStatusType) error {
+	_, err := doc.Update(ctx, []firestore.Update{
+		{
+			Path:  "Status",
+			Value: status,
+		},
+	})
+	return err
+}
+
+func (db *FirestoreDB) GetSquadMemberStatus(ctx context.Context, userId string, squadId string) (MemberStatusType, error) {
+	doc, err := db.Squads.Doc(squadId).Collection("members").Doc(userId).Get(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("Failed to get squad "+squadId+": %w", err)
+	}
+	status, ok := doc.Data()["Status"]
+	if ok {
+		return MemberStatusType(status.(int64)), nil
+	} else {
+		return 0, fmt.Errorf("Failed to get squad " + squadId + " status")
+	}
+}
+
+func (db *FirestoreDB) SetSquadMemberStatus(ctx context.Context, userId string, squadId string, status MemberStatusType) error {
+	docMember := db.Users.Doc(userId).Collection("squads").Doc(squadId)
+	err := db.updateStatus(ctx, docMember, status)
+	if err != nil {
+		return fmt.Errorf("Failed to update user "+userId+" status: %w", err)
+	}
+
+	docMember = db.Squads.Doc(squadId).Collection("members").Doc(userId)
+	err = db.updateStatus(ctx, docMember, status)
+	if err != nil {
+		return fmt.Errorf("Failed to update user "+userId+" status: %w", err)
+	}
 	return nil
 }

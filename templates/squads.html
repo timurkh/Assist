@@ -48,7 +48,7 @@
 						<form>
 							<div class="form-group">
 								<select v-model="squadToJoin" class="form-control" size="3">
-									<option  v-for="(squad, index) in other_squads" :value="{id:squad.id, index:index}">[[squad.name]]</option>
+									<option  v-for="(squad, index) in other_squads" :value="{id:squad.id, index:index}">[[squad.id]]</option>
 								</select>
 							</div>
 						</form>
@@ -97,8 +97,8 @@
 						<tr class="d-flex" v-for="(squad, index) in own_squads">
 
 							<td class="col-lg-5 col-md-4 col-sm-5 text-truncate">
-								<a v-if="squad.status==3 || squad.status==2" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.name]]</a>
-								<div v-else>[[squad.name]]</div>
+								<a v-if="squad.status==3 || squad.status==2" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.id]]</a>
+								<div v-else>[[squad.id]]</div>
 							</td>
 							<td class="col-lg-2 col-md-3 d-none d-md-table-cell text-truncate">[[squad.membersCount]]</td>
 							<td class="col-lg-3 col-md-3 col-sm-4 text-truncate">[[getStatusText(squad.status)]]</td>
