@@ -48,8 +48,11 @@ const app = new Vue({
 				this.own_squads.push(squad);
 			})
 			.catch(err => {
-				console.log(error.response)
-				this.error_message = "Error while adding new squad: " + err;
+				if(err.response.status == 409) {
+					this.error_message = "This name is already taken, please choose another name.";
+				} else {
+					this.error_message = "Error while adding new squad: " + err;
+				}
 			});
 		},
 		deleteSquad:function(id, index) {
