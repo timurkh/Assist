@@ -8,40 +8,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
-	"google.golang.org/api/iterator"
 )
-
-func deleteCollectionRecurse(ctx context.Context, collection *firestore.CollectionRef, t *testing.T) {
-	iter := collection.Documents(ctx)
-
-	defer iter.Stop()
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			t.Fatalf("Failed to iterate through docs: %v", err)
-		}
-
-		iterCollections := doc.Ref.Collections(ctx)
-		for {
-			collRef, err := iterCollections.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				t.Fatalf("Failed to iterate through collections: %v", err)
-			}
-			deleteCollectionRecurse(ctx, collRef, t)
-		}
-
-		_, err = doc.Ref.Delete(ctx)
-		if err != nil {
-			t.Fatalf("Failed to clean test squads collection: %v", err)
-		}
-	}
-}
 
 func TestInitDB(t *testing.T) {
 
@@ -77,7 +44,10 @@ func TestInitDB(t *testing.T) {
 	})
 
 	t.Run("Clean test DB", func(t *testing.T) {
-		deleteCollectionRecurse(ctx, db.Squads, t)
+		err := db.deleteCollectionRecurse(ctx, db.Squads)
+		if err != nil {
+			t.Fatalf("Failed to clean test data: %v", err)
+		}
 
 	})
 
@@ -167,7 +137,7 @@ func TestInitDB(t *testing.T) {
 			t.Errorf("Wrong number of other_squads for SUPER_USER - %v", len(other_squads))
 		}
 
-		for i := 5; i >= 0; i-- {
+		for i := 15; i >= 0; i-- {
 			own_squads, other_squads, err = db.GetSquads(ctx, "TEST_USER_0", false)
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
@@ -220,7 +190,7 @@ func TestInitDB(t *testing.T) {
 		}
 
 		// ensure another user has correct records about squads
-		for i := 5; i >= 0; i-- {
+		for i := 15; i >= 0; i-- {
 			own_squads, other_squads, err = db.GetSquads(ctx, "TEST_USER_1", false)
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)

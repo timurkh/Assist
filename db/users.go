@@ -105,11 +105,8 @@ func (db *FirestoreDB) propagateChangedUserInfo(userId string, field string, val
 		}
 
 		squadId := docSquad.Ref.ID
-		log.Printf("Updating user %v details in squad %v, setting '%v' to '%v':\n", userId, squadId, field, val)
-		db.updateDocProperty(ctx, db.Squads.Doc(squadId).Collection("members").Doc(userId), field, val)
-		if err != nil {
-			log.Printf("Error while updating member %v->%v: %v", squadId, userId, err.Error())
-		}
+		doc := db.Squads.Doc(squadId).Collection("members").Doc(userId)
+		db.updater.dispatchCommand(doc, field, val)
 	}
 }
 

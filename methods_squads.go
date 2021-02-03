@@ -63,9 +63,7 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	log.Println("Creating squad " + squad.Name)
 	squadId := squad.Name
-
 	ownerId := app.su.getCurrentUserID(r)
 
 	ctx := r.Context()
@@ -104,8 +102,6 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	log.Println("Getting squads for user " + userId)
-
 	own_squads, other_squads, err := app.db.GetSquads(ctx, userId, authLevel&systemAdmin != 0)
 
 	if err != nil {
@@ -142,8 +138,6 @@ func (app *App) methodDeleteSquad(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	log.Println("Deleting squad " + squadId)
-
 	err := app.db.DeleteSquad(ctx, squadId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -160,8 +154,6 @@ func (app *App) methodGetSquad(w http.ResponseWriter, r *http.Request) error {
 	params := mux.Vars(r)
 
 	squadId := params["id"]
-
-	log.Println("Getting details for squad " + squadId)
 
 	_, authLevel := app.checkAuthorization(r, "", squadId, squadMember|squadOwner)
 	if authLevel == 0 {
@@ -204,7 +196,6 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	log.Println("Getting members of the squad " + squadId)
 	squadMembers, err := app.db.GetSquadMembers(ctx, squadId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

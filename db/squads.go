@@ -61,6 +61,8 @@ type MemberSquadInfoRecord struct {
 
 func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, ownerId string) (err error) {
 
+	log.Println("Creating squad " + squadId)
+
 	squadInfo := &SquadInfo{
 		ownerId,
 		0,
@@ -80,6 +82,8 @@ func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, ownerId 
 }
 
 func (db *FirestoreDB) GetSquads(ctx context.Context, userId string, includeAllUsersSquad bool) ([]*MemberSquadInfoRecord, []*MemberSquadInfoRecord, error) {
+
+	log.Println("Getting squads for user " + userId)
 
 	user_squads_map, err := db.GetUserSquads(ctx, userId)
 	if err != nil {
@@ -173,6 +177,8 @@ func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string) (map[st
 
 func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*SquadUserInfoRecord, error) {
 
+	log.Println("Getting members of the squad " + squadId)
+
 	squadMembers := make([]*SquadUserInfoRecord, 0)
 
 	iter := db.Squads.Doc(squadId).Collection("members").Documents(ctx)
@@ -203,29 +209,33 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 
 func (db *FirestoreDB) DeleteSquad(ctx context.Context, squadId string) error {
 
+	log.Println("Deleting squad " + squadId)
+
 	docSquad := db.Squads.Doc(squadId)
 
 	//delete this squad from all members
-	iter := docSquad.Collection("members").Documents(ctx)
-	defer iter.Stop()
-	for {
-		docMember, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Printf("Error while iterating through squad %v members: %v", squadId, err.Error())
-			break
-		}
+	go func() {
+		iter := docSquad.Collection("members").Documents(ctx)
+		defer iter.Stop()
+		for {
+			docMember, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.Printf("Error while iterating through squad %v members: %v", squadId, err.Error())
+				break
+			}
 
-		memberId := docMember.Ref.ID
-		log.Printf("Deleting squad %v from user %v", squadId, memberId)
+			memberId := docMember.Ref.ID
+			log.Printf("Deleting squad %v from user %v", squadId, memberId)
 
-		db.Users.Doc(memberId).Collection("squads").Doc(squadId).Delete(ctx)
-	}
+			db.Users.Doc(memberId).Collection("squads").Doc(squadId).Delete(ctx)
+		}
+	}()
 
 	//delete squad itself
-	_, err := docSquad.Delete(ctx)
+	err := db.deleteDocRecurse(ctx, docSquad)
 	if err != nil {
 		return fmt.Errorf("Error while deleting squad "+squadId+": %w", err)
 	}
@@ -234,6 +244,8 @@ func (db *FirestoreDB) DeleteSquad(ctx context.Context, squadId string) error {
 }
 
 func (db *FirestoreDB) GetSquad(ctx context.Context, ID string) (*SquadInfo, error) {
+
+	log.Println("Getting details for squad " + ID)
 
 	doc, err := db.Squads.Doc(ID).Get(ctx)
 	if err != nil {
@@ -270,12 +282,8 @@ func (db *FirestoreDB) propagateChangedSquadInfo(squadId string, field string) {
 		}
 
 		userId := docMember.Ref.ID
-		log.Printf("Updating squad %v details for member %v, setting '%v' to '%v':\n", squadId, userId, field, val)
-
-		db.updateDocProperty(ctx, db.Users.Doc(userId).Collection("squads").Doc(squadId), field, val)
-		if err != nil {
-			log.Printf("Error while updating squad %v->%v: %v", userId, squadId, err.Error())
-		}
+		doc := db.Users.Doc(userId).Collection("squads").Doc(squadId)
+		db.updater.dispatchCommand(doc, field, val)
 	}
 }
 
@@ -295,7 +303,9 @@ func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId strin
 		return fmt.Errorf("Failed to add user "+userId+" to squad "+squadId+": %w", err)
 	}
 
-	go db.propagateChangedSquadInfo(squadId, "MembersCount")
+	if squadId != ALL_USERS_SQUAD {
+		go db.propagateChangedSquadInfo(squadId, "MembersCount")
+	}
 
 	return nil
 }
