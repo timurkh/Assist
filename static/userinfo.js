@@ -1,48 +1,18 @@
 // Disable form submissions if there are invalid fields
-
-function escapeHtml(unsafe) {
-	return unsafe
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#039;");
-}
-
-firebase.auth().onAuthStateChanged(user => {
-	if (user) {
-
-		// init user info settings
-		var inputs = document.getElementById('userInfo').getElementsByTagName('input');
-		for (var i=0; i<inputs.length; ++i) {
-			inputs[i].value = user[inputs[i].id];
+const escapeHTML = function(unsafe) {
+	return unsafe.replace(/[&<"']/g, function(m) {
+		switch (m) {
+		case '&':
+			return '&amp;';
+		case '<':
+			return '&lt;';
+		case '"':
+			return '&quot;';
+		default:
+			return '&#039;';
 		}
-
-		if(document.getElementById('role')) {
-			user.getIdTokenResult().then((idTokenResult) => {
-					document.getElementById('role').value = idTokenResult.claims.Role; 
-			});
-		}
-
-		// init auth providers
-		var pd = user.providerData;
-		for(var i=0; i<pd.length; ++i) {
-			try {
-				//console.log(pd[i].providerId);
-				document.getElementById(pd[i].providerId).checked = true;
-			} catch (error) {
-				console.log("Error while processing provider " + pd[i].providerId + ": " + error);
-			}
-		}
-		if(pd.length == 1) {
-			try {
-				document.getElementById(pd[0].providerId).disabled = true;
-			} catch (error) {
-				console.log("Error while disabling provider " + pd[i].providerId + ": " + error);
-			}
-		}
-	}
-})
+	});
+};
 
 const editInput = function(id) {
 	var input = document.getElementById(id);
@@ -130,7 +100,7 @@ const editInput = function(id) {
 
 	document.getElementById(id + 'Btn').getElementsByTagName('i')[0].classList.toggle("fa-pen");
 	document.getElementById(id + 'Btn').getElementsByTagName('i')[0].classList.toggle("fa-check");
-}
+};
 
 const toggleIDProvider = function(checkBox) {
 	var user = firebase.auth().currentUser;
@@ -169,7 +139,7 @@ const toggleIDProvider = function(checkBox) {
 	}
 
 	checkIfLastProviderLeft();
-}
+};
 
 const checkIfLastProviderLeft = function() {
 
@@ -198,7 +168,7 @@ const checkIfLastProviderLeft = function() {
 	if(moreThanOne == false) {
 		inputs[lastCheckedOne].disabled = true;
 	}
-}
+};
 
 const sendPasswordReset = function() {
 	document.getElementById('passwordNotification').value = "";
@@ -210,14 +180,7 @@ const sendPasswordReset = function() {
 	}).catch(function(error) {
 		document.getElementById('passwordError').textContent = error;
 	});
-}
-
-// init appVerifier
-var appVerifier;
-window.addEventListener('load', function() {
-	appVerifier = new firebase.auth.RecaptchaVerifier( "recaptcha", { size: "invisible" });
-});
-
+};
 	
 const sendVerificationEmail = function(e) {
 	e.preventDefault();
@@ -229,4 +192,46 @@ const sendVerificationEmail = function(e) {
 	).catch(error => {
 		document.getElementById('emailError').textContent = "Failed to send verification email: " + error + ". You can either change email or refresh this page and try once more."
 	});
-}
+};
+
+// init appVerifier
+var appVerifier;
+window.addEventListener('load', function() {
+	appVerifier = new firebase.auth.RecaptchaVerifier( "recaptcha", { size: "invisible" });
+});
+
+firebase.auth().onAuthStateChanged(user => {
+	if (user) {
+
+		// init user info settings
+		var inputs = document.getElementById('userInfo').getElementsByTagName('input');
+		for (var i=0; i<inputs.length; ++i) {
+			inputs[i].value = user[inputs[i].id];
+		}
+
+		if(document.getElementById('role')) {
+			user.getIdTokenResult().then((idTokenResult) => {
+					document.getElementById('role').value = idTokenResult.claims.Role; 
+			});
+		}
+
+		// init auth providers
+		var pd = user.providerData;
+		for(var i=0; i<pd.length; ++i) {
+			try {
+				//console.log(pd[i].providerId);
+				document.getElementById(pd[i].providerId).checked = true;
+			} catch (error) {
+				console.log("Error while processing provider " + pd[i].providerId + ": " + error);
+			}
+		}
+		if(pd.length == 1) {
+			try {
+				document.getElementById(pd[0].providerId).disabled = true;
+			} catch (error) {
+				console.log("Error while disabling provider " + pd[i].providerId + ": " + error);
+			}
+		}
+	}
+});
+

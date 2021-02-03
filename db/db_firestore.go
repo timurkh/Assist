@@ -10,13 +10,20 @@ import (
 
 const ALL_USERS_SQUAD = "All Users"
 
+type UpdateCommand struct {
+	squadId string
+	userId  string
+	field   string
+	val     interface{}
+}
+
 type FirestoreDB struct {
 	Client *firestore.Client
 	Squads *firestore.CollectionRef
 	Users  *firestore.CollectionRef
 }
 
-var testPrefix string = "squads"
+var testPrefix string = ""
 
 func SetTestPrefix(prefix string) {
 	testPrefix = prefix
