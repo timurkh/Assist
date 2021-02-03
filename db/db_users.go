@@ -41,7 +41,7 @@ func (db *FirestoreDB) GetUserByName(ctx context.Context, userName string) (user
 	return users, nil
 }
 
-func (db *FirestoreDB) AddSquadToMember(ctx context.Context, userId string, squadId string, squadInfo *MemberSquadInfo) error {
+func (db *FirestoreDB) AddSquadRecordToMember(ctx context.Context, userId string, squadId string, squadInfo *MemberSquadInfo) error {
 
 	doc := db.Users.Doc(userId).Collection("squads").Doc(squadId)
 
@@ -53,12 +53,12 @@ func (db *FirestoreDB) AddSquadToMember(ctx context.Context, userId string, squa
 	return nil
 }
 
-func (db *FirestoreDB) AddUser(ctx context.Context, userId string, userInfo *UserInfo) error {
+func (db *FirestoreDB) CreateUser(ctx context.Context, userId string, userInfo *UserInfo) error {
 
 	var sui = SquadUserInfo{
 		Status: Member}
 	sui.UserInfo = *userInfo
-	err := db.AddMemberToSquad(ctx, ALL_USERS_SQUAD, userId, &sui)
+	err := db.AddMemberRecordToSquad(ctx, ALL_USERS_SQUAD, userId, &sui)
 	if err != nil {
 		return fmt.Errorf("Failed to add user "+userId+": %w", err)
 	}
@@ -66,7 +66,7 @@ func (db *FirestoreDB) AddUser(ctx context.Context, userId string, userInfo *Use
 	return nil
 }
 
-func (db *FirestoreDB) DeleteSquadFromMember(ctx context.Context, userId string, squadId string) error {
+func (db *FirestoreDB) DeleteSquadRecordFromMember(ctx context.Context, userId string, squadId string) error {
 
 	doc := db.Users.Doc(userId).Collection("squads").Doc(squadId)
 
@@ -78,47 +78,40 @@ func (db *FirestoreDB) DeleteSquadFromMember(ctx context.Context, userId string,
 	return nil
 }
 
-func (db *FirestoreDB) updateUserInfo(ctx context.Context, doc *firestore.DocumentRef, field string, val interface{}) error {
-	_, err := doc.Update(ctx, []firestore.Update{
-		{
-			Path:  field,
-			Value: val,
-		},
-	})
-	return err
+func (db *FirestoreDB) propagateChangedUserInfo(userId string, field string, val interface{}) {
+	ctx := context.Background()
+	docUser := db.Users.Doc(userId)
+	iter := docUser.Collection("squads").Documents(ctx)
+	defer iter.Stop()
+	for {
+		docSquad, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("Error while getting user %v squads: %v", userId, err.Error())
+			break
+		}
+
+		squadId := docSquad.Ref.ID
+		log.Printf("Updating user %v details in squad %v, setting '%v' to '%v':\n", userId, squadId, field, val)
+		db.updateDocProperty(ctx, db.Squads.Doc(squadId).Collection("members").Doc(userId), field, val)
+		if err != nil {
+			log.Printf("Error while updating member %v->%v: %v", squadId, userId, err.Error())
+		}
+	}
 }
 
 func (db *FirestoreDB) UpdateUser(ctx context.Context, userId string, field string, val interface{}) error {
 
 	docUser := db.Users.Doc(userId)
 
-	err := db.updateUserInfo(ctx, docUser, field, val)
+	err := db.updateDocProperty(ctx, docUser, field, val)
 	if err != nil {
 		return fmt.Errorf("Failed to update user "+userId+": %w", err)
 	}
 
-	go func() {
-		ctx := context.Background()
-		iter := docUser.Collection("squads").Documents(ctx)
-		defer iter.Stop()
-		for {
-			docSquad, err := iter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				log.Printf("Error while getting user %v squads: %v", userId, err.Error())
-				break
-			}
-
-			squadId := docSquad.Ref.ID
-			log.Printf("Updating user %v details in squad %v, setting '%v' to '%v':\n", userId, squadId, field, val)
-			db.updateUserInfo(ctx, db.Squads.Doc(squadId).Collection("members").Doc(userId), field, val)
-			if err != nil {
-				log.Printf("Error while updating member %v->%v: %v", squadId, userId, err.Error())
-			}
-		}
-	}()
+	go db.propagateChangedUserInfo(userId, field, val)
 
 	return nil
 }
@@ -134,7 +127,7 @@ func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecor
 			Email:       userRecord.Email,
 			PhoneNumber: userRecord.PhoneNumber,
 		}
-		db.AddUser(ctx, userId, userInfo)
+		db.CreateUser(ctx, userId, userInfo)
 
 		if err != nil {
 			return fmt.Errorf("Failed to add user to database: %w", err)

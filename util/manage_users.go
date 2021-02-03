@@ -193,7 +193,7 @@ func (app *App) populateSquadInfoToUsers(ctx context.Context) {
 			UserInfo: *userInfo,
 			Status:   db.Owner,
 		}
-		app.db.AddMemberToSquad(ctx, squadId, squadInfo.Owner, &squadUserInfo)
+		app.db.AddMemberRecordToSquad(ctx, squadId, squadInfo.Owner, &squadUserInfo)
 
 		if err != nil {
 			log.Fatal("Error while populating squad owner info: %w", err)
@@ -215,7 +215,7 @@ func (app *App) populateSquadInfoToUsers(ctx context.Context) {
 				SquadInfo: *squadInfo,
 				Status:    member.Status,
 			}
-			err := app.db.AddSquadToMember(ctx, member.ID, squadId, memberSquadInfo)
+			err := app.db.AddSquadRecordToMember(ctx, member.ID, squadId, memberSquadInfo)
 			if err != nil {
 				log.Fatal("Error while populating squads info to users: %w", err)
 			}
@@ -244,7 +244,7 @@ func (app *App) updateUsersInfoInSquads(ctx context.Context) {
 				UserInfo: user.UserInfo,
 				Status:   squad.Status,
 			}
-			app.db.AddMemberToSquad(ctx, squadId, user.ID, squadUser)
+			app.db.AddMemberRecordToSquad(ctx, squadId, user.ID, squadUser)
 		}
 	}
 }

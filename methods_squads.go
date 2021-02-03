@@ -2,7 +2,6 @@ package main
 
 import (
 	"assist/db"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -69,13 +68,8 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 
 	ownerId := app.su.getCurrentUserID(r)
 
-	squadInfo := &db.SquadInfo{
-		ownerId,
-		1,
-	}
-
 	ctx := r.Context()
-	err = app.db.CreateSquad(ctx, squadId, squadInfo)
+	err = app.db.CreateSquad(ctx, squadId, ownerId)
 	if err != nil {
 		st, ok := status.FromError(err)
 		err = fmt.Errorf("Failed to create squad %v: %w", squadId, err)
@@ -87,7 +81,10 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
-	return app.addUserToSquad(ctx, ownerId, squadId, db.Owner)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return nil
 }
 
 func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
@@ -109,30 +106,11 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 
 	log.Println("Getting squads for user " + userId)
 
-	own_squads, other_squads, err := app.db.GetSquads(ctx, userId)
+	own_squads, other_squads, err := app.db.GetSquads(ctx, userId, authLevel&systemAdmin != 0)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
-	}
-
-	if authLevel&systemAdmin != 0 {
-		uberSquadInfo, err := app.db.GetSquad(ctx, db.ALL_USERS_SQUAD)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return err
-		}
-
-		var uberSquad db.MemberSquadInfoRecord
-		uberSquad.ID = db.ALL_USERS_SQUAD
-		uberSquad.SquadInfo = *uberSquadInfo
-		uberSquad.Status = db.Owner
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return err
-		}
-
-		own_squads = append([]*db.MemberSquadInfoRecord{&uberSquad}, own_squads...)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -269,7 +247,7 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 
-	err := app.addUserToSquad(ctx, userId, squadId, memberStatus)
+	err := app.db.AddMemberToSquad(ctx, userId, squadId, memberStatus)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -280,42 +258,6 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 	err = json.NewEncoder(w).Encode(struct{ Status db.MemberStatusType }{memberStatus})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return err
-	}
-
-	return nil
-}
-
-func (app *App) addUserToSquad(ctx context.Context, userId string, squadId string, memberStatus db.MemberStatusType) error {
-	log.Println("Adding user " + userId + " to squad " + squadId)
-
-	userInfo, err := app.db.GetUser(ctx, userId)
-	if err != nil {
-		return err
-	}
-
-	squadUserInfo := &db.SquadUserInfo{
-		UserInfo: *userInfo,
-		Status:   memberStatus,
-	}
-
-	err = app.db.AddMemberToSquad(ctx, squadId, userId, squadUserInfo)
-	if err != nil {
-		return err
-	}
-
-	squadInfo, err := app.db.GetSquad(ctx, squadId)
-	if err != nil {
-		return err
-	}
-
-	memberSquadInfo := &db.MemberSquadInfo{
-		SquadInfo: *squadInfo,
-		Status:    memberStatus,
-	}
-
-	err = app.db.AddSquadToMember(ctx, userId, squadId, memberSquadInfo)
-	if err != nil {
 		return err
 	}
 
@@ -377,18 +319,9 @@ func (app *App) methodDeleteMemberFromSquad(w http.ResponseWriter, r *http.Reque
 		return err
 	}
 
-	log.Println("Removing user " + userId + " from squad " + squadId)
-
-	err := app.db.DeleteSquadFromMember(ctx, userId, squadId)
+	err := app.db.DeleteMemberFromSquad(ctx, userId, squadId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return err
-	}
-
-	err = app.db.DeleteMemberFromSquad(ctx, squadId, userId)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return err
 	}
 
 	w.Header().Set("Content-Type", "application/json")
