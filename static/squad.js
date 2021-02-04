@@ -1,14 +1,21 @@
-const app = new Vue({
-	el:'#app',
+const { createApp } = Vue
+
+const app = createApp( {
 	delimiters: ['[[', ']]'],
-	data:{
-		loading:true,
-		error_message:"",
-		squad_members:[],
-		squad_owner:null,
-		statusToSet:0,
-		changeStatusMember_index: -1,
-		changeStatusMember: [],
+	data(){
+		return {
+			loading:true,
+			error_message:"",
+			squadId:squadId,
+			squad_members:[],
+			squad_owner:null,
+			statusToSet:0,
+			changeStatusMember_index: -1,
+			changeStatusMember: [],
+			addMember_DisplayName: "",
+			addMember_Email: "",
+			addMember_Phone: "",
+		};
 	},
 	created:function() {
 		axios({
@@ -63,4 +70,5 @@ const app = new Vue({
 			});
 		},
 	},
-})
+	mixins: [globalMixin],
+}).mount("#app");

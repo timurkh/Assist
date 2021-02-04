@@ -178,7 +178,12 @@ func (am *SessionUtil) getCurrentUserInfo(r *http.Request) (*auth.UserRecord, er
 }
 
 func (am *SessionUtil) getSessionData(r *http.Request) *SessionData {
-	u, _ := am.getCurrentUserInfo(r)
+	u, err := am.getCurrentUserInfo(r)
+
+	if err != nil {
+		log.Panic("Failed to get sessions data: ", err)
+		return nil
+	}
 
 	sd := &SessionData{
 		UserRecord: u,

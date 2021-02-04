@@ -14,6 +14,7 @@ type UserInfo struct {
 	DisplayName string `json:"displayName"`
 	Email       string `json:"email"`
 	PhoneNumber string `json:"phoneNumber"`
+	RecordOnly  bool   `json:"recordOnly"`
 }
 
 type UserInfoRecord struct {
@@ -134,6 +135,7 @@ func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecor
 			DisplayName: userRecord.DisplayName,
 			Email:       userRecord.Email,
 			PhoneNumber: userRecord.PhoneNumber,
+			RecordOnly:  false,
 		}
 		db.CreateUser(ctx, userId, userInfo)
 
@@ -146,6 +148,10 @@ func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecor
 		}
 		if len(userRecord.PhoneNumber) > 0 && userInfo.PhoneNumber != userRecord.PhoneNumber {
 			db.UpdateUser(ctx, userId, "PhoneNumber", userRecord.PhoneNumber)
+		}
+		if userInfo.RecordOnly == true {
+			db.UpdateUser(ctx, userId, "RecordOnly", false)
+
 		}
 	}
 

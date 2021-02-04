@@ -1,14 +1,16 @@
+const { createApp } = Vue
 
-const app = new Vue({
-	el:'#app',
+const app = createApp( {
 	delimiters: ['[[', ']]'],
-	data:{
+	data(){
+		return {
 		loading:true,
 		own_squads:[],
 		other_squads:[],
 		error_message:"",
 		squadName:"",
 		squadToJoin:"",
+		}
 	},
 	created:function() {
 		axios({
@@ -108,4 +110,6 @@ const app = new Vue({
 			window.location.href = `/squad?squadId=` + encodeURI(squadId);
 		},
 	},
-})
+	mixins: [globalMixin],
+}).mount("#app");
+

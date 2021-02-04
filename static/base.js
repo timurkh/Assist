@@ -1,20 +1,20 @@
-Vue.mixin({
+const globalMixin = {
 	methods: {
 		getStatusText : function(status) {
 
 			switch(status) {
-				case 0 /*PendingApprove*/:
+				case 0:
 					return "Pending Approve";
-				case 1 /*Member*/:
+				case 1:
 					return "Member";
-				case 2 /*Admin*/:
+				case 2:
 					return "Admin";
-				case 3 /*Owner*/:
+				case 3:
 					return "Owner";
 			}
 		},
 	},
-})
+};
 
 const postSignOut = function() {
 	// POST to session login endpoint.
