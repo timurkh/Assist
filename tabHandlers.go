@@ -7,8 +7,7 @@ import (
 )
 
 var (
-	firebaseTmpl = parseTemplate("firebase.html")
-	loginTmpl    = parseTemplate("login.html")
+	loginTmpl    = parseBodyTemplate("login.html")
 	homeTmpl     = parseBodyTemplate("home.html")
 	userinfoTmpl = parseBodyTemplate("userinfo.html")
 	squadsTmpl   = parseBodyTemplate("squads.html")
@@ -61,11 +60,15 @@ func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {
 
 func (app *App) aboutHandler(w http.ResponseWriter, r *http.Request) error {
 
-	return aboutTmpl.Execute(app, w, r, struct {
-		Session *SessionData
-	}{
-		app.su.getSessionData(r),
-	})
+	if app.su.getCurrentUserID(r) != "" {
+		return aboutTmpl.Execute(app, w, r, struct {
+			Session *SessionData
+		}{
+			app.su.getSessionData(r),
+		})
+	} else {
+		return aboutTmpl.Execute(app, w, r, nil)
+	}
 }
 
 func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {

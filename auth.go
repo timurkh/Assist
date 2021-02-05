@@ -148,19 +148,25 @@ func (am *SessionUtil) authMiddleware(next http.Handler) http.Handler {
 			cookie, err := r.Cookie("firebaseSession")
 			if err != nil {
 				// Session cookie is unavailable. Force user to login.
-				http.Redirect(w, r, "/login", http.StatusFound)
-				return
-			}
+				if r.URL.Path != "/about" {
+					http.Redirect(w, r, "/login", http.StatusFound)
+					return
+				}
+			} else {
 
-			// Verify the session cookie. In this case an additional check is added to detect
-			// if the user's Firebase session was revoked, user deleted/disabled, etc.
-			decoded, err := am.authClient.VerifySessionCookieAndCheckRevoked(r.Context(), cookie.Value)
-			if err != nil {
-				// Session cookie is invalid. Force user to login.
-				http.Redirect(w, r, "/login", http.StatusFound)
-				return
+				// Verify the session cookie. In this case an additional check is added to detect
+				// if the user's Firebase session was revoked, user deleted/disabled, etc.
+				decoded, err := am.authClient.VerifySessionCookieAndCheckRevoked(r.Context(), cookie.Value)
+				if err != nil {
+					// Session cookie is invalid. Force user to login.
+					if r.URL.Path != "/about" {
+						http.Redirect(w, r, "/login", http.StatusFound)
+						return
+					}
+				} else {
+					gorilla_context.Set(r, "SessionToken", decoded)
+				}
 			}
-			gorilla_context.Set(r, "SessionToken", decoded)
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -168,7 +174,12 @@ func (am *SessionUtil) authMiddleware(next http.Handler) http.Handler {
 
 func (am *SessionUtil) getCurrentUserID(r *http.Request) string {
 	sessionToken := gorilla_context.Get(r, "SessionToken")
-	return sessionToken.(*auth.Token).UID
+
+	if sessionToken != nil {
+		return sessionToken.(*auth.Token).UID
+	} else {
+		return ""
+	}
 }
 
 func (am *SessionUtil) getCurrentUserInfo(r *http.Request) (*auth.UserRecord, error) {

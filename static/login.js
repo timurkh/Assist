@@ -76,9 +76,4 @@ window.addEventListener('load', function() {
 	initApp()
 });
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-//firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
-firebase.analytics();
-
 

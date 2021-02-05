@@ -32,20 +32,24 @@
 			</button>
 
 			<div class="navbar-collapse collapse" id="main_nav">
+				<ul class="nav navbar-nav">
 				{{if .Session.EmailVerified}}
 				{{if .Session.Role}}
-				<ul class="nav navbar-nav">
 					<li><a id="navbar-home" class="nav-link" href="/home">Home</a></li>
 					<li><a id="navbar-squads" class="nav-link" href="/squads">Squads</a></li>
 					<li><a id="navbar-events" class="nav-link" href="/events">Events</a></li>
-					<li><a id="navbar-about" class="nav-link" href="/about">About</a></li>
-				</ul>
 				{{end}}
 				{{end}}			
+					<li><a id="navbar-about" class="nav-link" href="/about">About</a></li>
+				</ul>
 				<ul class="nav navbar-nav ml-auto">
 				    <li class="nav-item"><hr class="border-top"></li>
+				{{if .Session}}
 					<li> <a id="navbar-userinfo" class="nav-link" href="userinfo">{{.Session.DisplayName}} ({{.Session.Email}})</a> </li>
 					<li><a class="nav-link" href="#" onclick="postSignOut()">Sign out</a></li>
+				{{else}}
+					<li> <a id="navbar-userinfo" class="nav-link" href="/login">Login</a> </li>
+				{{end}}
 				</ul>
 			</div>
 		</nav>
@@ -53,8 +57,10 @@
 		{{if .Session.Role}}
 		{{else}}
 			<script>
-				var path = window.location.pathname+window.location.search;
-				if(path != '/userinfo') {
+				var path = window.location.pathname;
+				if(path == '/about') {
+				} else if(path == '/login') {
+				} else if(path != '/userinfo') {
 					window.location.assign('/userinfo');
 				}
 			</script>
