@@ -182,24 +182,7 @@ func (app *App) populateSquadInfoToUsers(ctx context.Context) {
 
 		log.Printf("Restoring records about squad %v:", doc.Ref.ID)
 
-		// ensure there is record about squad owner in squad members
-		userInfo, err := app.db.GetUser(ctx, squadInfo.Owner)
-		if err != nil {
-			log.Fatal("Error while obtaining squad owner info: %w", err)
-		}
-		log.Printf("\towner : %v", squadInfo.Owner)
-
-		squadUserInfo := db.SquadUserInfo{
-			UserInfo: *userInfo,
-			Status:   db.Owner,
-		}
-		app.db.AddMemberRecordToSquad(ctx, squadId, squadInfo.Owner, &squadUserInfo)
-
-		if err != nil {
-			log.Fatal("Error while populating squad owner info: %w", err)
-		}
-
-		// later size will be recalculated while updating user info in squads
+		// later size will be recalculated while updateUserInfoInSquads, now we just need to calculate replicants
 		log.Printf("Flushing squad %v size", doc.Ref.ID)
 		app.db.FlushSquadSize(ctx, squadId)
 		if err != nil {
@@ -270,6 +253,10 @@ func printUsage() {
 }
 
 func main() {
+	// init logs
+	log.SetOutput(os.Stderr)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+
 	args := os.Args[1:]
 
 	if len(args) == 0 {

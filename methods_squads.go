@@ -89,8 +89,8 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := r.Context()
 
-	query := r.URL.Query()
-	userId := query.Get("userId")
+	params := mux.Vars(r)
+	userId := params["userId"]
 
 	// authorization check
 	userId, authLevel := app.checkAuthorization(r, userId, "", authenticatedUser)
@@ -225,7 +225,7 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 	userId := params["userId"]
 
 	var memberStatus db.MemberStatusType
-	userId, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadOwner)
+	userId, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadAdmin|squadOwner)
 
 	if authLevel&(squadOwner|squadAdmin|systemAdmin) != 0 {
 		memberStatus = db.Member
@@ -247,6 +247,47 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(struct{ Status db.MemberStatusType }{memberStatus})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	return nil
+}
+
+func (app *App) methodCreateReplicant(w http.ResponseWriter, r *http.Request) error {
+
+	params := mux.Vars(r)
+	ctx := r.Context()
+
+	squadId := params["squadId"]
+
+	_, authLevel := app.checkAuthorization(r, "", squadId, squadAdmin|squadOwner)
+
+	if authLevel == 0 {
+		err := fmt.Errorf("Current user is not authorized to to add replicant to squad " + squadId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
+	var replicantInfo db.UserInfo
+	err := json.NewDecoder(r.Body).Decode(&replicantInfo)
+	if err != nil {
+		err = fmt.Errorf("Failed to decode replicant data from the HTTP request: %w", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	replicantId, err := app.db.CreateReplicant(ctx, &replicantInfo, squadId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(struct{ ReplicantId string }{replicantId})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -301,7 +342,7 @@ func (app *App) methodDeleteMemberFromSquad(w http.ResponseWriter, r *http.Reque
 	userId := params["userId"]
 
 	// authorization check
-	userId, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadOwner)
+	userId, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadOwner|squadAdmin)
 	if authLevel == 0 {
 		// operation is not authorized, return error
 		err := fmt.Errorf("Current user is not authorized to remove user " + userId + " from squad " + squadId)

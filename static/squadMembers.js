@@ -12,9 +12,7 @@ const app = createApp( {
 			statusToSet:0,
 			changeStatusMember_index: -1,
 			changeStatusMember: [],
-			addMember_DisplayName: "",
-			addMember_Email: "",
-			addMember_Phone: "",
+			replicant: [],
 		};
 	},
 	created:function() {
@@ -30,7 +28,7 @@ const app = createApp( {
 		.catch(error => {
 			this.error_message = "Failed to retrieve list of squad members: " + error;
 			this.loading = false;
-		})
+		});
 	},
 	methods: {
 		changeStatus:function(index, member) {
@@ -45,7 +43,8 @@ const app = createApp( {
 				url: `/methods/squads/${squadId}/members/${this.changeStatusMember.id}`,
 				data: {
 					Status: this.statusToSet,
-				}
+				},
+				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
@@ -58,8 +57,9 @@ const app = createApp( {
 		removeMember:function(userId, index) {
 			index = index;
 			axios({
-				method: 'delete',
+				method: 'DELETE',
 				url: `/methods/squads/${squadId}/members/${userId}`,
+				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
@@ -69,6 +69,29 @@ const app = createApp( {
 				this.error_message = `Error while removing user ${userId} from squad:` + err;
 			});
 		},
+		addMember:function() {
+			axios({
+				method: 'POST',
+				url: `/methods/squads/${squadId}/members`,
+				data: {
+					displayName : this.replicant.displayName,
+					email : this.replicant.email,
+					phoneNumber : this.replicant.phoneNumber,
+					replicant: true,
+				},
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then( res => {
+				this.error_message = "";
+				this.replicant.id = res.data.ReplicantId;
+				this.replicant.status = 1; //member
+				this.replicant.replicant = true;
+				this.squad_members.push(Object.assign({}, this.replicant));
+			})
+			.catch(err => {
+				this.error_message = "Error while adding squad member: " + err;
+			});
+		}
 	},
 	mixins: [globalMixin],
 }).mount("#app");

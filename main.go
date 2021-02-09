@@ -12,10 +12,11 @@ import (
 	firebase "firebase.google.com/go"
 )
 
-func initApp() (*App, error) {
+func initApp(dev bool) (*App, error) {
 	//
 	app := App{
 		logWriter: os.Stderr,
+		dev:       dev,
 	}
 
 	// init logs
@@ -37,7 +38,7 @@ func initApp() (*App, error) {
 	}
 
 	// init firebase auth
-	app.su = initSessionUtil(fireapp, app.db)
+	app.su = initSessionUtil(fireapp, app.db, dev)
 
 	return &app, nil
 }
@@ -46,14 +47,23 @@ type App struct {
 	logWriter io.Writer
 	db        *db.FirestoreDB
 	su        *SessionUtil
+	dev       bool
 }
 
 func main() {
+	args := os.Args[1:]
+
+	dev := true
+	if len(args) == 1 && args[0] == "--dev" {
+		log.Println("Running in DEBUG mode")
+		dev = true
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	app, err := initApp()
+	app, err := initApp(dev)
 	if err != nil {
 		log.Fatalf("Failed to init app: %v", err)
 	}

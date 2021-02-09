@@ -41,7 +41,8 @@ type SquadInfoRecord struct {
 
 type SquadUserInfo struct {
 	UserInfo
-	Status MemberStatusType `json:"status"`
+	Replicant bool             `json:"replicant"`
+	Status    MemberStatusType `json:"status"`
 }
 
 type SquadUserInfoRecord struct {
@@ -269,7 +270,7 @@ func (db *FirestoreDB) propagateChangedSquadInfo(squadId string, field string) {
 	}
 	val := docSquad.Data()[field]
 
-	iter := db.Squads.Doc(squadId).Collection("members").Documents(ctx)
+	iter := db.Squads.Doc(squadId).Collection("members").Where("Replicant", "!=", true).Documents(ctx)
 	defer iter.Stop()
 	for {
 		docMember, err := iter.Next()
@@ -282,6 +283,7 @@ func (db *FirestoreDB) propagateChangedSquadInfo(squadId string, field string) {
 		}
 
 		userId := docMember.Ref.ID
+
 		doc := db.Users.Doc(userId).Collection("squads").Doc(squadId)
 		db.updater.dispatchCommand(doc, field, val)
 	}
@@ -342,10 +344,20 @@ func (db *FirestoreDB) FlushSquadSize(ctx context.Context, squadId string) error
 
 	doc := db.Squads.Doc(squadId)
 
-	_, err := doc.Update(ctx, []firestore.Update{
+	snapshotsIter := doc.Collection("members").Where("Replicant", "==", true).Snapshots(ctx)
+	defer snapshotsIter.Stop()
+	snapshot, err := snapshotsIter.Next()
+
+	if err != nil {
+		log.Fatalf("Failed to get amount of replicants in squad %v: %v", squadId, err)
+	}
+
+	replicantsAmount := snapshot.Size
+
+	_, err = doc.Update(ctx, []firestore.Update{
 		{
 			Path:  "MembersCount",
-			Value: 0,
+			Value: replicantsAmount,
 		},
 	})
 	if err != nil {
@@ -381,6 +393,35 @@ func (db *FirestoreDB) SetSquadMemberStatus(ctx context.Context, userId string, 
 		return fmt.Errorf("Failed to update user "+userId+" status: %w", err)
 	}
 	return nil
+}
+
+func (db *FirestoreDB) CreateReplicant(ctx context.Context, replicantInfo *UserInfo, squadId string) (replicantId string, err error) {
+	log.Println("Creating replicant " + replicantInfo.DisplayName + " in squad " + squadId)
+
+	squadReplicantInfo := &SquadUserInfo{
+		UserInfo:  *replicantInfo,
+		Replicant: true,
+		Status:    Member,
+	}
+	docSquad := db.Squads.Doc(squadId)
+	members := docSquad.Collection("members")
+	newReplicantDoc := members.NewDoc()
+
+	batch := db.Client.Batch()
+	batch.Set(newReplicantDoc, squadReplicantInfo)
+	batch.Update(docSquad, []firestore.Update{
+		{Path: "MembersCount", Value: firestore.Increment(1)},
+	})
+
+	_, err = batch.Commit(ctx)
+	if err != nil {
+		return "", fmt.Errorf("Failed to add replicant '%v' to squad '%v': %w", replicantInfo, squadId, err)
+	}
+
+	// use same counter for real users and replicants for now
+	go db.propagateChangedSquadInfo(squadId, "MembersCount")
+
+	return newReplicantDoc.ID, nil
 }
 
 func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squadId string, memberStatus MemberStatusType) error {

@@ -12,7 +12,6 @@ import (
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
-	guuid "github.com/google/uuid"
 	gorilla_context "github.com/gorilla/context"
 )
 
@@ -28,10 +27,11 @@ type SessionData struct {
 type SessionUtil struct {
 	authClient *auth.Client
 	db         *db.FirestoreDB
+	dev        bool
 }
 
 // init firebase auth
-func initSessionUtil(fireapp *firebase.App, db *db.FirestoreDB) *SessionUtil {
+func initSessionUtil(fireapp *firebase.App, db *db.FirestoreDB, dev bool) *SessionUtil {
 	ctx := context.Background()
 
 	authClient, err := fireapp.Auth(ctx)
@@ -39,7 +39,7 @@ func initSessionUtil(fireapp *firebase.App, db *db.FirestoreDB) *SessionUtil {
 		log.Fatalf("firebase.Auth: %v", err)
 	}
 	mdlwr := SessionUtil{
-		authClient, db}
+		authClient, db, dev}
 
 	return &mdlwr
 }
@@ -49,19 +49,6 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 
 	// Get the tokens sent by the client
 	idToken := r.FormValue("idToken")
-	csrfToken := r.FormValue("csrfToken")
-
-	if cookie, err := r.Cookie("csrfToken"); err == nil {
-		if cookie.Value != csrfToken {
-			err = errors.New("CSRF token is wrong")
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return err
-		}
-	} else {
-		err = errors.New("Failed to get CSRF cookie")
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return err
-	}
 
 	// Decode the IDToken
 	decoded, err := am.authClient.VerifyIDToken(ctx, idToken)
@@ -100,7 +87,7 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 		MaxAge:   int(expiresIn.Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		//Secure:   true,
+		Secure:   !am.dev,
 	})
 	w.Write([]byte(`{"status": "success"}`))
 
@@ -116,6 +103,7 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 		return fmt.Errorf("Failed to update user info: %w", err)
 	}
 
+	http.Redirect(w, r, "/home", http.StatusFound)
 	return nil
 }
 
@@ -126,29 +114,25 @@ func (am *SessionUtil) sessionLogout(w http.ResponseWriter, r *http.Request) err
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   0,
 	})
+
 	http.Redirect(w, r, "/login", http.StatusFound)
 	return nil
 }
 
 func (am *SessionUtil) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if am.dev {
+			log.Print("authMiddleware(" + r.URL.Path + ")")
+		}
 		switch r.URL.Path {
 		case "/sessionLogin":
 		case "/login":
-			cookie := http.Cookie{
-				Name:  "csrfToken",
-				Value: guuid.New().String(),
-				//HttpOnly: true,
-				//Secure:   true,
-				SameSite: http.SameSiteStrictMode,
-			}
-			http.SetCookie(w, &cookie)
 		default:
 			// Get the ID token sent by the client
 			cookie, err := r.Cookie("firebaseSession")
 			if err != nil {
-				// Session cookie is unavailable. Force user to login.
 				if r.URL.Path != "/about" {
+					log.Print("Session cookie is unavailable. Force user to login.")
 					http.Redirect(w, r, "/login", http.StatusFound)
 					return
 				}
@@ -158,13 +142,21 @@ func (am *SessionUtil) authMiddleware(next http.Handler) http.Handler {
 				// if the user's Firebase session was revoked, user deleted/disabled, etc.
 				decoded, err := am.authClient.VerifySessionCookieAndCheckRevoked(r.Context(), cookie.Value)
 				if err != nil {
-					// Session cookie is invalid. Force user to login.
 					if r.URL.Path != "/about" {
+						log.Print("Session cookie is invalid. Force user to login.")
 						http.Redirect(w, r, "/login", http.StatusFound)
 						return
 					}
 				} else {
+					if am.dev {
+						log.Printf("Setting sessionToken %+v\n", decoded)
+					}
 					gorilla_context.Set(r, "SessionToken", decoded)
+					if decoded.Claims["Role"].(string) == "" && r.URL.Path != "/userinfo" {
+						log.Print("User is pending approve. Redirect to /userinfo")
+						http.Redirect(w, r, "/userinfo", http.StatusFound)
+						return
+					}
 				}
 			}
 		}

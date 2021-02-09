@@ -1,9 +1,18 @@
-<script src="static/login.js"></script>
 
 <link type="text/css" rel="stylesheet" href="https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.css" />
 
-<div id="container">
-	<div id="loading">Loading...</div>
-	<div id="redirecting" style="visibility:hidden">Redirecting...</div>
+<div id="app">
+	<div v-if="loading">
+		<div class="d-flex justify-content-center mt-5">
+			<div class="spinner-border mt-5" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+	</div>
+	<div v-cloak v-if="error_message.length > 0" class="alert alert-danger m-1" role="alert">
+		[[ error_message ]]
+	</div>
 	<div id="firebaseui-auth-container"></div>
 </div>
+
+<script src="static/login.js"></script>

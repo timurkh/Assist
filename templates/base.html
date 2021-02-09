@@ -9,7 +9,7 @@
 		<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-analytics.js"></script>
 		<script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-auth.js"></script>
 		<script src="https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.js"></script>
-		<script src="static/firebase.js"></script>
+		<script src="/static/firebase.js"></script>
 
 		<style> [v-cloak] { display: none; } </style>
 
@@ -20,11 +20,13 @@
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 		<script src="https://unpkg.com/vue@next"></script>
 		<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-		<script src="static/base.js"></script>
+		{{.CSRFTag}}
+		<script src="/static/base.js"></script>
 
 	</head>
 
 	<body>
+
 		<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
 			<a class="navbar-brand" href="#">Assist</a>
 			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#main_nav">
@@ -33,7 +35,7 @@
 
 			<div class="navbar-collapse collapse" id="main_nav">
 				<ul class="nav navbar-nav">
-				{{if .Session.EmailVerified}}
+				{{if .Session}}
 				{{if .Session.Role}}
 					<li><a id="navbar-home" class="nav-link" href="/home">Home</a></li>
 					<li><a id="navbar-squads" class="nav-link" href="/squads">Squads</a></li>
@@ -54,17 +56,6 @@
 			</div>
 		</nav>
 
-		{{if .Session.Role}}
-		{{else}}
-			<script>
-				var path = window.location.pathname;
-				if(path == '/about') {
-				} else if(path == '/login') {
-				} else if(path != '/userinfo') {
-					window.location.assign('/userinfo');
-				}
-			</script>
-		{{end}}
 		<div class="container-lg mt-2 px-0 px-md-3">
 				{{template "body" . }}
 		</div>

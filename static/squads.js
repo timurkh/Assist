@@ -15,10 +15,7 @@ const app = createApp( {
 	created:function() {
 		axios({
 			method: 'GET',
-			url: '/methods/squads',
-			params: {
-				userId : 'me' 
-			}
+			url: `/methods/users/me/squads`,
 		})
 		.then(res => {
 			this.own_squads = res.data['Own']; 
@@ -34,11 +31,12 @@ const app = createApp( {
 		submitNewSquad:function() {
 
 			axios({
-				method: 'post',
+				method: 'POST',
 				url: '/methods/squads',
 				data: {
 					name: this.squadName,
-				}
+				},
+				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				var squad = {
@@ -59,8 +57,9 @@ const app = createApp( {
 		},
 		deleteSquad:function(id, index) {
 			axios({
-				method: 'delete',
+				method: 'DELETE',
 				url: '/methods/squads/' + id,
+				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
@@ -73,8 +72,9 @@ const app = createApp( {
 		leaveSquad:function(id, index) {
 			index = index;
 			axios({
-				method: 'delete',
+				method: 'DELETE',
 				url: '/methods/squads/' + id + '/members/me',
+				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
@@ -93,6 +93,7 @@ const app = createApp( {
 			axios({
 				method: 'POST',
 				url: '/methods/squads/' + id + '/members/me',
+				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
@@ -107,7 +108,7 @@ const app = createApp( {
 			});
 		},
 		showSquadDetails:function(squadId, index) {
-			window.location.href = `/squad?squadId=` + encodeURI(squadId);
+			window.location.href = `/squads/` + encodeURI(squadId) + `/members`;
 		},
 	},
 	mixins: [globalMixin],

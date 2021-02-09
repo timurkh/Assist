@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -57,9 +58,39 @@ func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) registerHandlers() {
-	r := mux.NewRouter().StrictSlash(true)
+	CSRF := csrf.Protect(
+		[]byte("dG3d563vyukewv%Yetrsbvsfd%WYfvs!"),
+		//csrf.SameSite(csrf.SameSiteStrictMode),
+		csrf.Secure(false),
+		csrf.HttpOnly(false),
+	)
 
+	// serve js files & turn off caching
+	http.Handle("/static/", NoCache(http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))))
+
+	// get rid of favicon errors in logs
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/favicon.ico")
+	})
+
+	r := mux.NewRouter().StrictSlash(true)
+	r.Use(CSRF)
 	r.Use(app.su.authMiddleware)
+
+	// Methods
+	rMethods := r.PathPrefix("/methods").Subrouter()
+
+	rMethods.Methods("POST").Path("/squads/{squadId}/members").Handler(appHandler(app.methodCreateReplicant))
+	rMethods.Methods("POST").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
+	rMethods.Methods("PUT").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodChangeSquadMemberStatus))
+	rMethods.Methods("DELETE").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
+	rMethods.Methods("POST").Path("/squads").Handler(appHandler(app.methodCreateSquad))
+	rMethods.Methods("DELETE").Path("/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
+	rMethods.Methods("GET").Path("/squads/{id}").Handler(appHandler(app.methodGetSquad))
+	rMethods.Methods("GET").Path("/squads/{id}/members").Handler(appHandler(app.methodGetSquadMembers))
+
+	rMethods.Methods("PUT").Path("/users/{id}").Handler(appHandler(app.methodSetUser))
+	rMethods.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetSquads))
 
 	// auth handlers
 	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.su.sessionLogin))
@@ -69,34 +100,12 @@ func (app *App) registerHandlers() {
 	r.Methods("GET").Path("/home").Handler(appHandler(app.homeHandler))
 	r.Methods("GET").Path("/login").Handler(appHandler(app.loginHandler))
 	r.Methods("GET").Path("/userinfo").Handler(appHandler(app.userinfoHandler))
+	r.Methods("GET").Path("/squads/{squadId}/members").Handler(appHandler(app.squadMembersHandler))
 	r.Methods("GET").Path("/squads").Handler(appHandler(app.squadsHandler))
-	r.Methods("GET").Path("/squad").Handler(appHandler(app.squadHandler))
 	r.Methods("GET").Path("/events").Handler(appHandler(app.eventsHandler))
 	r.Methods("GET").Path("/about").Handler(appHandler(app.aboutHandler))
 
 	r.Handle("/", http.RedirectHandler("/home", http.StatusFound))
-
-	// squads
-	r.Methods("POST").Path("/methods/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
-	r.Methods("PUT").Path("/methods/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodChangeSquadMemberStatus))
-	r.Methods("DELETE").Path("/methods/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
-	r.Methods("POST").Path("/methods/squads").Handler(appHandler(app.methodCreateSquad))
-	r.Methods("GET").Path("/methods/squads").Handler(appHandler(app.methodGetSquads))
-	r.Methods("DELETE").Path("/methods/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
-	r.Methods("GET").Path("/methods/squads/{id}").Handler(appHandler(app.methodGetSquad))
-	r.Methods("GET").Path("/methods/squads/{id}/members").Handler(appHandler(app.methodGetSquadMembers))
-
-	// users
-	r.Methods("PUT").Path("/methods/users/{id}").Handler(appHandler(app.methodSetUser))
-
-	// setup logging
 	http.Handle("/", handlers.CombinedLoggingHandler(os.Stdout, r))
 
-	// server js files & turn off caching
-	http.Handle("/static/", NoCache(http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))))
-
-	// get rid of favicon errors in logs
-	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./static/favicon.ico")
-	})
 }

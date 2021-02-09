@@ -1,9 +1,8 @@
 <script> document.getElementById("navbar-squads").classList.add("active"); </script>
 
-
 <script> var squadId = "{{.SquadID}}"; </script>
-<div id="app">
 
+<div id="app">
 	<div v-if="loading">
 		<div class="d-flex justify-content-center mt-5">
 			<div class="spinner-border mt-5" role="status">
@@ -28,11 +27,11 @@
 							<div class="form-group">
 
 								<label for="displayName">Name</label>
-								<input type="text" id="displayName" class="form-control" v-model="addMember_DisplayName">
+								<input type="text" id="displayName" class="form-control" v-model="replicant.displayName">
 								<label for="Email">Email</label>
-								<input type="text" id="Email" class="form-control" v-model="addMember_Email">
-								<label for="Email">Phone</label>
-								<input type="text" id="Email" class="form-control" v-model="addMember_Phone">
+								<input type="text" id="Email" class="form-control" v-model="replicant.email">
+								<label for="PhoneNumber">Phone</label>
+								<input type="text" id="PhoneNumber" class="form-control" v-model="replicant.phoneNumber">
 							</div>
 						</form>
 					</div>
@@ -97,10 +96,13 @@
 					</thead>
 					<tbody>
 						<tr class="d-flex" v-for="(member, index) in squad_members"  >
-							<td class="col-md-3 col-4 text-truncate"> [[member.displayName]] </td>
-							<td class="col-md-3 d-none d-md-table-cell text-truncate"> [[member.email]] </td>
-							<td class="col-md-2 d-none d-md-table-cell text-truncate"> [[member.phoneNumber]] </td>
-							<td class="col-md-1 col-2 text-truncate"> [[getStatusText(member.status)]] </td>
+							<td class="col-md-3 col-4 text-truncate" :title="member.displayName"> 
+								<i v-if="member.replicant" class="fas fa-robot" style="color: Dodgerblue"></i>
+								[[member.displayName]]
+						   	</td>
+							<td class="col-md-3 d-none d-md-table-cell text-truncate" :title="member.email"> [[member.email]] </td>
+							<td class="col-md-2 d-none d-md-table-cell text-truncate" :title="member.phoneNumber"> [[member.phoneNumber]] </td>
+							<td class="col-md-1 col-2 text-truncate" :title="getStatusText(member.status)" > [[getStatusText(member.status)]] </td>
 							<td class="col-md-2 col-3 text-truncate"> </td>
 							<td class="col-md-1 col-3 text-truncate"> 
 								<div class="d-flex justify-content-center">
@@ -121,4 +123,4 @@
 	</div>
 </div>
 
-<script src="static/squad.js"></script>
+<script src="/static/squadMembers.js"></script>

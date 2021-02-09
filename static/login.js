@@ -1,79 +1,77 @@
-function getCookie(name) {
-  const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
-  return v ? v[2] : null;
-}
+const { createApp } = Vue
 
-const handleSignedInUser = function(user) {
+const app = createApp( {
+	delimiters: ['[[', ']]'],
+	data(){
+		return {
+			loading:true,
+			error_message:"",
+			fire_ui:[],
+		};
+	},
+	created:function() {
+		// Initialize the FirebaseUI Widget using Firebase.
+		fire_ui = new firebaseui.auth.AuthUI(firebase.auth());
+		fire_ui.start('#firebaseui-auth-container', this.getUiConfig());
+		this.loading = false;
+	},
+	methods: {
+		handleSignedInUser:function(user) {
 
-	// Show redirection notice.
-	document.getElementById('redirecting').style.visibility = 'visible';
-	// Set session cookie
-	user.getIdToken().then(function(idToken) {
-		// Session login endpoint is queried and the session cookie is set.
-		// CSRF token should be sent along with request.
-		const csrfToken = getCookie('csrfToken')
-		return postIdTokenToSessionLogin('/sessionLogin', idToken, csrfToken)
-			.then(function() {
-				// Redirect to profile on success.
-				window.location.assign('/home');
-			}, function(error) {
-				// Refresh page on error.
-				// In all cases, client side state should be lost due to in-memory
-				// persistence.
-				console.log(error);
-				window.location.assign('/login');
+			this.loading = true;
+			// Set session cookie
+			user.getIdToken().then(idToken => {
+				// Session login endpoint is queried and the session cookie is set.
+				// CSRF token should be sent along with request.
+				return this.postIdTokenToSessionLogin('/sessionLogin', idToken)
+					.then(function() {
+						// Redirect to profile on success.
+						window.location.assign('/home');
+					}, function(error) {
+						this.error_message = ("Failed to login - " + error);
+					});
 			});
-	});
-};
-
-const postIdTokenToSessionLogin = function(url, idToken, csrfToken) {
-	// POST to session login endpoint.
-	 return $.ajax({
-		     type:'POST',
-		     url: url,
-		     data: {idToken: idToken, csrfToken: csrfToken},
-		     contentType: 'application/x-www-form-urlencoded'
-		   });
-};
-
-function getUiConfig() {
-	return {
-		'callbacks': {
-			'signInSuccessWithAuthResult': function(authResult, redirectUrl) {
-				handleSignedInUser(authResult.user);
-				return false;
-			},
-			'uiShown': function() {
-				document.getElementById('loading').style.display = 'none';
-			}
 		},
-		'signInFlow': 'popup',
-		'signInSuccessUrl': '/home',
-		'signInOptions': [
-			{
-				provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
-				requireDisplayName: true,
-				signInMethod: "password",
-			},
-			firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-			firebase.auth.FacebookAuthProvider.PROVIDER_ID,
-			{
-				provider: firebase.auth.PhoneAuthProvider.PROVIDER_ID,
-				defaultCountry: 'RU',
-			},
-		],
-	};
-}
-
-// get auth status
-const initApp = function() {
-	// Initialize the FirebaseUI Widget using Firebase.
-	var ui = new firebaseui.auth.AuthUI(firebase.auth());
-	ui.start('#firebaseui-auth-container', getUiConfig());
-};
-
-window.addEventListener('load', function() {
-	initApp()
-});
-
+		postIdTokenToSessionLogin : function(url, idToken) {
+			const params = new URLSearchParams();
+			params.append('idToken', idToken);
+			return axios({
+				method: 'POST',
+				url: url,
+				data: params,
+				headers: { 
+					'Content-Type': 'application/x-www-form-urlencoded',
+					'X-CSRF-Token': csrfToken, },
+			})
+		},
+		getUiConfig : function() {
+			return {
+				'callbacks': {
+					'signInSuccessWithAuthResult': (authResult, redirectUrl) => {
+						this.handleSignedInUser(authResult.user);
+						return false;
+					},
+					'uiShown': function() {
+						this.loading = false;
+					}
+				},
+				'signInFlow': 'popup',
+				'signInSuccessUrl': '/home',
+				'signInOptions': [
+					{
+						provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
+						requireDisplayName: true,
+						signInMethod: "password",
+					},
+					firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+					firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+					{
+						provider: firebase.auth.PhoneAuthProvider.PROVIDER_ID,
+						defaultCountry: 'RU',
+					},
+				],
+			};
+		},
+	},
+}).mount("#app");
 
