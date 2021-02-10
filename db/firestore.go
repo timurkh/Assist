@@ -10,6 +10,7 @@ import (
 )
 
 const ALL_USERS_SQUAD = "All Users"
+const USER_SQUADS = "member_squads"
 
 type FirestoreDB struct {
 	Client  *firestore.Client

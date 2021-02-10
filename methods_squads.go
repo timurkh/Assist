@@ -85,6 +85,38 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
+func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
+
+	ctx := r.Context()
+
+	params := mux.Vars(r)
+	userId := params["userId"]
+
+	if userId != "me" {
+		err := fmt.Errorf("Can retrieve home values only for myself")
+		http.Error(w, err.Error(), http.StatusNotImplemented)
+		return err
+	}
+	userId = app.su.getCurrentUserID(r)
+
+	homeCounters, err := app.db.GetHomeCounters(ctx, userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	err = json.NewEncoder(w).Encode(homeCounters)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	return err
+}
+
 func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := r.Context()

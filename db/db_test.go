@@ -72,6 +72,20 @@ func TestInitDB(t *testing.T) {
 		}
 	})
 
+	t.Run("Create pending approve users", func(t *testing.T) {
+		for i := 0; i < 2; i++ {
+			userInfo := &UserInfo{
+				DisplayName: fmt.Sprint("Pending Approve User ", i),
+				Email:       fmt.Sprint(i, "pending@mail.com"),
+				PhoneNumber: fmt.Sprint("1900555111120", i),
+			}
+			err := db.CreateUser(ctx, fmt.Sprint("PENDING_APPROVE_USER_", i), userInfo)
+			if err != nil {
+				t.Fatalf("Failed to create pending approve user: %v", err)
+			}
+		}
+	})
+
 	t.Run("Create test superuser", func(t *testing.T) {
 		userInfo := &UserInfo{
 			DisplayName: "SuperUser",
@@ -102,18 +116,27 @@ func TestInitDB(t *testing.T) {
 		}
 	})
 
+	t.Run("Add pending approver users to same squad", func(t *testing.T) {
+		for i := 0; i < 2; i++ {
+			err := db.AddMemberToSquad(ctx, fmt.Sprint("PENDING_APPROVE_USER_", i), "TEST_SQUAD_0", PendingApprove)
+			if err != nil {
+				t.Fatalf("Failed to add user to squad: %v", err)
+			}
+		}
+	})
+
 	t.Run("Check GetSquadMembers", func(t *testing.T) {
 		allUsers, err := db.GetSquadMembers(ctx, ALL_USERS_SQUAD)
 		if err != nil {
 			t.Errorf("Failed to retrieve squad members: %v", err)
 		}
 
-		if len(allUsers) != 6 {
+		if len(allUsers) != 8 {
 			t.Errorf("Wrong number of members in ALL USERS squad")
 		}
 
 		testSquad0, err := db.GetSquadMembers(ctx, "TEST_SQUAD_0")
-		if len(testSquad0) != 6 {
+		if len(testSquad0) != 8 {
 			t.Errorf("Wrong number of members in TEST_SQUAD_0 squad - %v", len(testSquad0))
 		}
 
@@ -149,7 +172,7 @@ func TestInitDB(t *testing.T) {
 				t.Errorf("Wrong number of other_squads for TEST_USER_0 - %v", len(other_squads))
 			}
 
-			if own_squads[0].MembersCount != 6 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
+			if own_squads[0].MembersCount != 6 || own_squads[0].PendingApproveCount != 2 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
 				if i != 0 {
 					t.Logf("Wrong squad info for the only squad for TEST_USER_0 - %+v", own_squads[0])
 					time.Sleep(100 * time.Millisecond)
@@ -171,9 +194,15 @@ func TestInitDB(t *testing.T) {
 			t.Errorf("Failed to delete member from squad: %v", err)
 		}
 
+		//delete pending approve from squad
+		err = db.DeleteMemberFromSquad(ctx, "PENDING_APPROVE_USER_0", "TEST_SQUAD_0")
+		if err != nil {
+			t.Errorf("Failed to delete member from squad: %v", err)
+		}
+
 		// ensure squad has correct records about users
 		testSquad0, err := db.GetSquadMembers(ctx, "TEST_SQUAD_0")
-		if len(testSquad0) != 5 {
+		if len(testSquad0) != 6 {
 			t.Errorf("Wrong number of members in TEST_SQUAD_0 squad after deleting TEST_USER_0 from it - %v", len(testSquad0))
 		}
 
@@ -202,7 +231,61 @@ func TestInitDB(t *testing.T) {
 				t.Errorf("Wrong number of other_squads for TEST_USER_1 - %v", len(own_squads))
 			}
 
-			if own_squads[0].MembersCount != 5 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
+			if own_squads[0].MembersCount != 5 || own_squads[0].PendingApproveCount != 1 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
+				if i != 0 {
+					t.Logf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+					time.Sleep(100 * time.Millisecond)
+					t.Log("Trying once more")
+				} else {
+					t.Errorf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+				}
+			} else {
+				break
+			}
+		}
+	})
+
+	t.Run("Check SetSquadMemberStatus", func(t *testing.T) {
+		//delete user from squad
+		err := db.SetSquadMemberStatus(ctx, "PENDING_APPROVE_USER_1", "TEST_SQUAD_0", Member)
+		if err != nil {
+			t.Errorf("Failed to set status member: %v", err)
+		}
+
+		// ensure squad members have correct records about squads
+		for i := 5; i >= 0; i-- {
+			own_squads, _, err := db.GetSquads(ctx, "PENDING_APPROVE_USER_1", false)
+			if err != nil {
+				t.Errorf("Failed to retrieve squads: %v", err)
+			}
+
+			if own_squads[0].MembersCount != 6 || own_squads[0].PendingApproveCount != 0 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
+				if i != 0 {
+					t.Logf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+					time.Sleep(100 * time.Millisecond)
+					t.Log("Trying once more")
+				} else {
+					t.Errorf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+				}
+			} else {
+				break
+			}
+		}
+
+		// set back user status to PendingApprove
+		err = db.SetSquadMemberStatus(ctx, "PENDING_APPROVE_USER_1", "TEST_SQUAD_0", PendingApprove)
+		if err != nil {
+			t.Errorf("Failed to set status member: %v", err)
+		}
+
+		// ensure squad members have correct records about squads
+		for i := 5; i >= 0; i-- {
+			own_squads, _, err := db.GetSquads(ctx, "TEST_USER_1", false)
+			if err != nil {
+				t.Errorf("Failed to retrieve squads: %v", err)
+			}
+
+			if own_squads[0].MembersCount != 5 || own_squads[0].PendingApproveCount != 1 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
 				if i != 0 {
 					t.Logf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
 					time.Sleep(100 * time.Millisecond)

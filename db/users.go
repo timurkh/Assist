@@ -54,7 +54,7 @@ func (db *FirestoreDB) GetUserByName(ctx context.Context, userName string) (user
 
 func (db *FirestoreDB) AddSquadRecordToMember(ctx context.Context, userId string, squadId string, squadInfo *MemberSquadInfo) error {
 
-	doc := db.Users.Doc(userId).Collection("squads").Doc(squadId)
+	doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(squadId)
 
 	_, err := doc.Set(ctx, squadInfo)
 	if err != nil {
@@ -79,7 +79,7 @@ func (db *FirestoreDB) CreateUser(ctx context.Context, userId string, userInfo *
 
 func (db *FirestoreDB) DeleteSquadRecordFromMember(ctx context.Context, userId string, squadId string) error {
 
-	doc := db.Users.Doc(userId).Collection("squads").Doc(squadId)
+	doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(squadId)
 
 	_, err := doc.Delete(ctx)
 	if err != nil {
@@ -92,7 +92,7 @@ func (db *FirestoreDB) DeleteSquadRecordFromMember(ctx context.Context, userId s
 func (db *FirestoreDB) propagateChangedUserInfo(userId string, field string, val interface{}) {
 	ctx := context.Background()
 	docUser := db.Users.Doc(userId)
-	iter := docUser.Collection("squads").Documents(ctx)
+	iter := docUser.Collection(USER_SQUADS).Documents(ctx)
 	defer iter.Stop()
 	for {
 		docSquad, err := iter.Next()
@@ -178,4 +178,25 @@ func (db *FirestoreDB) UpdateUserStatusFromFirebase(ctx context.Context, uid str
 	}
 
 	return nil
+}
+
+func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (map[string][]int, error) {
+
+	counters := make(map[string][]int, 0)
+
+	squads := make([]int, len(MemberStatusTypes))
+
+	for i, status := range MemberStatusTypes {
+		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "==", MemberStatusTypes[i]).Snapshots(ctx)
+		defer iter.Stop()
+		snapshot, err := iter.Next()
+		if err != nil {
+			log.Fatalf("Failed to get amount of user %v squads with status %v: %v", userId, status.String(), err)
+			return nil, err
+		}
+		squads[i] = snapshot.Size
+	}
+	counters["squads"] = squads
+
+	return counters, nil
 }

@@ -6,22 +6,21 @@ const app = createApp( {
 		return {
 			loading:true,
 			error_message:"",
-			squadsCount:0,
-			pendingApprove:0
+			homeCounters:[],
 		};
 	},
 	created:function() {
 		axios({
 			method: 'GET',
-			url: `/methods/users/{userId}/home`,
+			url: `/methods/users/me/home`,
 		})
 		.then(res => {
-			this.squad_members = res.data['squadsCount']; 
-			this.squad_owner = res.data['pendingApprove'];
+			this.homeCounters = res.data;
+			console.log(this.homeCounters);
 			this.loading = false;
 		})
 		.catch(error => {
-			this.error_message = "Failed to retrieve home dashboard information: " + error;
+			this.error_message = "Failed to retrieve home dashboard information: " + error.response.data.error;
 			this.loading = false;
 		})
 	},

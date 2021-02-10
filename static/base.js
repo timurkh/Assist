@@ -20,16 +20,18 @@ const csrfToken = document.getElementsByName("gorilla.csrf.Token")[0].value;
 
 const postSignOut = function() {
 	// POST to session login endpoint.
-	console.log(csrfToken);
-	$.ajax({
-		type:'POST',
-		url: "/sessionLogout",
-		headers: { 
-			'X-CSRF-Token': csrfToken, },
+	axios({
+		method: 'POST',
+		url: '/sessionLogout',
+		headers: { "X-CSRF-Token": csrfToken },
 	})
 	.then(function() {
+		// Redirect to profile on success.
 		window.location.assign('/login');
 	}, function(error) {
+		// Refresh page on error.
+		// In all cases, client side state should be lost due to in-memory
+		// persistence.
 		console.log(error);
 	});
 }

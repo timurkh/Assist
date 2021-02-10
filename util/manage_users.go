@@ -150,8 +150,7 @@ func (app *App) flushSquadInfoFromUsers(ctx context.Context) {
 		}
 
 		log.Printf("Removing records about squads for user %v", doc.Ref.ID)
-		app.removeCollection(ctx, doc.Ref.Collection("member_squads"))
-		app.removeCollection(ctx, doc.Ref.Collection("own_squads"))
+		app.removeCollection(ctx, doc.Ref.Collection(db.USER_SQUADS))
 		app.removeCollection(ctx, doc.Ref.Collection("squads"))
 	}
 }
@@ -194,15 +193,17 @@ func (app *App) populateSquadInfoToUsers(ctx context.Context) {
 			log.Fatal("Error while populating squads info to users: %w", err)
 		}
 		for _, member := range squadMembers {
-			memberSquadInfo := &db.MemberSquadInfo{
-				SquadInfo: *squadInfo,
-				Status:    member.Status,
+			if member.Replicant == false {
+				memberSquadInfo := &db.MemberSquadInfo{
+					SquadInfo: *squadInfo,
+					Status:    member.Status,
+				}
+				err := app.db.AddSquadRecordToMember(ctx, member.ID, squadId, memberSquadInfo)
+				if err != nil {
+					log.Fatal("Error while populating squads info to users: %w", err)
+				}
+				log.Printf("\tmember : %v", member.ID)
 			}
-			err := app.db.AddSquadRecordToMember(ctx, member.ID, squadId, memberSquadInfo)
-			if err != nil {
-				log.Fatal("Error while populating squads info to users: %w", err)
-			}
-			log.Printf("\tmember : %v", member.ID)
 		}
 	}
 }

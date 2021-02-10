@@ -62,7 +62,7 @@ func (app *App) aboutHandler(w http.ResponseWriter, r *http.Request) error {
 			CSRFTag template.HTML
 		}{app.su.getSessionData(r), csrf.TemplateField(r)})
 	} else {
-		return loginTmpl.Execute(app, w, r, struct {
+		return aboutTmpl.Execute(app, w, r, struct {
 			Session *SessionData
 			CSRFTag template.HTML
 		}{nil, csrf.TemplateField(r)})

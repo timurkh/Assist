@@ -33,50 +33,17 @@
 										<h6 class="text-uppercase">My Squads</h6>
 									</div>
 									<div class="col-8 px-0">
-										<h6 class="text-uppercase" align="center">Total 16:</h6>
+										<h6 class="text-uppercase" align="center">Total [[homeCounters['squads'].reduce((a,c) => a+c)]]:</h6>
 										<table class="table text-white table-borderless mx-0">
-											<tr class="py-0 my-0">
+											<tr v-for="(count, index) in homeCounters['squads']" class="py-0 my-0">
 												<td class="py-0">
-													Waiting for approve
+													[[getStatusText(index)]]
 												</td>
 												<td class="text-center align-middle py-0">
 													-
 												</td>
 												<td class="align-middle py-0">	
-													4
-												</td>
-											</tr>
-											<tr class="py-0 my-0">
-												<td class="py-0">
-													Member
-												</td>
-												<td class="text-center align-middle py-0">
-													-
-												</td>
-												<td class="align-middle py-0">	
-													4
-												</td>
-											</tr>
-											<tr class="py-0 my-0">
-												<td class="py-0">
-													Admin
-												</td>
-												<td class="text-center align-middle py-0">
-													-
-												</td>
-												<td class="align-middle py-0">	
-													4
-												</td>
-											</tr>
-											<tr class="py-0 my-0">
-												<td class="py-0">
-													Owner
-												</td>
-												<td class="text-center align-middle py-0">
-													-
-												</td>
-												<td class="align-middle py-0">	
-													4
+													[[count]]
 												</td>
 											</tr>
 										</table>

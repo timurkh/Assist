@@ -18,6 +18,13 @@ const (
 	Owner
 )
 
+var MemberStatusTypes = []MemberStatusType{
+	PendingApprove,
+	Member,
+	Admin,
+	Owner,
+}
+
 func (s MemberStatusType) String() string {
 	texts := []string{
 		"Pending Approve",
@@ -30,8 +37,9 @@ func (s MemberStatusType) String() string {
 }
 
 type SquadInfo struct {
-	Owner        string `json:"owner"`
-	MembersCount int    `json:"membersCount"`
+	Owner               string `json:"owner"`
+	MembersCount        int    `json:"membersCount"`
+	PendingApproveCount int    `json:"pendingApproveCount"`
 }
 
 type SquadInfoRecord struct {
@@ -66,6 +74,7 @@ func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, ownerId 
 
 	squadInfo := &SquadInfo{
 		ownerId,
+		0,
 		0,
 	}
 
@@ -148,7 +157,7 @@ func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string) (map[st
 
 	squads_map := make(map[string]*MemberSquadInfoRecord, 0)
 
-	iter := db.Users.Doc(userID).Collection("squads").Documents(ctx)
+	iter := db.Users.Doc(userID).Collection(USER_SQUADS).Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -231,7 +240,7 @@ func (db *FirestoreDB) DeleteSquad(ctx context.Context, squadId string) error {
 			memberId := docMember.Ref.ID
 			log.Printf("Deleting squad %v from user %v", squadId, memberId)
 
-			db.Users.Doc(memberId).Collection("squads").Doc(squadId).Delete(ctx)
+			db.Users.Doc(memberId).Collection("member_squads").Doc(squadId).Delete(ctx)
 		}
 	}()
 
@@ -284,7 +293,7 @@ func (db *FirestoreDB) propagateChangedSquadInfo(squadId string, field string) {
 
 		userId := docMember.Ref.ID
 
-		doc := db.Users.Doc(userId).Collection("squads").Doc(squadId)
+		doc := db.Users.Doc(userId).Collection("member_squads").Doc(squadId)
 		db.updater.dispatchCommand(doc, field, val)
 	}
 }
@@ -295,9 +304,15 @@ func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId strin
 
 	docMember := db.Squads.Doc(squadId).Collection("members").Doc(userId)
 	batch.Set(docMember, userInfo)
+
 	docSquad := db.Squads.Doc(squadId)
+	path := "MembersCount"
+	if userInfo.Status == PendingApprove {
+		path = "PendingApproveCount"
+	}
+
 	batch.Update(docSquad, []firestore.Update{
-		{Path: "MembersCount", Value: firestore.Increment(1)},
+		{Path: path, Value: firestore.Increment(1)},
 	})
 
 	_, err := batch.Commit(ctx)
@@ -306,7 +321,7 @@ func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId strin
 	}
 
 	if squadId != ALL_USERS_SQUAD {
-		go db.propagateChangedSquadInfo(squadId, "MembersCount")
+		go db.propagateChangedSquadInfo(squadId, path)
 	}
 
 	return nil
@@ -314,21 +329,29 @@ func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId strin
 
 func (db *FirestoreDB) DeleteMemberRecordFromSquad(ctx context.Context, squadId string, userId string) error {
 
-	batch := db.Client.Batch()
+	status, err := db.GetSquadMemberStatus(ctx, userId, squadId)
+	if err != nil {
+		return err
+	}
+	path := "MembersCount"
+	if status == PendingApprove {
+		path = "PendingApproveCount"
+	}
 
-	docMember := db.Squads.Doc(squadId).Collection("members").Doc(userId)
-	batch.Delete(docMember)
+	batch := db.Client.Batch()
 	docSquad := db.Squads.Doc(squadId)
+	docMember := docSquad.Collection("members").Doc(userId)
+	batch.Delete(docMember)
 	batch.Update(docSquad, []firestore.Update{
-		{Path: "MembersCount", Value: firestore.Increment(-1)},
+		{Path: path, Value: firestore.Increment(-1)},
 	})
 
-	_, err := batch.Commit(ctx)
+	_, err = batch.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to delete user %v from squad %v: %w", userId, squadId, err)
 	}
 
-	go db.propagateChangedSquadInfo(squadId, "MembersCount")
+	go db.propagateChangedSquadInfo(squadId, path)
 
 	return nil
 }
@@ -359,6 +382,10 @@ func (db *FirestoreDB) FlushSquadSize(ctx context.Context, squadId string) error
 			Path:  "MembersCount",
 			Value: replicantsAmount,
 		},
+		{
+			Path:  "PendingApproveCount",
+			Value: 0,
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to update squad %v: %w", squadId, err)
@@ -381,17 +408,41 @@ func (db *FirestoreDB) GetSquadMemberStatus(ctx context.Context, userId string, 
 }
 
 func (db *FirestoreDB) SetSquadMemberStatus(ctx context.Context, userId string, squadId string, status MemberStatusType) error {
-	docSquad := db.Users.Doc(userId).Collection("squads").Doc(squadId)
-	err := db.updateDocProperty(ctx, docSquad, "Status", status)
+	oldStatus, err := db.GetSquadMemberStatus(ctx, userId, squadId)
 	if err != nil {
-		return fmt.Errorf("Failed to update user "+userId+" status: %w", err)
+		return err
 	}
 
+	batch := db.Client.Batch()
+
+	docSquad := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(squadId)
+	batch.Update(docSquad, []firestore.Update{{Path: "Status", Value: status}})
+
 	docMember := db.Squads.Doc(squadId).Collection("members").Doc(userId)
+	batch.Update(docMember, []firestore.Update{{Path: "Status", Value: status}})
 	err = db.updateDocProperty(ctx, docMember, "Status", status)
-	if err != nil {
-		return fmt.Errorf("Failed to update user "+userId+" status: %w", err)
+
+	changedCount := 0
+	if oldStatus == PendingApprove && status != PendingApprove {
+		changedCount = 1
 	}
+	if oldStatus != PendingApprove && status == PendingApprove {
+		changedCount = -1
+	}
+	if changedCount != 0 {
+		batch.Update(docSquad, []firestore.Update{
+			{Path: "MembersCount", Value: firestore.Increment(changedCount)},
+		})
+		batch.Update(docSquad, []firestore.Update{
+			{Path: "PendingApproveCount", Value: firestore.Increment(-changedCount)},
+		})
+	}
+
+	_, err = batch.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to change user "+userId+" status: %w", err)
+	}
+
 	return nil
 }
 

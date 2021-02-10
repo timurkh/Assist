@@ -58,13 +58,6 @@ func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) registerHandlers() {
-	CSRF := csrf.Protect(
-		[]byte("dG3d563vyukewv%Yetrsbvsfd%WYfvs!"),
-		//csrf.SameSite(csrf.SameSiteStrictMode),
-		csrf.Secure(false),
-		csrf.HttpOnly(false),
-	)
-
 	// serve js files & turn off caching
 	http.Handle("/static/", NoCache(http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))))
 
@@ -74,6 +67,13 @@ func (app *App) registerHandlers() {
 	})
 
 	r := mux.NewRouter().StrictSlash(true)
+	CSRF := csrf.Protect(
+		[]byte("dG3d563vyukewv%Yetrsbvsfd%WYfvs!"),
+		//csrf.SameSite(csrf.SameSiteStrictMode),
+		csrf.Secure(false),
+		csrf.HttpOnly(false),
+	)
+
 	r.Use(CSRF)
 	r.Use(app.su.authMiddleware)
 
@@ -91,6 +91,7 @@ func (app *App) registerHandlers() {
 
 	rMethods.Methods("PUT").Path("/users/{id}").Handler(appHandler(app.methodSetUser))
 	rMethods.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetSquads))
+	rMethods.Methods("GET").Path("/users/{userId}/home").Handler(appHandler(app.methodGetHome))
 
 	// auth handlers
 	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.su.sessionLogin))
