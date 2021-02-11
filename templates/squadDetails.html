@@ -1,0 +1,164 @@
+<script> document.getElementById("navbar-squads").classList.add("active"); </script>
+
+<script> var squadId = "{{.SquadID}}"; </script>
+
+<div id="app">
+	<div v-if="loading">
+		<div class="mt-5" align="center">
+			<div class="spinner-border mt-5" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+	</div>
+	<div v-if="!loading" v-cloak>
+		<!-- Modal Windows -->
+		<div class="modal fade" id="addNoteModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Add Note</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<form>
+							<div class="form-group">
+								<label for="newNoteTitle">Title</label>
+								<input type="text" id="newNoteTitle" class="form-control" v-model="newNote.title">
+								<label for="newNote">Note</label>
+								<input type="text" id="newNote" class="form-control" v-model="newNote.text">
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-primary" v-on:click="addNote()" data-dismiss="modal">Add</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="modal fade" id="addTagModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Add Tag</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<form>
+							<div class="form-group">
+								<label for="newNoteTitle">Title</label>
+								<input type="text" id="newNoteTitle" class="form-control" v-model="newNote.title">
+								<label for="newNote">Note</label>
+								<input type="text" id="newNote" class="form-control" v-model="newNote.text">
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-primary" v-on:click="addNote()" data-dismiss="modal">Add</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- Main View -->
+		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2" role="alert">
+			[[ error_message ]]
+		</div>
+
+		<div class="d-flex flex-wrap">
+			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 mb-1 mx-1">
+				<ol class="breadcrumb mb-0 p-0">
+					<li class="breadcrumb-item d-none d-sm-block">My Squads</li>
+					<li class="breadcrumb-item active">"{{.SquadID}}"</li>
+				</ol>
+			</div>
+			<button type="button" class="btn btn-info add-new ml-auto p-0 mr-1 mb-1 px-1" data-toggle="modal" data-target="#addNoteModal"><i class="fa fa-plus"></i> Add Note</button>
+			<button type="button" class="btn btn-info add-new ml-auto p-0 mr-1 mb-1 px-1" data-toggle="modal" data-target="#addTagModal"><i class="fa fa-plus"></i> Add Tag</button>
+		</div>
+
+
+
+		<div class="container-fluid m-0 p-0"> 
+			<div class="row">
+				<div class="col-12 col-md-8">
+					<div class="m-1 p-3 bg-white rounded box-shadow" id="notesAccordion">
+						<h5 class="border-bottom border-gray pb-2 mb-0">Notes</h6>
+						<div v-for="i in 3" class="media pt-2">
+							<div class="media-body pb-2 mb-0 lh-125 border-bottom border-gray">
+								<div class="d-flex justify-content-between align-items-center w-100">
+									<a data-toggle="collapse" :href="'#note_' + i"> <strong class="text-gray-dark">Memento [[i]]</strong></a>
+								</div>
+								<div :id="'note_' + i" :class="[i==1 ? `collapse show` : `collapse`]" data-parent="#notesAccordion">
+									<span>
+										Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
+									</span>
+									<div align="right">
+										<small>
+											<a href="#">Edit</a> &nbsp; <a href="#">Delete</a>
+										</small>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div id="otherNotes" class="collapse">
+							<div v-for="i in 7" class="media pt-2">
+								<div class="media-body pb-2 mb-0 lh-125 border-bottom border-gray">
+									<div class="d-flex justify-content-between align-items-center w-100">
+										<a data-toggle="collapse" :href="'#note_' + i+3"> <strong class="text-gray-dark">Memento [[i+3]]</strong></a>
+									</div>
+									<div :id="'note_' + i+3" class="collapse" data-parent="#notesAccordion">
+										<span>
+											Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
+										</span>
+										<div>
+											<small>
+												<a href="#">Edit</a> &nbsp; <a href="#">Delete</a>
+											</small>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<small class="d-block text-right mt-3">
+							<a data-toggle="collapse" class="collapsed" href="#otherNotes">
+								<span class="if-collapsed">More Notes</span>
+								<span class="if-not-collapsed">Less Notes</span>
+							</a>
+						</small>
+					</div>
+
+				</div>
+				<div class="col-12 col-md-4">
+					<div class="m-1 p-3 bg-white rounded box-shadow" id="Tags">
+						<h5 class="border-bottom border-gray pb-2 mb-0">Tags</h6>
+						<table class="table">
+							<tbody>
+								<tr v-for="i in 4">
+									<th v-if="i==2">Tag-[[i]]</th>
+									<th v-else scope="row"><a href="#">Tag-[[i]]</a></th>
+									<td v-if="i==2">
+										<p><a href="#">Tag-2_1</a></p>
+										<p><a href="#">Tag-2_2</a></p>
+										<p><a href="#">Tag-2_3</a></p>
+									</td>
+									<td v-else> </td>
+									<td align="right" v-if="i==2">
+										<p>2</p>
+										<p>0</p>
+										<p>4</p>
+									</td>
+									<td v-else align="right">4</td>
+									<td align="right"><small><a href="#">Delete</a> <a href="#">Rename</small></a></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script src="/static/squadDetails.js"></script>

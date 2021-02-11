@@ -78,20 +78,20 @@ func (app *App) registerHandlers() {
 	r.Use(app.su.authMiddleware)
 
 	// Methods
-	rMethods := r.PathPrefix("/methods").Subrouter()
+	rm := r.PathPrefix("/methods").Subrouter()
 
-	rMethods.Methods("POST").Path("/squads/{squadId}/members").Handler(appHandler(app.methodCreateReplicant))
-	rMethods.Methods("POST").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
-	rMethods.Methods("PUT").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodChangeSquadMemberStatus))
-	rMethods.Methods("DELETE").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
-	rMethods.Methods("POST").Path("/squads").Handler(appHandler(app.methodCreateSquad))
-	rMethods.Methods("DELETE").Path("/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
-	rMethods.Methods("GET").Path("/squads/{id}").Handler(appHandler(app.methodGetSquad))
-	rMethods.Methods("GET").Path("/squads/{id}/members").Handler(appHandler(app.methodGetSquadMembers))
+	rm.Methods("POST").Path("/squads/{squadId}/members").Handler(appHandler(app.methodCreateReplicant))
+	rm.Methods("POST").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
+	rm.Methods("PUT").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodChangeSquadMemberStatus))
+	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
+	rm.Methods("POST").Path("/squads").Handler(appHandler(app.methodCreateSquad))
+	rm.Methods("DELETE").Path("/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
+	rm.Methods("GET").Path("/squads/{id}").Handler(appHandler(app.methodGetSquad))
+	rm.Methods("GET").Path("/squads/{id}/members").Handler(appHandler(app.methodGetSquadMembers))
 
-	rMethods.Methods("PUT").Path("/users/{id}").Handler(appHandler(app.methodSetUser))
-	rMethods.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetSquads))
-	rMethods.Methods("GET").Path("/users/{userId}/home").Handler(appHandler(app.methodGetHome))
+	rm.Methods("PUT").Path("/users/{id}").Handler(appHandler(app.methodSetUser))
+	rm.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetSquads))
+	rm.Methods("GET").Path("/users/{userId}/home").Handler(appHandler(app.methodGetHome))
 
 	// auth handlers
 	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.su.sessionLogin))
@@ -102,6 +102,7 @@ func (app *App) registerHandlers() {
 	r.Methods("GET").Path("/login").Handler(appHandler(app.loginHandler))
 	r.Methods("GET").Path("/userinfo").Handler(appHandler(app.userinfoHandler))
 	r.Methods("GET").Path("/squads/{squadId}/members").Handler(appHandler(app.squadMembersHandler))
+	r.Methods("GET").Path("/squads/{squadId}").Handler(appHandler(app.squadDetailsHandler))
 	r.Methods("GET").Path("/squads").Handler(appHandler(app.squadsHandler))
 	r.Methods("GET").Path("/events").Handler(appHandler(app.eventsHandler))
 	r.Methods("GET").Path("/about").Handler(appHandler(app.aboutHandler))

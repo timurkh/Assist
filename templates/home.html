@@ -23,8 +23,8 @@
 		<div class="table table-body mx-0 px-0">
 				<div class="row px-0 mx-0">
 					<div class="col-xl-4 col-sm-6 px-1 my-1">
-						<div class="card bg-success text-white h-100">
-							<div class="card-body bg-success">
+						<div class="card text-white h-100">
+							<div :class="getSquadsClass()">
 								<div class="row">
 									<div class="col-4">
 										<div >
@@ -33,7 +33,7 @@
 										<h6 class="text-uppercase">My Squads</h6>
 									</div>
 									<div class="col-8 px-0">
-										<h6 class="text-uppercase" align="center">Total [[homeCounters['squads'].reduce((a,c) => a+c)]]:</h6>
+										<h6 class="text-uppercase" align="center">Total [[getSquadsCount()]]:</h6>
 										<table class="table text-white table-borderless mx-0">
 											<tr v-for="(count, index) in homeCounters['squads']" class="py-0 my-0">
 												<td class="py-0">
@@ -53,8 +53,8 @@
 						</div>
 					</div>
 					<div class="col-xl-4 col-sm-6 px-1 px-xl-3 my-1">
-						<div class="card text-white bg-danger h-100">
-							<div class="card-body bg-danger">
+						<div class="card text-white h-100">
+							<div :class="getTodoClass()">
 								<div class="row">
 									<div class="col-4">
 										<div>
@@ -63,17 +63,17 @@
 										<h6 class="text-uppercase">TODO</h6>
 									</div>
 									<div class="col-8 px-0">
-										<h6 class="text-uppercase" align="center">Please check:</h6>
+										<h6 class="text-uppercase" align="center">Please Check:</h6>
 										<table class="table text-white table-borderless mx-0">
 											<tr class="py-0 my-0">
 												<td class="py-0">
-													Approval requests from new members
+													Squads with Approval Requests
 												</td>
 												<td class="text-center align-middle py-0">
 													-
 												</td>
 												<td class="align-middle py-0">	
-													4
+													[[homeCounters["pendingApprove"] ]]
 												</td>
 											</tr>
 										</table>
@@ -83,13 +83,19 @@
 						</div>
 					</div>
 					<div class="col-xl-4 col-sm-6 px-1 my-1">
-						<div class="card text-white bg-warning h-100">
-							<div class="card-body">
-								<div class="rotate">
-									<i class="fa fa-list fa-4x"></i>
+						<div class="card text-white h-100">
+							<div :class="getEventsClass()">
+								<div class="row">
+									<div class="col-4">
+										<div>
+											<i class="fa fa-list fa-4x"></i>
+										</div>
+										<h6 class="text-uppercase">Events</h6>
+									</div>
+									<div class="col-8 px-0">
+										<h6 class="text-uppercase" align="center">Upcoming Events:</h6>
+									</div>
 								</div>
-								<h6 class="text-uppercase">Events</h6>
-								<h1 class="display-4">36</h1>
 							</div>
 						</div>
 					</div>

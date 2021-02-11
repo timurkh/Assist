@@ -108,6 +108,9 @@ const app = createApp( {
 			});
 		},
 		showSquadDetails:function(squadId, index) {
+			window.location.href = `/squads/` + encodeURI(squadId);
+		},
+		showSquadMembers:function(squadId, index) {
 			window.location.href = `/squads/` + encodeURI(squadId) + `/members`;
 		},
 	},

@@ -61,72 +61,80 @@
 		</div>
 
 		<!-- Main View -->
-		<div v-if="!loading && own_squads.length == 0" class="alert alert-primary m-1" role="alert">
+		<div v-if="own_squads.length == 0" class="alert alert-primary m-1 mt-2" role="alert">
 			You are not a member of any squad. Go ahead and join existing one or create your own.
 		</div>
 
-		<div v-if="error_message.length > 0" class="alert alert-danger m-1" role="alert">
+		<div v-if="error_message.length > 0" class="alert alert-danger m-1 mt-2" role="alert">
 			[[ error_message ]]
 		</div>
 
-		<div class="container-fluid m-0 p-0">
-			<div class="d-flex flex-wrap">
-				<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 m-1">
-					<ol class="breadcrumb mb-0 p-0">
-						<li class="breadcrumb-item active">My Squads</li>
-					</ol>
-				</div>
-
-				<div class="ml-auto p-0 m-1">
-					<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#joinSquadModal"><i class="fas fa-user-plus"></i> Join Squad</button>
-					<button type="button" class="btn btn-info add-new p-1 ml-1" data-toggle="modal" data-target="#addNewSquadModal"><i class="fa fa-plus"></i> Create Squad</button>
-				</div>
+		<div class="d-flex flex-wrap">
+			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 mb-1 mx-1">
+				<ol class="breadcrumb mb-0 p-0">
+					<li class="breadcrumb-item active">My Squads</li>
+				</ol>
 			</div>
 
-			<div class="table-responsive-lg m-0 p-1">
-				<table class="table table-sm table-bordered m-0">
-					<thead class="thead-dark text-truncate">
-						<tr class="d-flex">
-							<th class="col-lg-5 col-md-4 col-sm-5 text-truncate">Squad</th>
-							<th class="col-lg-2 col-md-3 d-none d-md-table-cell text-truncate">Members Count</th>
-							<th class="col-lg-3 col-md-3 col-sm-4 text-truncate">My Status</th>
-							<th class="col-lg-2 col-md-2 col-sm-3 text-truncate">Actions</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr class="d-flex" v-for="(squad, index) in own_squads">
+			<div class="ml-auto p-0 mr-1 mb-1">
+				<button type="button" class="btn btn-info add-new px-1" data-toggle="modal" data-target="#joinSquadModal"><i class="fas fa-user-plus"></i> Join Squad</button>
+				<button type="button" class="btn btn-info add-new px-1 ml-1" data-toggle="modal" data-target="#addNewSquadModal"><i class="fa fa-plus"></i> Create Squad</button>
+			</div>
+		</div>
 
-							<td class="col-lg-5 col-md-4 col-sm-5 text-truncate">
-								<a v-if="squad.status==3 || squad.status==2" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.id]]</a>
-								<div v-else>[[squad.id]]</div>
-							</td>
-							<td class="col-lg-2 col-md-3 d-none d-md-table-cell text-truncate">[[squad.membersCount]]</td>
-							<td class="col-lg-3 col-md-3 col-sm-4 text-truncate">[[getStatusText(squad.status)]]</td>
-							<td class="col-lg-2 col-md-2 col-sm-3" align="center text-truncate">
-								<div class="d-flex justify-content-center">
-{{if .Session.Admin}}
-									<div class="px-1">
-{{else}}
-									<div v-if="squad.status == 3 || squad.status == 2" class="px-1">
-{{end}}
-										<a title="Members" data-toggle="tooltip" v-on:click="showSquadDetails(squad.id, index)" href="#"><i class="fas fa-users fa-lg"></i></a>
-									</div>
-{{if .Session.Admin}}
-									<div class="px-1">
-{{else}}
-									<div v-if="squad.status == 3" class="px-1">
-{{end}}
-										<a title="Delete" data-toggle="tooltip" v-on:click="deleteSquad(squad.id, index)" href="#"><i class="fas fa-minus-circle fa-lg"></i></a>
-									</div>
-									<div v-if="squad.status != 3" class="px-1">
-										<a title="Leave" data-toggle="tooltip" v-on:click="leaveSquad(squad.id, index)" href="#"><i class="fas fa-sign-out-alt fa-lg"></i></a>
-									</div>
+		<div class="table-responsive-lg m-0 p-1">
+			<table class="table table-sm table-bordered m-0">
+				<thead class="thead-dark text-truncate">
+					<tr class="">
+						<th class="text-wrap">Squad</th>
+						<th class="text-wrap d-none d-md-table-cell">Members Count</th>
+						<th class="text-wrap d-table-cell d-sm-table-cell d-md-none">Members</th>
+						<th class="text-wrap d-none d-md-table-cell">Pending Approve</th>
+						<th class="text-wrap d-table-cell d-sm-table-cell d-md-none">Pending</th>
+						<th class="text-wrap d-none d-md-table-cell">My Status</th>
+						<th class="text-wrap d-table-cell d-sm-table-cell d-md-none">Status</th>
+						<th class="text-wrap d-none d-md-table-cell">Actions</th>
+						<th class="text-wrap d-table-cell d-md-none">Actns</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr class="" v-for="(squad, index) in own_squads">
+
+						<td class="text-wrap">
+							<a v-if="squad.status==3 || squad.status==2" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.id]]</a>
+							<div v-else>[[squad.id]]</div>
+						</td>
+						<td class="text-truncate">
+							<a v-if="squad.status==3 || squad.status==2" href="#" v-on:click="showSquadMembers(squad.id, index)">[[squad.membersCount]]</a>
+							<div v-else>[[squad.membersCount]]</div>
+						</td>
+						<td class="text-truncate">[[squad.pendingApproveCount]]</td>
+						<td class="text-truncate">[[getStatusText(squad.status)]]</td>
+						<td class="" align="center text-truncate">
+							<div class="d-flex justify-content-center">
+								{{if .Session.Admin}}
+								<div>
+								{{else}}
+								<div v-if="squad.status == 3 || squad.status == 2">
+								{{end}}
+									<a title="Details" data-toggle="tooltip" v-on:click="showSquadDetails(squad.id, index)" href="#"><i class="fas fa-info-circle fa-lg px-1"></i></a>
+									<a title="Members" data-toggle="tooltip" v-on:click="showSquadMembers(squad.id, index)" href="#"><i class="fas fa-users fa-lg px-1"></i></a>
 								</div>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
+								{{if .Session.Admin}}
+								<div>
+								{{else}}
+								<div v-if="squad.status == 3">
+								{{end}}
+									<a title="Delete" data-toggle="tooltip" v-on:click="deleteSquad(squad.id, index)" href="#"><i class="fas fa-minus-circle fa-lg px-1"></i></a>
+								</div>
+								<div v-if="squad.status != 3">
+									<a title="Leave" data-toggle="tooltip" v-on:click="leaveSquad(squad.id, index)" href="#"><i class="fas fa-sign-out-alt fa-lg px-1"></i></a>
+								</div>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
 		</div>
 	</div>
 </div>

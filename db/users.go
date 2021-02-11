@@ -180,23 +180,34 @@ func (db *FirestoreDB) UpdateUserStatusFromFirebase(ctx context.Context, uid str
 	return nil
 }
 
-func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (map[string][]int, error) {
+func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (map[string]interface{}, error) {
 
-	counters := make(map[string][]int, 0)
+	counters := make(map[string]interface{}, 0)
 
+	//squads
 	squads := make([]int, len(MemberStatusTypes))
-
 	for i, status := range MemberStatusTypes {
 		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "==", MemberStatusTypes[i]).Snapshots(ctx)
 		defer iter.Stop()
 		snapshot, err := iter.Next()
 		if err != nil {
-			log.Fatalf("Failed to get amount of user %v squads with status %v: %v", userId, status.String(), err)
+			log.Printf("Failed to get amount of user %v squads with status %v: %v", userId, status.String(), err)
 			return nil, err
 		}
 		squads[i] = snapshot.Size
 	}
 	counters["squads"] = squads
 
+	//todo
+	{
+		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("PendingApproveCount", "!=", 0).Snapshots(ctx)
+		defer iter.Stop()
+		snapshot, err := iter.Next()
+		if err != nil {
+			log.Printf("Failed to get amount of squads with members pending approve: %v", err)
+			return nil, err
+		}
+		counters["pendingApprove"] = snapshot.Size
+	}
 	return counters, nil
 }

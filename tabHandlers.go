@@ -15,6 +15,7 @@ var (
 	userinfoTmpl     = parseBodyTemplate("userinfo.html")
 	squadsTmpl       = parseBodyTemplate("squads.html")
 	squadMembersTmpl = parseBodyTemplate("squadMembers.html")
+	squadDetailsTmpl = parseBodyTemplate("squadDetails.html")
 	eventsTmpl       = parseBodyTemplate("events.html")
 	aboutTmpl        = parseBodyTemplate("about.html")
 )
@@ -25,6 +26,17 @@ func (app *App) squadsHandler(w http.ResponseWriter, r *http.Request) error {
 		Session *SessionData
 		CSRFTag template.HTML
 	}{app.su.getSessionData(r), csrf.TemplateField(r)})
+}
+
+func (app *App) squadDetailsHandler(w http.ResponseWriter, r *http.Request) error {
+	params := mux.Vars(r)
+	squadId := params["squadId"]
+
+	return squadDetailsTmpl.Execute(app, w, r, struct {
+		Session *SessionData
+		SquadID string
+		CSRFTag template.HTML
+	}{app.su.getSessionData(r), squadId, csrf.TemplateField(r)})
 }
 
 func (app *App) squadMembersHandler(w http.ResponseWriter, r *http.Request) error {
