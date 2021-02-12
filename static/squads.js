@@ -4,12 +4,12 @@ const app = createApp( {
 	delimiters: ['[[', ']]'],
 	data(){
 		return {
-		loading:true,
-		own_squads:[],
-		other_squads:[],
-		error_message:"",
-		squadName:"",
-		squadToJoin:"",
+			loading:true,
+			own_squads:[],
+			other_squads:[],
+			error_message:"",
+			squadName:"",
+			squadToJoin:"",
 		}
 	},
 	created:function() {
@@ -23,7 +23,7 @@ const app = createApp( {
 			this.loading = false;
 		})
 		.catch(error => {
-			this.error_message = "Failed to retrieve list of squads: " + error;
+			this.error_message = "Failed to retrieve list of squads: " + this.getAxiosErrorMessage(error);
 			this.loading = false;
 		})
 	},
@@ -51,7 +51,7 @@ const app = createApp( {
 				if(err.response.status == 409) {
 					this.error_message = "This name is already taken, please choose another name.";
 				} else {
-					this.error_message = "Error while adding new squad: " + err;
+					this.error_message = "Error while adding new squad: " + this.getAxiosErrorMessage(err);
 				}
 			});
 		},
@@ -66,7 +66,7 @@ const app = createApp( {
 				this.own_squads.splice(index, 1);
 			})
 			.catch(err => {
-				this.error_message = "Error while removing squad " + id + ": " + err;
+				this.error_message = "Error while removing squad " + id + ": " + this.getAxiosErrorMessage(err);
 			});
 		},
 		leaveSquad:function(id, index) {
@@ -84,7 +84,7 @@ const app = createApp( {
 				this.own_squads.splice(index, 1);
 			})
 			.catch(err => {
-				this.error_message = "Error while removing squad " + id + ": " + err;
+				this.error_message = "Error while removing squad " + id + ": " + this.getAxiosErrorMessage(err);
 			});
 		},
 		joinSquad:function() {
@@ -104,7 +104,7 @@ const app = createApp( {
 				this.other_squads.splice(index, 1);
 			})
 			.catch(err => {
-				this.error_message = "Error while joining squad: " + err;
+				this.error_message = "Error while joining squad: " + this.getAxiosErrorMessage(err);;
 			});
 		},
 		showSquadDetails:function(squadId, index) {

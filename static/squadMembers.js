@@ -26,7 +26,7 @@ const app = createApp( {
 			this.loading = false;
 		})
 		.catch(error => {
-			this.error_message = "Failed to retrieve list of squad members: " + error;
+			this.error_message = "Failed to retrieve list of squad members: " + this.getAxiosErrorMessage(error);
 			this.loading = false;
 		});
 	},
@@ -51,7 +51,7 @@ const app = createApp( {
 				this.squad_members[this.changeStatusMember_index].status = this.statusToSet;
 			})
 			.catch(err => {
-				this.error_message = "Error while changing member status: " + err;
+				this.error_message = "Error while changing member status: " + this.getAxiosErrorMessage(err);
 			});
 		},
 		removeMember:function(userId, index) {
@@ -66,7 +66,7 @@ const app = createApp( {
 				this.squad_members.splice(index, 1);
 			})
 			.catch(err => {
-				this.error_message = `Error while removing user ${userId} from squad:` + err;
+				this.error_message = `Error while removing user ${userId} from squad:` + this.getAxiosErrorMessage(err);
 			});
 		},
 		addMember:function() {
@@ -89,7 +89,7 @@ const app = createApp( {
 				this.squad_members.push(Object.assign({}, this.replicant));
 			})
 			.catch(err => {
-				this.error_message = "Error while adding squad member: " + err;
+				this.error_message = "Error while adding squad member: " + this.getAxiosErrorMessage(err);
 			});
 		}
 	},

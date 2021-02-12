@@ -69,8 +69,8 @@ func (app *App) registerHandlers() {
 	r := mux.NewRouter().StrictSlash(true)
 	CSRF := csrf.Protect(
 		[]byte("dG3d563vyukewv%Yetrsbvsfd%WYfvs!"),
-		//csrf.SameSite(csrf.SameSiteStrictMode),
-		csrf.Secure(false),
+		csrf.SameSite(csrf.SameSiteStrictMode),
+		csrf.Secure(!app.dev),
 		csrf.HttpOnly(false),
 	)
 
@@ -92,6 +92,10 @@ func (app *App) registerHandlers() {
 	rm.Methods("PUT").Path("/users/{id}").Handler(appHandler(app.methodSetUser))
 	rm.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetSquads))
 	rm.Methods("GET").Path("/users/{userId}/home").Handler(appHandler(app.methodGetHome))
+
+	rm.Methods("POST").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodCreateTag))
+	rm.Methods("GET").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodGetTags))
+	rm.Methods("DELETE").Path("/squads/{squadId}/tags/{tagName}").Handler(appHandler(app.methodDeleteTag))
 
 	// auth handlers
 	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.su.sessionLogin))

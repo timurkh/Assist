@@ -21,19 +21,21 @@
 							<span aria-hidden="true">&times;</span>
 						</button>
 					</div>
-					<div class="modal-body">
-						<form>
+					<form>
+						<div class="modal-body">
 							<div class="form-group">
 								<label for="newNoteTitle">Title</label>
 								<input type="text" id="newNoteTitle" class="form-control" v-model="newNote.title">
-								<label for="newNote">Note</label>
-								<input type="text" id="newNote" class="form-control" v-model="newNote.text">
 							</div>
-						</form>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-primary" v-on:click="addNote()" data-dismiss="modal">Add</button>
-					</div>
+							<div class="form-group">
+								<label for="newNote">Note</label>
+								<textarea id="newNote" class="form-control" v-model="newNote.text"></textarea>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="submit" class="btn btn-primary" v-on:click="addNote()" data-dismiss="modal">Add</button>
+						</div>
+					</form>
 				</div>
 			</div>
 		</div>
@@ -49,21 +51,24 @@
 					<div class="modal-body">
 						<form>
 							<div class="form-group">
-								<label for="newNoteTitle">Title</label>
-								<input type="text" id="newNoteTitle" class="form-control" v-model="newNote.title">
-								<label for="newNote">Note</label>
-								<input type="text" id="newNote" class="form-control" v-model="newNote.text">
+								<label for="newTag">Name</label>
+								<input type="text" id="newTag" class="form-control" v-model="newTag.name">
+							</div>
+							<div class="form-group">
+								<label for="newTagValues">Values</label>
+								<textarea id="newTagValues" class="form-control" v-model="newTagValues"></textarea> 
+								 <small id="tagValuesHelp" class="form-text text-muted">If specified, each non empty line will become one of exclusive tag values</small>
 							</div>
 						</form>
 					</div>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-primary" v-on:click="addNote()" data-dismiss="modal">Add</button>
+						<button type="button" class="btn btn-primary" v-on:click="addTag()" data-dismiss="modal">Add</button>
 					</div>
 				</div>
 			</div>
 		</div>
 		<!-- Main View -->
-		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2" role="alert">
+		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1" role="alert">
 			[[ error_message ]]
 		</div>
 
@@ -74,15 +79,18 @@
 					<li class="breadcrumb-item active">"{{.SquadID}}"</li>
 				</ol>
 			</div>
-			<button type="button" class="btn btn-info add-new ml-auto p-0 mr-1 mb-1 px-1" data-toggle="modal" data-target="#addNoteModal"><i class="fa fa-plus"></i> Add Note</button>
-			<button type="button" class="btn btn-info add-new ml-auto p-0 mr-1 mb-1 px-1" data-toggle="modal" data-target="#addTagModal"><i class="fa fa-plus"></i> Add Tag</button>
+
+			<div class="ml-auto p-0 mr-1 mb-1">
+				<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#addNoteModal"><i class="fa fa-plus"></i> Add Note</button>
+				<button type="button" class="btn btn-info add-new ml-1 p-1" data-toggle="modal" data-target="#addTagModal"><i class="fa fa-plus"></i> Add Tag</button>
+			</div>
 		</div>
 
 
 
-		<div class="container-fluid m-0 p-0"> 
-			<div class="row">
-				<div class="col-12 col-md-8">
+		<div class="d-flex flex-wrap"> 
+			<div class="row px-3">
+				<div class="col-12 col-md-7 p-0">
 					<div class="m-1 p-3 bg-white rounded box-shadow" id="notesAccordion">
 						<h5 class="border-bottom border-gray pb-2 mb-0">Notes</h6>
 						<div v-for="i in 3" class="media pt-2">
@@ -130,27 +138,27 @@
 					</div>
 
 				</div>
-				<div class="col-12 col-md-4">
+				<div class="col-12 col-md-5 p-0">
 					<div class="m-1 p-3 bg-white rounded box-shadow" id="Tags">
 						<h5 class="border-bottom border-gray pb-2 mb-0">Tags</h6>
 						<table class="table">
+							<thead>
+								<th>Name</th>
+								<th>Values</th>
+								<th class="text-right">Members</th>
+								<th></th>
+							</thead>
 							<tbody>
-								<tr v-for="i in 4">
-									<th v-if="i==2">Tag-[[i]]</th>
-									<th v-else scope="row"><a href="#">Tag-[[i]]</a></th>
-									<td v-if="i==2">
-										<p><a href="#">Tag-2_1</a></p>
-										<p><a href="#">Tag-2_2</a></p>
-										<p><a href="#">Tag-2_3</a></p>
+								<tr v-for="(tag, i) in tags">
+									<td v-if="tag.values != null">[[tag.name]]</td>
+									<td v-else scope="row"><a href="#">[[tag.name]]</a></td>
+									<td>
+										<p v-for="val in tag.values"><a href="#">[[val]]</a></p>
 									</td>
-									<td v-else> </td>
-									<td align="right" v-if="i==2">
-										<p>2</p>
-										<p>0</p>
-										<p>4</p>
+									<td align="right">
+										<p v-for="val in tag.values">0</p>
 									</td>
-									<td v-else align="right">4</td>
-									<td align="right"><small><a href="#">Delete</a> <a href="#">Rename</small></a></td>
+									<td align="right"><small><a href="#" v-on:click="deleteTag(tag.name, i)">Delete</a> <a href="#">Rename</small></a></td>
 								</tr>
 							</tbody>
 						</table>

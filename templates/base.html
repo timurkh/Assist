@@ -19,7 +19,7 @@
 		<script src="https://unpkg.com/vue@next"></script>
 		<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<link href="/static/base.css" rel="stylesheet">
+		<link href="/static/base.css" rel="stylesheet"/>
 
 		{{.CSRFTag}}
 		<script src="/static/base.js"></script>
@@ -48,7 +48,7 @@
 				<ul class="nav navbar-nav ml-auto">
 				    <li class="nav-item"><hr class="border-top"></li>
 				{{if .Session}}
-					<li> <a id="navbar-userinfo" class="nav-link" href="userinfo">{{.Session.DisplayName}} ({{.Session.Email}})</a> </li>
+					<li> <a id="navbar-userinfo" class="nav-link" href="/userinfo">{{.Session.DisplayName}} ({{.Session.Email}})</a> </li>
 					<li><a class="nav-link" href="#" onclick="postSignOut()">Sign out</a></li>
 				{{else}}
 					<li> <a id="navbar-userinfo" class="nav-link" href="/login">Login</a> </li>

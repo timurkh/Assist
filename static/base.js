@@ -1,4 +1,10 @@
 const globalMixin = {
+	data() {
+		return {
+			loading:true,
+			error_message:"",
+		}
+	},
 	methods: {
 		getStatusText : function(status) {
 
@@ -11,6 +17,14 @@ const globalMixin = {
 					return "Admin";
 				case 3:
 					return "Owner";
+			};
+		},
+		getAxiosErrorMessage : function(error) {
+			if (error.response != null && error.response.data != null) {
+				return error.response.data;
+
+			} else {
+				return error;
 			}
 		},
 	},

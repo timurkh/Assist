@@ -20,7 +20,7 @@ const app = createApp( {
 			this.loading = false;
 		})
 		.catch(error => {
-			this.error_message = "Failed to retrieve home dashboard information: " + error.response.data.error;
+			this.error_message = "Failed to retrieve home dashboard information: " + this.getAxiosErrorMessage(error);
 			this.loading = false;
 		})
 	},
