@@ -44,7 +44,7 @@
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h5 class="modal-title" id="changeMemberStatusModalLabel">[[changeStatusMember.displayName]] Status</h5>
+						<h5 class="modal-title" id="changeMemberStatusModalLabel">[[changeMember.displayName]] Status</h5>
 						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
 							<span aria-hidden="true">&times;</span>
 						</button>
@@ -60,6 +60,36 @@
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-primary" v-on:click="setMemberStatus()" data-dismiss="modal">Set Selected Status</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="modal fade" id="addTagModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="addTagModalLabel">Tag [[changeMember.displayName]]</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body pb-0">
+						<form>
+							<div class="form-group">
+								<label for="tagToSet">Choose Tag</label>
+								<select id="tagToSet"  v-model="tagToSet" class="form-control">
+									<option  v-for="tag in tags" :value="tag">[[tag.name]]</option>
+								</select>
+
+								<label for="tagToSetVal" v-if="tagToSet.values != null" class="mt-3">Choose Tag Value</label>
+								<select id="tagToSetVal" v-if="tagToSet.values != null" v-model="tagToSetValue" class="form-control">
+									<option  v-for="(val, index) in tagToSet.values" :value="index">[[val]]</option>
+								</select>
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-primary" v-on:click="setMemberTag()" data-dismiss="modal">Set</button>
 					</div>
 				</div>
 			</div>
@@ -102,18 +132,24 @@
 						<td class="text-break d-none d-sm-table-cell" :title="member.email"> [[member.email]] </td>
 						<td class="text-break d-none d-sm-table-cell" :title="member.phoneNumber"> [[member.phoneNumber]] </td>
 						<td class="text-truncate" :title="getStatusText(member.status)" > [[getStatusText(member.status)]] </td>
-						<td class="text-wrap"> </td>
-						<td class="text-wrap"> </td>
 						<td class="text-wrap"> 
-							<div class="d-flex justify-content-center">
-								<div v-if="member.status != 3" class="px-1">
-									<a title="Change member status" data-toggle="tooltip" v-on:click="changeStatus(index, member)" href="#"><i class="fas fa-edit fa-lg"></i></a>
-								</div>
-								<div v-if="member.status != 3" class="px-1">
-									<a title="Remove Member" data-toggle="tooltip" v-on:click="removeMember(member.id, index)" href="#"><i class="fas fa-sign-out-alt fa-lg"></i></a>
-								</div>
+							<span v-for="(tag, tagIndex) in member.tags" class="badge badge-primary m-1">[[tag]] <a href="#" v-on:click="deleteTag(member, tag, tagIndex)"><i class="fas fa-times-circle" style="color:white;"></i></a></span>
+						</td>
+						<td class="text-wrap"> </td>
+						<td class="text-wrap" align="center"> 
+								<span v-if="member.status != 3">
+									<a title="Remove Member" data-toggle="tooltip" v-on:click="removeMember(member.id, index)" href="#"><i class="fas fa-sign-out-alt fa-lg p-1"></i></a>
+								</span>
+								<span v-if="member.status != 3">
+									<a title="Change member status" data-toggle="tooltip" v-on:click="changeStatus(member, index)" href="#"><i class="fas fa-chevron-circle-up fa-lg p-1"></i></i></a>
+								</span>
+								<span>
+								<a title="Add Tag" data-toggle="tooltip" v-on:click="tagMember(member, index)" href="#"><i class="fas fa-tag fa-lg p-1"></i></a>
+								</span>
+								<span>
+								<a title="Add Note" data-toggle="tooltip" v-on:click="addNote(member, index)" href="#"><i class="fas fa-edit fa-lg p-1"></i></a>
+								</span>
 							</div>
-
 						</td>
 					</tr>
 				</tbody>

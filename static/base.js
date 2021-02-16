@@ -20,7 +20,7 @@ const globalMixin = {
 			};
 		},
 		getAxiosErrorMessage : function(error) {
-			if (error.response != null && error.response.data != null) {
+			if (error.response != null && error.response.data != null && error.response.data != "") {
 				return error.response.data;
 
 			} else {

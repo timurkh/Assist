@@ -39,6 +39,36 @@
 				</div>
 			</div>
 		</div>
+
+		<div class="modal fade" id="editNoteModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Edit Note</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<form>
+						<div class="modal-body">
+							<div class="form-group">
+								<label for="editNoteTitle">Title</label>
+								<input type="text" id="editNoteTitle" class="form-control" v-model="noteToEdit.title">
+							</div>
+							<div class="form-group">
+								<label for="editNote">Note</label>
+								<textarea id="editNote" class="form-control" v-model="noteToEdit.text"></textarea>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="submit" class="btn btn-primary" v-on:click="saveNote()" data-dismiss="modal">Save</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+
+
 		<div class="modal fade" id="addTagModal" tabindex="-1" role="dialog">
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
@@ -88,48 +118,43 @@
 
 
 
-		<div class="d-flex flex-wrap"> 
 			<div class="row px-3">
 				<div class="col-12 col-md-7 p-0">
 					<div class="m-1 p-3 bg-white rounded box-shadow" id="notesAccordion">
 						<h5 class="border-bottom border-gray pb-2 mb-0">Notes</h6>
-						<div v-for="i in 3" class="media pt-2">
-							<div class="media-body pb-2 mb-0 lh-125 border-bottom border-gray">
-								<div class="d-flex justify-content-between align-items-center w-100">
-									<a data-toggle="collapse" :href="'#note_' + i"> <strong class="text-gray-dark">Memento [[i]]</strong></a>
+						<div v-for="(note, i) in notes.slice(0, 3)" class="pt-2">
+							<div class="pb-2 mb-0 lh-125 border-bottom border-gray">
+								<div class="w-100">
+									<a data-toggle="collapse" :href="'#note_' + i"> <strong class="text-gray-dark">[[getNoteTitle(note)]]</strong></a>
 								</div>
-								<div :id="'note_' + i" :class="[i==1 ? `collapse show` : `collapse`]" data-parent="#notesAccordion">
-									<span>
-										Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
-									</span>
+								<div :id="'note_' + i" :class="[i==0 ? `collapse show` : `collapse`]" data-parent="#notesAccordion">
+									<pre style="white-space: pre-wrap; word-break: normal;">[[note.text]]</pre>
 									<div align="right">
 										<small>
-											<a href="#">Edit</a> &nbsp; <a href="#">Delete</a>
+											<a href="#" v-on:click="editNote(note, i)">Edit</a> &nbsp; <a href="#" v-on:click="deleteObject('note', note.id, i)">Delete</a>
 										</small>
 									</div>
 								</div>
 							</div>
 						</div>
 						<div id="otherNotes" class="collapse">
-							<div v-for="i in 7" class="media pt-2">
-								<div class="media-body pb-2 mb-0 lh-125 border-bottom border-gray">
-									<div class="d-flex justify-content-between align-items-center w-100">
-										<a data-toggle="collapse" :href="'#note_' + i+3"> <strong class="text-gray-dark">Memento [[i+3]]</strong></a>
+							<div v-for="(note, i) in notes.slice(3)" class="pt-2">
+								<div class="pb-2 mb-0 lh-125 border-bottom border-gray">
+									<div class="w-100">
+										<a data-toggle="collapse" :href="'#note_' + i+3"> <strong class="text-gray-dark">[[getNoteTitle(note)]]</strong></a>
 									</div>
 									<div :id="'note_' + i+3" class="collapse" data-parent="#notesAccordion">
-										<span>
-											Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
-										</span>
+										<pre>[[note.text]]</pre>
 										<div>
 											<small>
-												<a href="#">Edit</a> &nbsp; <a href="#">Delete</a>
+												<a href="#" v-on:click="editNote(note, i)">Edit</a> &nbsp; <a href="#"  v-on:click="deleteObject('note', note.id, i)">Delete</a>
 											</small>
 										</div>
 									</div>
 								</div>
 							</div>
 						</div>
-						<small class="d-block text-right mt-3">
+						<small v-if="notes.length > 3" class="d-block text-right mt-3">
 							<a data-toggle="collapse" class="collapsed" href="#otherNotes">
 								<span class="if-collapsed">More Notes</span>
 								<span class="if-not-collapsed">Less Notes</span>
@@ -141,30 +166,30 @@
 				<div class="col-12 col-md-5 p-0">
 					<div class="m-1 p-3 bg-white rounded box-shadow" id="Tags">
 						<h5 class="border-bottom border-gray pb-2 mb-0">Tags</h6>
-						<table class="table">
-							<thead>
+						<table class="table mb-0" v-if="tags.length>0">
+							<thead> 
 								<th>Name</th>
 								<th>Values</th>
 								<th class="text-right">Members</th>
 								<th></th>
 							</thead>
 							<tbody>
-								<tr v-for="(tag, i) in tags">
+								<tr v-for="(tag, i) in tags" class="border-bottom border-grey">
 									<td v-if="tag.values != null">[[tag.name]]</td>
 									<td v-else scope="row"><a href="#">[[tag.name]]</a></td>
 									<td>
-										<p v-for="val in tag.values"><a href="#">[[val]]</a></p>
+										<div v-for="val in tag.values"><a href="#">[[val]]</a></div>
 									</td>
 									<td align="right">
-										<p v-for="val in tag.values">0</p>
+										<span v-if="tag.values == null">42</span>
+										<div v-for="val in tag.values">0</div>
 									</td>
-									<td align="right"><small><a href="#" v-on:click="deleteTag(tag.name, i)">Delete</a> <a href="#">Rename</small></a></td>
+									<td align="right"><small><a href="#" v-on:click="deleteObject('tag', tag.name, i)">Delete</a></small></td>
 								</tr>
 							</tbody>
 						</table>
 					</div>
 				</div>
-			</div>
 		</div>
 	</div>
 </div>

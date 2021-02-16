@@ -71,7 +71,8 @@ func (app *App) registerHandlers() {
 		[]byte("dG3d563vyukewv%Yetrsbvsfd%WYfvs!"),
 		csrf.SameSite(csrf.SameSiteStrictMode),
 		csrf.Secure(!app.dev),
-		csrf.HttpOnly(false),
+		csrf.HttpOnly(true),
+		csrf.Path("/"),
 	)
 
 	r.Use(CSRF)
@@ -82,7 +83,7 @@ func (app *App) registerHandlers() {
 
 	rm.Methods("POST").Path("/squads/{squadId}/members").Handler(appHandler(app.methodCreateReplicant))
 	rm.Methods("POST").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
-	rm.Methods("PUT").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodChangeSquadMemberStatus))
+	rm.Methods("PUT").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodUpdateSquadMember))
 	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
 	rm.Methods("POST").Path("/squads").Handler(appHandler(app.methodCreateSquad))
 	rm.Methods("DELETE").Path("/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
@@ -93,9 +94,16 @@ func (app *App) registerHandlers() {
 	rm.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetSquads))
 	rm.Methods("GET").Path("/users/{userId}/home").Handler(appHandler(app.methodGetHome))
 
+	// tags
 	rm.Methods("POST").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodCreateTag))
 	rm.Methods("GET").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodGetTags))
 	rm.Methods("DELETE").Path("/squads/{squadId}/tags/{tagName}").Handler(appHandler(app.methodDeleteTag))
+
+	// notes
+	rm.Methods("PUT").Path("/squads/{squadId}/notes/{noteId}").Handler(appHandler(app.methodUpdateNote))
+	rm.Methods("POST").Path("/squads/{squadId}/notes").Handler(appHandler(app.methodCreateNote))
+	rm.Methods("GET").Path("/squads/{squadId}/notes").Handler(appHandler(app.methodGetNotes))
+	rm.Methods("DELETE").Path("/squads/{squadId}/notes/{noteId}").Handler(appHandler(app.methodDeleteNote))
 
 	// auth handlers
 	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.su.sessionLogin))

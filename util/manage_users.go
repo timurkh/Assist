@@ -69,9 +69,7 @@ func (app *App) listUsers() {
 	}
 }
 
-func (app *App) updateListOfUsers() {
-
-	ctx := context.Background()
+func (app *App) updateListOfUsers(ctx context.Context) {
 
 	pager := iterator.NewPager(app.authClient.Users(ctx, ""), 100, "")
 	for {
@@ -152,6 +150,47 @@ func (app *App) flushSquadInfoFromUsers(ctx context.Context) {
 		log.Printf("Removing records about squads for user %v", doc.Ref.ID)
 		app.removeCollection(ctx, doc.Ref.Collection(db.USER_SQUADS))
 		app.removeCollection(ctx, doc.Ref.Collection("squads"))
+	}
+}
+
+func (app *App) addTimestampIfMissing(ctx context.Context) {
+	iter := app.db.Squads.Documents(ctx)
+	defer iter.Stop()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			log.Fatal("Error while iterating through squads: %w", err)
+		}
+
+		squadId := doc.Ref.ID
+
+		iterMembers := doc.Ref.Collection("members").Documents(ctx)
+		defer iterMembers.Stop()
+		for {
+			docMember, err := iterMembers.Next()
+			if err == iterator.Done {
+				break
+			}
+
+			if err != nil {
+				log.Fatal("Error while iterating through squad %v members: %w", squadId, err)
+			}
+
+			memberId := docMember.Ref.ID
+
+			timestamp := docMember.Data()["Timestamp"]
+			if timestamp == nil {
+
+				log.Println("Creating timestamp for user " + memberId + " in squad " + squadId)
+				docMember.Ref.Set(ctx, map[string]interface{}{
+					"Timestamp": firestore.ServerTimestamp,
+				}, firestore.MergeAll)
+			}
+		}
 	}
 }
 
@@ -236,7 +275,8 @@ func (app *App) updateUsersInfoInSquads(ctx context.Context) {
 func (app *App) makeDBConsistent() {
 	ctx := context.Background()
 
-	app.updateListOfUsers()
+	app.updateListOfUsers(ctx)
+	app.addTimestampIfMissing(ctx)
 	app.flushSquadInfoFromUsers(ctx)
 	app.populateSquadInfoToUsers(ctx)
 	app.updateUsersInfoInSquads(ctx)

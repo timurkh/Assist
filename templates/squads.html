@@ -103,33 +103,31 @@
 							<a v-if="squad.status==3 || squad.status==2" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.id]]</a>
 							<div v-else>[[squad.id]]</div>
 						</td>
-						<td class="text-truncate">
+						<td class="text-wrap">
 							<a v-if="squad.status==3 || squad.status==2" href="#" v-on:click="showSquadMembers(squad.id, index)">[[squad.membersCount]]</a>
 							<div v-else>[[squad.membersCount]]</div>
 						</td>
 						<td class="text-truncate">[[squad.pendingApproveCount]]</td>
 						<td class="text-truncate">[[getStatusText(squad.status)]]</td>
-						<td class="" align="center text-truncate">
-							<div class="d-flex justify-content-center">
-								{{if .Session.Admin}}
-								<div>
-								{{else}}
-								<div v-if="squad.status == 3 || squad.status == 2">
-								{{end}}
-									<a title="Details" data-toggle="tooltip" v-on:click="showSquadDetails(squad.id, index)" href="#"><i class="fas fa-info-circle fa-lg px-1"></i></a>
-									<a title="Members" data-toggle="tooltip" v-on:click="showSquadMembers(squad.id, index)" href="#"><i class="fas fa-users fa-lg px-1"></i></a>
-								</div>
-								{{if .Session.Admin}}
-								<div>
-								{{else}}
-								<div v-if="squad.status == 3">
-								{{end}}
-									<a title="Delete" data-toggle="tooltip" v-on:click="deleteSquad(squad.id, index)" href="#"><i class="fas fa-minus-circle fa-lg px-1"></i></a>
-								</div>
-								<div v-if="squad.status != 3">
-									<a title="Leave" data-toggle="tooltip" v-on:click="leaveSquad(squad.id, index)" href="#"><i class="fas fa-sign-out-alt fa-lg px-1"></i></a>
-								</div>
-							</div>
+						<td class="text-wrap" align="center">
+							{{if .Session.Admin}}
+							<span>
+							{{else}}
+							<span v-if="squad.status == 3 || squad.status == 2">
+							{{end}}
+								<a title="Details" data-toggle="tooltip" v-on:click="showSquadDetails(squad.id, index)" href="#"><i class="fas fa-info-circle fa-lg p-1"></i></a>
+								<a title="Members" data-toggle="tooltip" v-on:click="showSquadMembers(squad.id, index)" href="#"><i class="fas fa-users fa-lg p-1"></i></a>
+							</span>
+							{{if .Session.Admin}}
+							<span>
+							{{else}}
+							<span v-if="squad.status == 3">
+							{{end}}
+								<a title="Delete" data-toggle="tooltip" v-on:click="deleteSquad(squad.id, index)" href="#"><i class="fas fa-minus-circle fa-lg p-1"></i></a>
+							</span>
+							<span v-if="squad.status != 3">
+								<a title="Leave" data-toggle="tooltip" v-on:click="leaveSquad(squad.id, index)" href="#"><i class="fas fa-sign-out-alt fa-lg p-1"></i></a>
+							</span>
 						</td>
 					</tr>
 				</tbody>

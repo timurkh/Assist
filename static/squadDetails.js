@@ -11,20 +11,22 @@ const app = createApp( {
 			tags:[],
 			newNote: {},
 			newTag: {},
+			noteToEdit: {},
+			noteToEditIndex: -1,
 		};
 	},
 	created:function() {
-		axios({
-			method: 'GET',
-			url: `/methods/squads/${squadId}/tags`,
-		})
-		.then(res => {
-			this.tags = res.data;
-			console.log(this.tags);
+		axios.all([
+			axios.get(`/methods/squads/${squadId}/notes`),
+			axios.get(`/methods/squads/${squadId}/tags`),
+		])
+		.then(axios.spread((notes, tags) => {
+			this.notes = notes.data;
+			this.tags = tags.data;
 			this.loading = false;
-		})
-		.catch(error => {
-			this.error_message = "Failed to retrieve squad details: " + this.getAxiosErrorMessage(error);
+		}))
+		.catch(errors => {
+			this.error_message = "Failed to retrieve squad details: " + this.getAxiosErrorMessage(errors);
 			this.loading = false;
 		});
 	},
@@ -34,8 +36,6 @@ const app = createApp( {
 				this.error_message = "Tag name should not be empty.";
 				return false;
 			}
-
-			console.log(this.newTag.values);
 
 			axios({
 				method: 'POST',
@@ -48,7 +48,7 @@ const app = createApp( {
 				this.tags.push(Object.assign({}, this.newTag));
 			})
 			.catch(err => {
-				this.error_message = "Error while adding note: " + this.getAxiosErrorMessage(err);
+				this.error_message = "Error while adding tag: " + this.getAxiosErrorMessage(err);
 			});
 		},
 		addNote:function() {
@@ -60,27 +60,53 @@ const app = createApp( {
 			})
 			.then( res => {
 				this.error_message = "";
-				this.notes.push(Object.assign({}, this.newTag));
+				this.newNote.id = res.data.id;
+				this.newNote.timestamp = (new Date()).toJSON();
+				this.notes.unshift(this.newNote);
+				this.newNote = {};
 			})
 			.catch(err => {
 				this.error_message = "Error while adding note: " + this.getAxiosErrorMessage(err);
 			});
 		},
-		deleteTag:function(tagName, index) {
+		deleteObject:function(obj, id, index) {
 			index = index;
 			axios({
 				method: 'DELETE',
-				url: `/methods/squads/${squadId}/tags/${tagName}`,
+				url: `/methods/squads/${squadId}/${obj}s/${id}`,
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
-				this.tags.splice(index, 1);
+				this[`${obj}s`].splice(index, 1);
 			})
 			.catch(err => {
-				this.error_message = `Error while removing tag ${tagName} from squad: ` + this.getAxiosErrorMessage(err);
+				this.error_message = `Error while removing ${obj} ${id} from squad: ` + this.getAxiosErrorMessage(err);
 			});
-		}
+		},
+		getNoteTitle:function(note) {
+			return "[" + (new Date(note.timestamp)).toLocaleDateString() + "] " + note.title;
+		},
+		editNote:function(note, index) {
+			this.noteToEdit = Object.assign({}, note);
+			this.noteToEditIndex = index;
+			$('#editNoteModal').modal('show');
+		},
+		saveNote:function() {
+			axios({
+				method: 'PUT',
+				url: `/methods/squads/${squadId}/notes/${this.noteToEdit.id}`,
+				data: this.noteToEdit,
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then( res => {
+				Object.assign(this.notes[this.noteToEditIndex], this.noteToEdit); 
+				this.error_message = "";
+			})
+			.catch(err => {
+				this.error_message = "Error while saving note: " + this.getAxiosErrorMessage(err);
+			});
+		},
 	},
 	computed: {
 		newTagValues : {
@@ -90,7 +116,7 @@ const app = createApp( {
 			set: function (values) {
 				this.newTag.values = values.split('\n');
 			}
-		}
+		},
 	}, 
 	mixins: [globalMixin],
 }).mount("#app");

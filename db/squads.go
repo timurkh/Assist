@@ -51,6 +51,7 @@ type SquadUserInfo struct {
 	UserInfo
 	Replicant bool             `json:"replicant"`
 	Status    MemberStatusType `json:"status"`
+	Tags      []string         `json:"tags"`
 }
 
 type SquadUserInfoRecord struct {
@@ -72,13 +73,12 @@ func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, ownerId 
 
 	log.Println("Creating squad " + squadId)
 
-	squadInfo := &SquadInfo{
-		ownerId,
-		0,
-		0,
-	}
-
-	_, err = db.Squads.Doc(squadId).Create(ctx, squadInfo)
+	_, err = db.Squads.Doc(squadId).Create(ctx, map[string]interface{}{
+		"Owner":               ownerId,
+		"MembersCount":        0,
+		"PendingApproveCount": 0,
+		"Timestamp":           firestore.ServerTimestamp,
+	})
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (db *FirestoreDB) GetSquads(ctx context.Context, userId string, includeAllU
 	other_squads := make([]*MemberSquadInfoRecord, 0)
 	user_squads := make([]*MemberSquadInfoRecord, 0, len(user_squads_map))
 
-	iter := db.Squads.Documents(ctx)
+	iter := db.Squads.OrderBy("Timestamp", firestore.Asc).Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -191,7 +191,7 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 
 	squadMembers := make([]*SquadUserInfoRecord, 0)
 
-	iter := db.Squads.Doc(squadId).Collection("members").Documents(ctx)
+	iter := db.Squads.Doc(squadId).Collection("members").OrderBy("Timestamp", firestore.Asc).Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -311,6 +311,9 @@ func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId strin
 		path = "PendingApproveCount"
 	}
 
+	batch.Set(docMember, map[string]interface{}{
+		"Timestamp": firestore.ServerTimestamp,
+	}, firestore.MergeAll)
 	batch.Update(docSquad, []firestore.Update{
 		{Path: path, Value: firestore.Increment(1)},
 	})
@@ -460,6 +463,9 @@ func (db *FirestoreDB) CreateReplicant(ctx context.Context, replicantInfo *UserI
 
 	batch := db.Client.Batch()
 	batch.Set(newReplicantDoc, squadReplicantInfo)
+	batch.Set(newReplicantDoc, map[string]interface{}{
+		"Timestamp": firestore.ServerTimestamp,
+	}, firestore.MergeAll)
 	batch.Update(docSquad, []firestore.Update{
 		{Path: "MembersCount", Value: firestore.Increment(1)},
 	})

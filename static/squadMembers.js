@@ -10,45 +10,87 @@ const app = createApp( {
 			squad_members:[],
 			squad_owner:null,
 			statusToSet:0,
-			changeStatusMember_index: -1,
-			changeStatusMember: [],
+			changeMember_index: -1,
+			changeMember: [],
 			replicant: [],
+			tags:[],
+			tagToSet:{},
+			tagToSetValue:0,
 		};
 	},
 	created:function() {
-		axios({
-			method: 'GET',
-			url: `/methods/squads/${squadId}/members`,
-		})
-		.then(res => {
-			this.squad_members = res.data['Members']; 
-			this.squad_owner = res.data['Owner'];
+		axios.all([
+			axios.get(`/methods/squads/${squadId}/members`),
+			axios.get(`/methods/squads/${squadId}/tags`),
+		])
+		.then(axios.spread((members, tags) => {
+			this.squad_members = members.data['Members']; 
+			this.squad_owner = members.data['Owner'];
+			this.tags = tags.data;
 			this.loading = false;
-		})
+		}))
 		.catch(error => {
-			this.error_message = "Failed to retrieve list of squad members: " + this.getAxiosErrorMessage(error);
+			this.error_message = "Failed to retrieve squad members and tags: " + this.getAxiosErrorMessage(error);
 			this.loading = false;
 		});
 	},
 	methods: {
-		changeStatus:function(index, member) {
-			this.changeStatusMember_index = index;
-			this.changeStatusMember = member;
+		changeStatus:function(member, index) {
+			this.changeMember_index = index;
+			this.changeMember = member;
 			this.statusToSet = member.status;
 			$('#changeMemberStatusModal').modal('show')
 		},
-		setMemberStatus:function() {
+		tagMember:function(member, index) {
+			this.changeMember_index = index;
+			this.changeMember = member;
+			this.tagToSet = this.tags[0];
+			this.tagToSetValue = 0;
+			$('#addTagModal').modal('show')
+		},
+		setMemberTag:function() {
+			var data = new Object();
+			data.Name = this.tagToSet.name;
+			if (this.tagToSet.values != null) data.Value = this.tagToSet.values[this.tagToSetValue];
 			axios({
 				method: 'PUT',
-				url: `/methods/squads/${squadId}/members/${this.changeStatusMember.id}`,
-				data: {
-					Status: this.statusToSet,
-				},
+				url: `/methods/squads/${squadId}/members/${this.changeMember.id}`,
+				data: { Tag: data}, 
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
-				this.squad_members[this.changeStatusMember_index].status = this.statusToSet;
+				this.squad_members[this.changeMember_index].tags = res.data.tags;
+			})
+			.catch(err => {
+				this.error_message = "Error while tagging member: " + this.getAxiosErrorMessage(err);
+			});
+		},
+		deleteTag:function(member, tag, tagIndex) {
+			member.tags.splice(tagIndex, 1);
+			axios({
+				method: 'PUT',
+				url: `/methods/squads/${squadId}/members/${member.id}`,
+				data: { Tags: member.tags}, 
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then( res => {
+				this.error_message = "";
+			})
+			.catch(err => {
+				this.error_message = "Error while updating member tags: " + this.getAxiosErrorMessage(err);
+			});
+		},
+		setMemberStatus:function() {
+			axios({
+				method: 'PUT',
+				url: `/methods/squads/${squadId}/members/${this.changeMember.id}`,
+				data: { Status: this.statusToSet, },
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then( res => {
+				this.error_message = "";
+				this.squad_members[this.changeMember_index].status = this.statusToSet;
 			})
 			.catch(err => {
 				this.error_message = "Error while changing member status: " + this.getAxiosErrorMessage(err);

@@ -146,6 +146,32 @@ func TestInitDB(t *testing.T) {
 		}
 	})
 
+	t.Run("Add replicants users to another squad", func(t *testing.T) {
+		for i := 0; i < 2; i++ {
+			userInfo := &UserInfo{
+				DisplayName: fmt.Sprintf("Replicant #%v", i),
+				Email:       fmt.Sprintf("id%v@replicants.org", i),
+				PhoneNumber: "19005550000000",
+			}
+			_, err := db.CreateReplicant(ctx, userInfo, "TEST_SQUAD_1")
+			if err != nil {
+				t.Fatalf("Failed to create replicant: %v", err)
+			}
+		}
+		testSquad1, err := db.GetSquadMembers(ctx, "TEST_SQUAD_1")
+		if err != nil {
+			t.Fatalf("Failed to get squad members: %v", err)
+		}
+
+		if len(testSquad1) != 3 {
+			t.Errorf("Wrong number of members in TEST_SQUAD_1 squad - %v", len(testSquad1))
+		}
+
+		if testSquad1[2].Status != Member {
+			t.Errorf("Wrong status for newly created replicant - %v, should be %v", testSquad1[2].Status, Member)
+		}
+	})
+
 	t.Run("Check GetSquads", func(t *testing.T) {
 		own_squads, other_squads, err := db.GetSquads(ctx, "SUPER_USER", true)
 		if err != nil {
