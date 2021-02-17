@@ -1,7 +1,6 @@
 package main
 
 import (
-	"assist/db"
 	"html/template"
 	"net/http"
 
@@ -23,10 +22,7 @@ var (
 
 func (app *App) squadsHandler(w http.ResponseWriter, r *http.Request) error {
 
-	return squadsTmpl.Execute(app, w, r, struct {
-		Session *SessionData
-		CSRFTag template.HTML
-	}{app.su.getSessionData(r), csrf.TemplateField(r)})
+	return squadsTmpl.ExecuteWithSession(app, w, r, Values{})
 }
 
 func (app *App) squadDetailsHandler(w http.ResponseWriter, r *http.Request) error {
@@ -36,17 +32,13 @@ func (app *App) squadDetailsHandler(w http.ResponseWriter, r *http.Request) erro
 	_, level := app.checkAuthorization(r, "me", squadId, squadMember|squadAdmin|squadOwner|systemAdmin)
 
 	if level >= squadAdmin {
-		return squadDetailsTmpl.Execute(app, w, r, struct {
-			Session *SessionData
-			SquadID string
-			CSRFTag template.HTML
-		}{app.su.getSessionData(r), squadId, csrf.TemplateField(r)})
+		return squadDetailsTmpl.ExecuteWithSession(app, w, r, Values{
+			"SquadID": squadId,
+		})
 	} else {
-		return squadNotesTmpl.Execute(app, w, r, struct {
-			Session *SessionData
-			SquadID string
-			CSRFTag template.HTML
-		}{app.su.getSessionData(r), squadId, csrf.TemplateField(r)})
+		return squadNotesTmpl.ExecuteWithSession(app, w, r, Values{
+			"SquadID": squadId,
+		})
 	}
 }
 
@@ -54,60 +46,37 @@ func (app *App) squadMembersHandler(w http.ResponseWriter, r *http.Request) erro
 	params := mux.Vars(r)
 	squadId := params["squadId"]
 
-	return squadMembersTmpl.Execute(app, w, r, struct {
-		Session *SessionData
-		SquadID string
-		CSRFTag template.HTML
-	}{app.su.getSessionData(r), squadId, csrf.TemplateField(r)})
+	return squadMembersTmpl.ExecuteWithSession(app, w, r, Values{
+		"SquadID": squadId,
+	})
 }
 
 func (app *App) eventsHandler(w http.ResponseWriter, r *http.Request) error {
 
-	return eventsTmpl.Execute(app, w, r, struct {
-		Session *SessionData
-		CSRFTag template.HTML
-	}{app.su.getSessionData(r), csrf.TemplateField(r)})
+	return eventsTmpl.ExecuteWithSession(app, w, r, Values{})
 }
 
 func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {
 
-	return homeTmpl.Execute(app, w, r, struct {
-		Session *SessionData
-		CSRFTag template.HTML
-	}{app.su.getSessionData(r), csrf.TemplateField(r)})
+	return homeTmpl.ExecuteWithSession(app, w, r, Values{})
 }
 
 func (app *App) aboutHandler(w http.ResponseWriter, r *http.Request) error {
 
 	if app.su.getCurrentUserID(r) != "" {
-		return aboutTmpl.Execute(app, w, r, struct {
-			Session *SessionData
-			CSRFTag template.HTML
-		}{app.su.getSessionData(r), csrf.TemplateField(r)})
+		return aboutTmpl.ExecuteWithSession(app, w, r, Values{})
 	} else {
-		return aboutTmpl.Execute(app, w, r, struct {
-			Session *SessionData
-			CSRFTag template.HTML
-		}{nil, csrf.TemplateField(r)})
+		return aboutTmpl.Execute(w, nil)
 	}
 }
 
 func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 
-	ctx := r.Context()
-	sessionData := app.su.getSessionData(r)
-	user, _ := app.db.GetUser(ctx, sessionData.UID)
-
-	return userinfoTmpl.Execute(app, w, r, struct {
-		Session *SessionData
-		Data    *db.UserInfo
-		CSRFTag template.HTML
-	}{app.su.getSessionData(r), user, csrf.TemplateField(r)})
+	return userinfoTmpl.ExecuteWithSession(app, w, r, Values{})
 }
 
 func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) error {
-	return loginTmpl.Execute(app, w, r, struct {
-		Session *SessionData
+	return loginTmpl.Execute(w, struct {
 		CSRFTag template.HTML
-	}{nil, csrf.TemplateField(r)})
+	}{csrf.TemplateField(r)})
 }

@@ -1,0 +1,67 @@
+<script> document.getElementById("navbar-squads").classList.add("active"); </script>
+
+<script> var squadId = "{{.SquadID}}"; </script>
+
+<div id="app">
+	<div v-if="loading">
+		<div class="mt-5" align="center">
+			<div class="spinner-border mt-5" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+	</div>
+	<div v-if="!loading" v-cloak>
+		<!-- Main View -->
+		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
+			[[ error_message ]]
+		</div>
+
+		<div class="d-flex flex-wrap">
+			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 mb-1 mx-1">
+				<ol class="breadcrumb mb-0 p-0">
+					<li class="breadcrumb-item d-none d-sm-block">My Squads</li>
+					<li class="breadcrumb-item active">"{{.SquadID}}"</li>
+				</ol>
+			</div>
+		</div>
+
+
+		<div class="row px-3">
+			<div class="col-12 p-0">
+				<div class="m-1 p-3 bg-white rounded box-shadow" id="notesAccordion">
+					<h5 class="border-bottom border-gray pb-2 mb-0">Notes</h6>
+					<div v-for="(note, i) in notes.slice(0, 3)" class="pt-2">
+						<div class="pb-2 mb-0 lh-125 border-bottom border-gray">
+							<div class="w-100">
+								<a data-toggle="collapse" :href="'#note_' + i"> <strong class="text-gray-dark">[[getNoteTitle(note)]]</strong></a>
+							</div>
+							<div :id="'note_' + i" :class="[i==0 ? `collapse show` : `collapse`]" data-parent="#notesAccordion">
+								<pre style="white-space: pre-wrap; word-break: normal;">[[note.text]]</pre>
+							</div>
+						</div>
+					</div>
+					<div id="otherNotes" class="collapse">
+						<div v-for="(note, i) in notes.slice(3)" class="pt-2">
+							<div class="pb-2 mb-0 lh-125 border-bottom border-gray">
+								<div class="w-100">
+									<a data-toggle="collapse" :href="'#note_' + i+3"> <strong class="text-gray-dark">[[getNoteTitle(note)]]</strong></a>
+								</div>
+								<div :id="'note_' + i+3" class="collapse" data-parent="#notesAccordion">
+									<pre>[[note.text]]</pre>
+								</div>
+							</div>
+						</div>
+					</div>
+					<small v-if="notes.length > 3" class="d-block text-right mt-3">
+						<a data-toggle="collapse" class="collapsed" href="#otherNotes">
+							<span class="if-collapsed">More Notes</span>
+							<span class="if-not-collapsed">Less Notes</span>
+						</a>
+					</small>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script src="/static/squadNotes.js"></script>

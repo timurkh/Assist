@@ -2,6 +2,9 @@ const { createApp } = Vue
 
 const app = createApp( {
 	delimiters: ['[[', ']]'],
+	components: {
+		'note-dialog' : NoteDialog,
+	},
 	data(){
 		return {
 			loading:true,
@@ -9,10 +12,9 @@ const app = createApp( {
 			squadId:squadId,
 			notes:[],
 			tags:[],
-			newNote: {},
 			newTag: {},
-			noteToEdit: {},
-			noteToEditIndex: -1,
+			noteToEdit:{},
+			noteNew:{},
 		};
 	},
 	created:function() {
@@ -60,19 +62,19 @@ const app = createApp( {
 				this.error_message = "Error while adding tag: " + this.getAxiosErrorMessage(err);
 			});
 		},
-		addNote:function() {
+		addNote:function(note) {
 			axios({
 				method: 'POST',
 				url: `/methods/squads/${squadId}/notes`,
-				data: this.newNote,
+				data: note,
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
-				this.newNote.id = res.data.id;
-				this.newNote.timestamp = (new Date()).toJSON();
-				this.notes.unshift(this.newNote);
-				this.newNote = {};
+				note.id = res.data.id;
+				note.timestamp = (new Date()).toJSON();
+				this.notes.unshift(note);
+				this.noteNew = {};
 			})
 			.catch(err => {
 				this.error_message = "Error while adding note: " + this.getAxiosErrorMessage(err);
@@ -112,11 +114,11 @@ const app = createApp( {
 			return "[" + (new Date(note.timestamp)).toLocaleDateString() + "] " + note.title;
 		},
 		editNote:function(note, index) {
-			this.noteToEdit = Object.assign({}, note);
-			this.noteToEditIndex = index;
+			Object.assign(this.noteToEdit, note);
+			this.noteToEdit.index = index;
 			$('#editNoteModal').modal('show');
 		},
-		saveNote:function() {
+		saveNote:function(note) {
 			axios({
 				method: 'PUT',
 				url: `/methods/squads/${squadId}/notes/${this.noteToEdit.id}`,
@@ -124,7 +126,7 @@ const app = createApp( {
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
-				Object.assign(this.notes[this.noteToEditIndex], this.noteToEdit); 
+				Object.assign(this.notes[note.index], note); 
 				this.error_message = "";
 			})
 			.catch(err => {

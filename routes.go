@@ -59,7 +59,11 @@ func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (app *App) registerHandlers() {
 	// serve js files & turn off caching
-	http.Handle("/static/", NoCache(http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))))
+	if app.dev {
+		http.Handle("/static/", NoCache(http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))))
+	} else {
+		http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	}
 
 	// get rid of favicon errors in logs
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {

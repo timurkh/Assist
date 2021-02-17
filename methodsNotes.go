@@ -43,7 +43,9 @@ func (app *App) methodCreateNote(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	err = json.NewEncoder(w).Encode(struct{ ID string }{id})
+	err = json.NewEncoder(w).Encode(struct {
+		ID string `json:"id"`
+	}{id})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
