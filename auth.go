@@ -148,9 +148,6 @@ func (am *SessionUtil) authMiddleware(next http.Handler) http.Handler {
 						return
 					}
 				} else {
-					if am.dev {
-						log.Printf("Setting sessionToken %+v\n", decoded)
-					}
 					gorilla_context.Set(r, "SessionToken", decoded)
 					if decoded.Claims["Role"].(string) == "" && r.URL.Path != "/userinfo" {
 						log.Print("User is pending approve. Redirect to /userinfo")

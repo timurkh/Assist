@@ -26,7 +26,8 @@ const app = createApp( {
 	},
 	methods: {
 		getSquadsCount : function() {
-			return this.homeCounters['squads'].reduce((a,c) => a+c);
+			if(this.homeCounters[`squads`] != null)
+				return this.homeCounters['squads'].reduce((a,c) => a+c);
 		},
 		getSquadsClass : function() {
 			if(this.getSquadsCount() > 0) {

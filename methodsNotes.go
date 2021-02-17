@@ -26,7 +26,7 @@ func (app *App) methodCreateNote(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	var note db.Note
+	var note db.NoteUpdate
 	err := json.NewDecoder(r.Body).Decode(&note)
 	if err != nil {
 		err = fmt.Errorf("Failed to decode note data from the HTTP request: %w", err)
@@ -58,7 +58,7 @@ func (app *App) methodGetNotes(w http.ResponseWriter, r *http.Request) error {
 
 	squadId := params["squadId"]
 
-	_, authLevel := app.checkAuthorization(r, "", squadId, squadAdmin|squadOwner)
+	_, authLevel := app.checkAuthorization(r, "", squadId, squadAdmin|squadOwner|squadMember)
 	if authLevel == 0 {
 		err := fmt.Errorf("Current user is not authenticated to get squad " + squadId + " details")
 		log.Println(err.Error())
@@ -66,7 +66,7 @@ func (app *App) methodGetNotes(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	notes, err := app.db.GetNotes(ctx, squadId)
+	notes, err := app.db.GetNotes(ctx, squadId, authLevel == squadMember)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -128,7 +128,7 @@ func (app *App) methodUpdateNote(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	var note db.Note
+	var note db.NoteUpdate
 	err := json.NewDecoder(r.Body).Decode(&note)
 	if err != nil {
 		err = fmt.Errorf("Failed to decode note data from the HTTP request: %w", err)

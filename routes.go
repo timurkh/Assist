@@ -83,7 +83,7 @@ func (app *App) registerHandlers() {
 
 	rm.Methods("POST").Path("/squads/{squadId}/members").Handler(appHandler(app.methodCreateReplicant))
 	rm.Methods("POST").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
-	rm.Methods("PUT").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodUpdateSquadMember))
+	rm.Methods("PATCH").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodUpdateSquadMember))
 	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
 	rm.Methods("POST").Path("/squads").Handler(appHandler(app.methodCreateSquad))
 	rm.Methods("DELETE").Path("/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
@@ -98,6 +98,9 @@ func (app *App) registerHandlers() {
 	rm.Methods("POST").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodCreateTag))
 	rm.Methods("GET").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodGetTags))
 	rm.Methods("DELETE").Path("/squads/{squadId}/tags/{tagName}").Handler(appHandler(app.methodDeleteTag))
+	rm.Methods("POST").Path("/squads/{squadId}/members/{userId}/tags").Handler(appHandler(app.methodSetMemberTag))
+	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}/tags/{tagName}").Handler(appHandler(app.methodDeleteMemberTag))
+	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}/tags/{tagName}/{tagValue}").Handler(appHandler(app.methodDeleteMemberTag))
 
 	// notes
 	rm.Methods("PUT").Path("/squads/{squadId}/notes/{noteId}").Handler(appHandler(app.methodUpdateNote))

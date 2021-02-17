@@ -15,7 +15,7 @@ const app = createApp( {
 			replicant: [],
 			tags:[],
 			tagToSet:{},
-			tagToSetValue:0,
+			tagToSetValue:"",
 		};
 	},
 	created:function() {
@@ -45,17 +45,17 @@ const app = createApp( {
 			this.changeMember_index = index;
 			this.changeMember = member;
 			this.tagToSet = this.tags[0];
-			this.tagToSetValue = 0;
 			$('#addTagModal').modal('show')
 		},
 		setMemberTag:function() {
-			var data = new Object();
-			data.Name = this.tagToSet.name;
-			if (this.tagToSet.values != null) data.Value = this.tagToSet.values[this.tagToSetValue];
+			let tag = new Object();
+			tag.Name = this.tagToSet.name;
+			if(this.getTagHasValues(this.tagToSet))
+				tag.Value = this.tagToSetValue;
 			axios({
-				method: 'PUT',
-				url: `/methods/squads/${squadId}/members/${this.changeMember.id}`,
-				data: { Tag: data}, 
+				method: 'POST',
+				url: `/methods/squads/${squadId}/members/${this.changeMember.id}/tags`,
+				data: { Tag: tag}, 
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
@@ -66,16 +66,15 @@ const app = createApp( {
 				this.error_message = "Error while tagging member: " + this.getAxiosErrorMessage(err);
 			});
 		},
-		deleteTag:function(member, tag, tagIndex) {
-			member.tags.splice(tagIndex, 1);
+		deleteMemberTag:function(member, tag, tagIndex) {
 			axios({
-				method: 'PUT',
-				url: `/methods/squads/${squadId}/members/${member.id}`,
-				data: { Tags: member.tags}, 
+				method: 'DELETE',
+				url: `/methods/squads/${squadId}/members/${member.id}/tags/${tag}`,
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
+				member.tags = res.data.tags;
 			})
 			.catch(err => {
 				this.error_message = "Error while updating member tags: " + this.getAxiosErrorMessage(err);
@@ -83,7 +82,7 @@ const app = createApp( {
 		},
 		setMemberStatus:function() {
 			axios({
-				method: 'PUT',
+				method: 'PATCH',
 				url: `/methods/squads/${squadId}/members/${this.changeMember.id}`,
 				data: { Status: this.statusToSet, },
 				headers: { "X-CSRF-Token": csrfToken },
@@ -135,5 +134,19 @@ const app = createApp( {
 			});
 		}
 	},
+	computed: {
+		newTagValue: {
+			get: function() {
+				if (this.tagToSetValue.length == 0) {
+					this.tagToSetValue = Object.keys(this.tagToSet.values)[0];
+				}
+
+				return this.tagToSetValue;
+			},
+			set: function (value) {
+				this.tagToSetValue = value;
+			}
+		},
+	}, 
 	mixins: [globalMixin],
 }).mount("#app");

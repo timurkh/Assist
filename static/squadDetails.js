@@ -32,20 +32,29 @@ const app = createApp( {
 	},
 	methods: {
 		addTag:function() {
+
 			if(this.newTag.name == "") {
 				this.error_message = "Tag name should not be empty.";
 				return false;
 			}
 
+			let newTag = new Object();
+			newTag.name = this.newTag.name;
+			newTag.values = new Object();
+			if(this.newTag.values != null)
+				this.newTag.values.forEach(v => {newTag.values[v] = 0});
+			else
+				newTag.values["_"] = 0;
+
 			axios({
 				method: 'POST',
 				url: `/methods/squads/${squadId}/tags`,
-				data: this.newTag,
+				data: newTag,
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
-				this.tags.push(Object.assign({}, this.newTag));
+				this.tags.push(newTag);
 			})
 			.catch(err => {
 				this.error_message = "Error while adding tag: " + this.getAxiosErrorMessage(err);
@@ -67,6 +76,21 @@ const app = createApp( {
 			})
 			.catch(err => {
 				this.error_message = "Error while adding note: " + this.getAxiosErrorMessage(err);
+			});
+		},
+		toggleNote:function(note, i) {
+			note.published = !note.published;
+			axios({
+				method: 'PUT',
+				url: `/methods/squads/${squadId}/notes/${note.id}`,
+				data: { published : note.published},
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then( res => {
+				this.error_message = "";
+			})
+			.catch(err => {
+				this.error_message = "Error while saving note: " + this.getAxiosErrorMessage(err);
 			});
 		},
 		deleteObject:function(obj, id, index) {

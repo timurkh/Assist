@@ -351,7 +351,7 @@ func (app *App) methodUpdateSquadMember(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// authorization check
-	userId, authLevel := app.checkAuthorization(r, userId, squadId, squadOwner)
+	userId, authLevel := app.checkAuthorization(r, userId, squadId, squadAdmin|squadOwner)
 	if authLevel == 0 {
 		// operation is not authorized, return error
 		err := fmt.Errorf("Current user is not authorized to change user " + userId + " status in squad " + squadId)
@@ -360,20 +360,9 @@ func (app *App) methodUpdateSquadMember(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	var ret interface{} = nil
-
 	switch {
-
 	case data.Status != nil:
 		err = app.db.SetSquadMemberStatus(ctx, userId, squadId, *data.Status)
-	case data.Tag != nil:
-		tags, e := app.db.SetSquadMemberTag(ctx, userId, squadId, data.Tag.Name, data.Tag.Value)
-		ret = struct {
-			Tags []interface{} `json:"tags"`
-		}{tags}
-		err = e
-	case data.Tags != nil:
-		err = app.db.SetSquadMemberTags(ctx, userId, squadId, data.Tags)
 	}
 
 	if err != nil {
@@ -383,12 +372,6 @@ func (app *App) methodUpdateSquadMember(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
-	err = json.NewEncoder(w).Encode(ret)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return err
-	}
 
 	return nil
 }

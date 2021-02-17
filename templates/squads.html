@@ -1,5 +1,11 @@
 <script> document.getElementById("navbar-squads").classList.add("active"); </script>
 
+{{if .Session.Admin}}
+<script> var userIsAdmin = true; </script>
+{{else}}
+<script> var userIsAdmin = false; </script>
+{{end}}
+
 <div id="app">
 	<div v-if="loading">
 		<div class="mt-5" align="center">
@@ -64,7 +70,7 @@
 			You are not a member of any squad. Go ahead and join existing one or create your own.
 		</div>
 
-		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1" role="alert">
+		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
 			[[ error_message ]]
 		</div>
 
@@ -100,7 +106,7 @@
 					<tr class="" v-for="(squad, index) in own_squads">
 
 						<td class="text-wrap">
-							<a v-if="squad.status==3 || squad.status==2" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.id]]</a>
+							<a v-if="squad.status>=1" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.id]]</a>
 							<div v-else>[[squad.id]]</div>
 						</td>
 						<td class="text-wrap">
@@ -110,19 +116,13 @@
 						<td class="text-truncate">[[squad.pendingApproveCount]]</td>
 						<td class="text-truncate">[[getStatusText(squad.status)]]</td>
 						<td class="text-wrap" align="center">
-							{{if .Session.Admin}}
-							<span>
-							{{else}}
-							<span v-if="squad.status == 3 || squad.status == 2">
-							{{end}}
+							<span v-if="userIsAdmin || squad.status >= 1">
 								<a title="Details" data-toggle="tooltip" v-on:click="showSquadDetails(squad.id, index)" href="#"><i class="fas fa-info-circle fa-lg p-1"></i></a>
+							</span>
+							<span v-if="userIsAdmin || squad.status >= 2">
 								<a title="Members" data-toggle="tooltip" v-on:click="showSquadMembers(squad.id, index)" href="#"><i class="fas fa-users fa-lg p-1"></i></a>
 							</span>
-							{{if .Session.Admin}}
-							<span>
-							{{else}}
-							<span v-if="squad.status == 3">
-							{{end}}
+							<span v-if="userIsAdmin || squad.status == 3">
 								<a title="Delete" data-toggle="tooltip" v-on:click="deleteSquad(squad.id, index)" href="#"><i class="fas fa-minus-circle fa-lg p-1"></i></a>
 							</span>
 							<span v-if="squad.status != 3">

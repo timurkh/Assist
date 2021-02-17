@@ -14,38 +14,55 @@ type Note struct {
 	Title     string    `json:"title"`
 	Text      string    `json:"text"`
 	Timestamp time.Time `json:"timestamp"`
+	Published bool      `json:"published"`
 }
 
+type NoteUpdate struct {
+	Title     *string `json:"title"`
+	Text      *string `json:"text"`
+	Published *bool   `json:"published"`
+}
 type NoteRecord struct {
 	ID string `json:"id"`
 	Note
 }
 
-func (db *FirestoreDB) CreateNote(ctx context.Context, squadId string, note *Note) (id string, err error) {
+func (db *FirestoreDB) CreateNote(ctx context.Context, squadId string, note *NoteUpdate) (id string, err error) {
 
-	log.Printf("Creating note '%+v' in squad '%v'", note, squadId)
+	if note.Title != nil && note.Text != nil {
+		log.Printf("Creating note '%+v' in squad '%v'", note, squadId)
 
-	dbNotes := db.Squads.Doc(squadId).Collection("notes")
-	doc, _, err := dbNotes.Add(ctx, map[string]interface{}{
-		"Title":     note.Title,
-		"Timestamp": firestore.ServerTimestamp,
-		"Text":      note.Text,
-	})
+		dbNotes := db.Squads.Doc(squadId).Collection("notes")
+		doc, _, err := dbNotes.Add(ctx, map[string]interface{}{
+			"Title":     note.Title,
+			"Timestamp": firestore.ServerTimestamp,
+			"Text":      note.Text,
+		})
 
-	if err != nil {
-		return "", err
+		if err != nil {
+			return "", err
+		}
+
+		return doc.ID, nil
 	}
 
-	return doc.ID, nil
+	return "", fmt.Errorf("Failed to create note, not enough details provided: %+v", note)
 }
 
-func (db *FirestoreDB) GetNotes(ctx context.Context, squadId string) (notes []*NoteRecord, err error) {
+func (db *FirestoreDB) GetNotes(ctx context.Context, squadId string, publishedOnly bool) (notes []*NoteRecord, err error) {
 
 	log.Printf("Getting notes for squad '%v'", squadId)
 
 	notes = make([]*NoteRecord, 0)
 
-	iter := db.Squads.Doc(squadId).Collection("notes").OrderBy("Timestamp", firestore.Desc).Documents(ctx)
+	col := db.Squads.Doc(squadId).Collection("notes")
+	var query firestore.Query
+	if publishedOnly {
+		query = col.Where("Published", "==", true).OrderBy("Timestamp", firestore.Desc)
+	} else {
+		query = col.OrderBy("Timestamp", firestore.Desc)
+	}
+	iter := query.Documents(ctx)
 
 	defer iter.Stop()
 	for {
@@ -86,16 +103,27 @@ func (db *FirestoreDB) DeleteNote(ctx context.Context, squadId string, noteId st
 	return nil
 }
 
-func (db *FirestoreDB) UpdateNote(ctx context.Context, squadId string, noteId string, note *Note) error {
+func (db *FirestoreDB) UpdateNote(ctx context.Context, squadId string, noteId string, note *NoteUpdate) error {
 
 	log.Printf("Updating note '%v' in squad '%v'", noteId, squadId)
 
 	dbNote := db.Squads.Doc(squadId).Collection("notes").Doc(noteId)
-	_, err := dbNote.Set(ctx, map[string]interface{}{
-		"Title":     note.Title,
-		"Timestamp": firestore.ServerTimestamp,
-		"Text":      note.Text,
-	}, firestore.MergeAll)
 
-	return err
+	if note.Title != nil && note.Text != nil {
+		_, err := dbNote.Set(ctx, map[string]interface{}{
+			"Title":     note.Title,
+			"Timestamp": firestore.ServerTimestamp,
+			"Text":      note.Text,
+		}, firestore.MergeAll)
+
+		return err
+	} else if note.Published != nil {
+		_, err := dbNote.Set(ctx, map[string]interface{}{
+			"Published": note.Published,
+		}, firestore.MergeAll)
+
+		return err
+	}
+
+	return fmt.Errorf("Failed to update note, not enough details provided: %+v", note)
 }

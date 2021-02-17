@@ -27,6 +27,12 @@ const globalMixin = {
 				return error;
 			}
 		},
+		getTagHasValues : function(tag) {
+			if (tag.values == null)
+				return false;
+			let valuesCount = Object.entries(tag.values).length;
+			return valuesCount > 1 || (valuesCount == 1 && tag.values._ == null);
+		}
 	},
 };
 

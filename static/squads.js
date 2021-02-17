@@ -10,6 +10,7 @@ const app = createApp( {
 			error_message:"",
 			squadName:"",
 			squadToJoin:"",
+			userIsAdmin: userIsAdmin,
 		}
 	},
 	created:function() {

@@ -10,20 +10,16 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-type TagInfo struct {
-	Values []string `json:"values"`
-}
-
 type Tag struct {
-	Name string `json:"name"`
-	TagInfo
+	Name   string           `json:"name"`
+	Values map[string]int64 `json:"values"`
 }
 
 func (db *FirestoreDB) CreateTag(ctx context.Context, squadId string, tag *Tag) (err error) {
 
 	log.Printf("Creating tag '%+v' in squad '%v'", tag, squadId)
 
-	_, err = db.Squads.Doc(squadId).Collection("tags").Doc(tag.Name).Create(ctx, tag.TagInfo)
+	_, err = db.Squads.Doc(squadId).Collection("tags").Doc(tag.Name).Set(ctx, tag.Values)
 	return err
 }
 
@@ -44,16 +40,16 @@ func (db *FirestoreDB) GetTags(ctx context.Context, squadId string) (tags []*Tag
 			return nil, fmt.Errorf("Failed to get squad tags: %w", err)
 		}
 
-		ti := &TagInfo{}
-		err = doc.DataTo(ti)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to get squad tags: %w", err)
+		values := make(map[string]int64)
+		values_ := doc.Data()
+		for k, v := range values_ {
+			values[k] = v.(int64)
 		}
-		t := &Tag{
-			Name:    doc.Ref.ID,
-			TagInfo: *ti,
+		tag := &Tag{
+			Name:   doc.Ref.ID,
+			Values: values,
 		}
-		tags = append(tags, t)
+		tags = append(tags, tag)
 	}
 
 	return tags, nil
@@ -99,7 +95,7 @@ func (db *FirestoreDB) SetSquadMemberTag(ctx context.Context, userId string, squ
 
 	tagNew := tagName
 	if tagValue != "" {
-		tagNew = tagName + ":" + tagValue
+		tagNew = tagName + "/" + tagValue
 	}
 
 	log.Println("Setting tag " + tagName + " to user " + userId + " from squad " + squadId)
@@ -112,10 +108,11 @@ func (db *FirestoreDB) SetSquadMemberTag(ctx context.Context, userId string, squ
 	tagFound := false
 
 	for i, tag := range tags {
-		name := strings.Split(tag.(string), ":")[0]
+		name := strings.Split(tag.(string), "/")[0]
 		if name == tagName {
 			tags[i] = tagNew
 			tagFound = true
+			break
 		}
 	}
 
@@ -129,6 +126,52 @@ func (db *FirestoreDB) SetSquadMemberTag(ctx context.Context, userId string, squ
 		return nil, err
 	}
 
+	if !tagFound {
+		db.UpdateTagCounter(ctx, squadId, tagName, tagValue, 1)
+	}
+
+	return tags, nil
+}
+
+func (db *FirestoreDB) DeleteSquadMemberTag(ctx context.Context, userId string, squadId string, tagName string, tagValue string) ([]interface{}, error) {
+
+	tag := tagName
+	if tagValue != "" {
+		tag = tag + "/" + tagValue
+	}
+	log.Println("Deleting tag " + tag + " from user " + userId + " from squad " + squadId)
+
+	tags, err := db.GetSquadMemberTags(ctx, userId, squadId)
+	if err != nil {
+		return nil, err
+	}
+
+	tagFound := false
+
+	for i, t := range tags {
+		if t == tag {
+			tagFound = true
+			if i == len(tags)-1 {
+				tags = tags[:i]
+			} else if i > 0 {
+				tags = append(tags[:i], tags[i+1:]...)
+			} else {
+				tags = tags[1:]
+			}
+			break
+		}
+	}
+
+	err = db.SetSquadMemberTags(ctx, userId, squadId, &tags)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if tagFound {
+		db.UpdateTagCounter(ctx, squadId, tagName, tagValue, -1)
+	}
+
 	return tags, nil
 }
 
@@ -139,9 +182,24 @@ func (db *FirestoreDB) SetSquadMemberTags(ctx context.Context, userId string, sq
 	})
 
 	if err != nil {
-		log.Println("Failed to update tags for  user "+userId+" from squad "+squadId+": %v", err)
+		log.Printf("Failed to update tags for  user %v from squad %v to %+v: %v", userId, squadId, tags, err)
 		return err
 	}
 
 	return nil
+}
+
+func (db *FirestoreDB) UpdateTagCounter(ctx context.Context, squadId string, tag string, value string, inc int) {
+
+	if value == "" {
+		value = "_"
+	}
+
+	_, err := db.Squads.Doc(squadId).Collection("tags").Doc(tag).Update(ctx, []firestore.Update{
+		{Path: value, Value: firestore.Increment(inc)},
+	})
+
+	if err != nil {
+		log.Printf("Failed to update tag %v in squad %v counter: %v", tag, squadId, err)
+	}
 }

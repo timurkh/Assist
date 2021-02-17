@@ -200,7 +200,7 @@ func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (map[
 
 	//todo
 	{
-		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("PendingApproveCount", "!=", 0).Snapshots(ctx)
+		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "in", []int{int(Admin), int(Owner)}).Where("PendingApproveCount", "!=", 0).Snapshots(ctx)
 		defer iter.Stop()
 		snapshot, err := iter.Next()
 		if err != nil {

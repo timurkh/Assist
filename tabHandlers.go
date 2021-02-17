@@ -16,6 +16,7 @@ var (
 	squadsTmpl       = parseBodyTemplate("squads.html")
 	squadMembersTmpl = parseBodyTemplate("squadMembers.html")
 	squadDetailsTmpl = parseBodyTemplate("squadDetails.html")
+	squadNotesTmpl   = parseBodyTemplate("squadNotes.html")
 	eventsTmpl       = parseBodyTemplate("events.html")
 	aboutTmpl        = parseBodyTemplate("about.html")
 )
@@ -32,11 +33,21 @@ func (app *App) squadDetailsHandler(w http.ResponseWriter, r *http.Request) erro
 	params := mux.Vars(r)
 	squadId := params["squadId"]
 
-	return squadDetailsTmpl.Execute(app, w, r, struct {
-		Session *SessionData
-		SquadID string
-		CSRFTag template.HTML
-	}{app.su.getSessionData(r), squadId, csrf.TemplateField(r)})
+	_, level := app.checkAuthorization(r, "me", squadId, squadMember|squadAdmin|squadOwner|systemAdmin)
+
+	if level >= squadAdmin {
+		return squadDetailsTmpl.Execute(app, w, r, struct {
+			Session *SessionData
+			SquadID string
+			CSRFTag template.HTML
+		}{app.su.getSessionData(r), squadId, csrf.TemplateField(r)})
+	} else {
+		return squadNotesTmpl.Execute(app, w, r, struct {
+			Session *SessionData
+			SquadID string
+			CSRFTag template.HTML
+		}{app.su.getSessionData(r), squadId, csrf.TemplateField(r)})
+	}
 }
 
 func (app *App) squadMembersHandler(w http.ResponseWriter, r *http.Request) error {
