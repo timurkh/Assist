@@ -70,7 +70,7 @@ func (db *FirestoreDB) deleteDocRecurse(ctx context.Context, doc *firestore.Docu
 		if err != nil {
 			return fmt.Errorf("Failed to iterate through collections: %w", err)
 		}
-		db.deleteCollectionRecurse(ctx, collRef)
+		db.DeleteCollectionRecurse(ctx, collRef)
 	}
 
 	_, err := doc.Delete(ctx)
@@ -80,7 +80,7 @@ func (db *FirestoreDB) deleteDocRecurse(ctx context.Context, doc *firestore.Docu
 	return nil
 }
 
-func (db *FirestoreDB) deleteCollectionRecurse(ctx context.Context, collection *firestore.CollectionRef) error {
+func (db *FirestoreDB) DeleteCollectionRecurse(ctx context.Context, collection *firestore.CollectionRef) error {
 	iter := collection.Documents(ctx)
 
 	defer iter.Stop()

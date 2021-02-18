@@ -1,7 +1,7 @@
 package main
 
 import (
-	"assist/db"
+	assist_db "assist/db"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -24,12 +24,12 @@ const (
 
 func (app *App) checkAuthorization(r *http.Request, userId string, squadId string, requiredLevel AuthenticatedLevel) (_ string, level AuthenticatedLevel) {
 
-	sd := app.su.getSessionData(r)
+	sd := app.sd.getSessionData(r)
 	if sd.Admin {
 		level = systemAdmin
 	}
 
-	currentUserId := app.su.getCurrentUserID(r)
+	currentUserId := app.sd.getCurrentUserID(r)
 	if userId == "me" {
 		userId = currentUserId
 		level = level | (authenticatedUser & requiredLevel)
@@ -39,11 +39,11 @@ func (app *App) checkAuthorization(r *http.Request, userId string, squadId strin
 		status, err := app.db.GetSquadMemberStatus(r.Context(), currentUserId, squadId)
 		if err == nil {
 			switch status {
-			case db.Member:
+			case assist_db.Member:
 				level = level | (squadMember & requiredLevel)
-			case db.Admin:
+			case assist_db.Admin:
 				level = level | (squadAdmin & requiredLevel)
-			case db.Owner:
+			case assist_db.Owner:
 				level = level | (squadOwner & requiredLevel)
 			}
 		}
@@ -64,7 +64,7 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	squadId := squad.Name
-	ownerId := app.su.getCurrentUserID(r)
+	ownerId := app.sd.getCurrentUserID(r)
 
 	ctx := r.Context()
 	err = app.db.CreateSquad(ctx, squadId, ownerId)
@@ -97,7 +97,7 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 		http.Error(w, err.Error(), http.StatusNotImplemented)
 		return err
 	}
-	userId = app.su.getCurrentUserID(r)
+	userId = app.sd.getCurrentUserID(r)
 
 	homeCounters, err := app.db.GetHomeCounters(ctx, userId)
 	if err != nil {
@@ -197,7 +197,7 @@ func (app *App) methodGetSquad(w http.ResponseWriter, r *http.Request) error {
 
 	squadInfo, err := app.db.GetSquad(r.Context(), squadId)
 	if err != nil {
-		err = fmt.Errorf("Failed to retrieve squad %v info: %w", squadId, err.Error())
+		err = fmt.Errorf("Failed to retrieve squad %v info: %w", squadId, err)
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -256,13 +256,13 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 	squadId := params["squadId"]
 	userId := params["userId"]
 
-	var memberStatus db.MemberStatusType
+	var memberStatus assist_db.MemberStatusType
 	userId, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadAdmin|squadOwner)
 
 	if authLevel&(squadOwner|squadAdmin|systemAdmin) != 0 {
-		memberStatus = db.Member
+		memberStatus = assist_db.Member
 	} else if authLevel&authenticatedUser != 0 {
-		memberStatus = db.PendingApprove
+		memberStatus = assist_db.PendingApprove
 	} else {
 		err := fmt.Errorf("Current user is not authorized to to add user " + userId + " to squad " + squadId)
 		log.Println(err.Error())
@@ -278,7 +278,7 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(struct{ Status db.MemberStatusType }{memberStatus})
+	err = json.NewEncoder(w).Encode(struct{ Status assist_db.MemberStatusType }{memberStatus})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -303,7 +303,7 @@ func (app *App) methodCreateReplicant(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	var replicantInfo db.UserInfo
+	var replicantInfo assist_db.UserInfo
 	err := json.NewDecoder(r.Body).Decode(&replicantInfo)
 	if err != nil {
 		err = fmt.Errorf("Failed to decode replicant data from the HTTP request: %w", err)
@@ -336,8 +336,8 @@ func (app *App) methodUpdateSquadMember(w http.ResponseWriter, r *http.Request) 
 	userId := params["userId"]
 
 	var data struct {
-		Status *db.MemberStatusType `json:"status"`
-		Notes  *map[string]string   `json:"notes"`
+		Status *assist_db.MemberStatusType `json:"status"`
+		Notes  *map[string]string          `json:"notes"`
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&data)

@@ -10,11 +10,10 @@ import (
 	firebase "firebase.google.com/go"
 )
 
+var db *FirestoreDB
+var ctx = context.Background()
+
 func TestInitDB(t *testing.T) {
-
-	ctx := context.Background()
-
-	var db *FirestoreDB
 
 	t.Run("Init test firestore DB", func(t *testing.T) {
 		fireapp, err := firebase.NewApp(ctx, nil)
@@ -42,9 +41,11 @@ func TestInitDB(t *testing.T) {
 			t.Fatalf("NewFirestoreDB failed: %v", err)
 		}
 	})
+}
 
+func TestCleanDB(t *testing.T) {
 	t.Run("Clean test DB", func(t *testing.T) {
-		err := db.deleteCollectionRecurse(ctx, db.Squads)
+		err := db.DeleteCollectionRecurse(ctx, db.Squads)
 		if err != nil {
 			t.Fatalf("Failed to clean test data: %v", err)
 		}
@@ -57,7 +58,9 @@ func TestInitDB(t *testing.T) {
 			t.Fatalf("Failed to touch ALL_SQUADS doc: %v", err)
 		}
 	})
+}
 
+func TestRun(t *testing.T) {
 	t.Run("Create test users", func(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			userInfo := &UserInfo{

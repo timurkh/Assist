@@ -42,7 +42,7 @@ type appTemplate struct {
 // Execute writes the template using the provided data.
 func (tmpl *appTemplate) ExecuteWithSession(app *App, w http.ResponseWriter, r *http.Request, values Values) error {
 
-	values["Session"] = app.su.getSessionData(r)
+	values["Session"] = app.sd.getSessionData(r)
 	values["CSRFTag"] = csrf.TemplateField(r)
 
 	if err := tmpl.Execute(w, values); err != nil {

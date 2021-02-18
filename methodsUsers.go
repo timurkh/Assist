@@ -15,9 +15,9 @@ func (app *App) methodSetUser(w http.ResponseWriter, r *http.Request) error {
 
 	userId := params["id"]
 	// authorization check
-	sd := app.su.getSessionData(r)
+	sd := app.sd.getSessionData(r)
 	if userId == "me" {
-		userId = app.su.getCurrentUserID(r)
+		userId = app.sd.getCurrentUserID(r)
 	} else if sd.Admin {
 		// ok, admin can do that
 	} else {

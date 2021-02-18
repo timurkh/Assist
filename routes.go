@@ -80,41 +80,11 @@ func (app *App) registerHandlers() {
 	)
 
 	r.Use(CSRF)
-	r.Use(app.su.authMiddleware)
-
-	// Methods
-	rm := r.PathPrefix("/methods").Subrouter()
-
-	rm.Methods("POST").Path("/squads/{squadId}/members").Handler(appHandler(app.methodCreateReplicant))
-	rm.Methods("POST").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
-	rm.Methods("PATCH").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodUpdateSquadMember))
-	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
-	rm.Methods("POST").Path("/squads").Handler(appHandler(app.methodCreateSquad))
-	rm.Methods("DELETE").Path("/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
-	rm.Methods("GET").Path("/squads/{id}").Handler(appHandler(app.methodGetSquad))
-	rm.Methods("GET").Path("/squads/{id}/members").Handler(appHandler(app.methodGetSquadMembers))
-
-	rm.Methods("PUT").Path("/users/{id}").Handler(appHandler(app.methodSetUser))
-	rm.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetSquads))
-	rm.Methods("GET").Path("/users/{userId}/home").Handler(appHandler(app.methodGetHome))
-
-	// tags
-	rm.Methods("POST").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodCreateTag))
-	rm.Methods("GET").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodGetTags))
-	rm.Methods("DELETE").Path("/squads/{squadId}/tags/{tagName}").Handler(appHandler(app.methodDeleteTag))
-	rm.Methods("POST").Path("/squads/{squadId}/members/{userId}/tags").Handler(appHandler(app.methodSetMemberTag))
-	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}/tags/{tagName}").Handler(appHandler(app.methodDeleteMemberTag))
-	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}/tags/{tagName}/{tagValue}").Handler(appHandler(app.methodDeleteMemberTag))
-
-	// notes
-	rm.Methods("PUT").Path("/squads/{squadId}/notes/{noteId}").Handler(appHandler(app.methodUpdateNote))
-	rm.Methods("POST").Path("/squads/{squadId}/notes").Handler(appHandler(app.methodCreateNote))
-	rm.Methods("GET").Path("/squads/{squadId}/notes").Handler(appHandler(app.methodGetNotes))
-	rm.Methods("DELETE").Path("/squads/{squadId}/notes/{noteId}").Handler(appHandler(app.methodDeleteNote))
+	r.Use(app.sm.authMiddleware)
 
 	// auth handlers
-	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.su.sessionLogin))
-	r.Methods("POST").Path("/sessionLogout").Handler(appHandler(app.su.sessionLogout))
+	r.Methods("POST").Path("/sessionLogin").Handler(appHandler(app.sm.sessionLogin))
+	r.Methods("POST").Path("/sessionLogout").Handler(appHandler(app.sm.sessionLogout))
 
 	// tab handlers
 	r.Methods("GET").Path("/home").Handler(appHandler(app.homeHandler))
@@ -127,6 +97,45 @@ func (app *App) registerHandlers() {
 	r.Methods("GET").Path("/about").Handler(appHandler(app.aboutHandler))
 
 	r.Handle("/", http.RedirectHandler("/home", http.StatusFound))
+
+	// Methods
+	app.registerMethodHandlers(r.PathPrefix("/methods").Subrouter())
+
 	http.Handle("/", handlers.CombinedLoggingHandler(os.Stdout, r))
 
+}
+
+func (app *App) registerMethodHandlers(rm *mux.Router) {
+	// squads
+	rm.Methods("POST").Path("/squads").Handler(appHandler(app.methodCreateSquad))
+	rm.Methods("DELETE").Path("/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
+	rm.Methods("GET").Path("/squads/{id}").Handler(appHandler(app.methodGetSquad))
+
+	// squad members
+	rm.Methods("POST").Path("/squads/{squadId}/members").Handler(appHandler(app.methodCreateReplicant))
+	rm.Methods("POST").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodAddMemberToSquad))
+	rm.Methods("GET").Path("/squads/{id}/members").Handler(appHandler(app.methodGetSquadMembers))
+	rm.Methods("PATCH").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodUpdateSquadMember))
+	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}").Handler(appHandler(app.methodDeleteMemberFromSquad))
+
+	// users
+	rm.Methods("PUT").Path("/users/{id}").Handler(appHandler(app.methodSetUser))
+	rm.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetSquads))
+	rm.Methods("GET").Path("/users/{userId}/home").Handler(appHandler(app.methodGetHome))
+
+	// squad tags
+	rm.Methods("POST").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodCreateTag))
+	rm.Methods("GET").Path("/squads/{squadId}/tags").Handler(appHandler(app.methodGetTags))
+	rm.Methods("DELETE").Path("/squads/{squadId}/tags/{tagName}").Handler(appHandler(app.methodDeleteTag))
+
+	// squad member tags
+	rm.Methods("POST").Path("/squads/{squadId}/members/{userId}/tags").Handler(appHandler(app.methodSetMemberTag))
+	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}/tags/{tagName}").Handler(appHandler(app.methodDeleteMemberTag))
+	rm.Methods("DELETE").Path("/squads/{squadId}/members/{userId}/tags/{tagName}/{tagValue}").Handler(appHandler(app.methodDeleteMemberTag))
+
+	// squad notes
+	rm.Methods("PUT").Path("/squads/{squadId}/notes/{noteId}").Handler(appHandler(app.methodUpdateNote))
+	rm.Methods("POST").Path("/squads/{squadId}/notes").Handler(appHandler(app.methodCreateNote))
+	rm.Methods("GET").Path("/squads/{squadId}/notes").Handler(appHandler(app.methodGetNotes))
+	rm.Methods("DELETE").Path("/squads/{squadId}/notes/{noteId}").Handler(appHandler(app.methodDeleteNote))
 }

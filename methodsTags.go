@@ -1,7 +1,7 @@
 package main
 
 import (
-	"assist/db"
+	assist_db "assist/db"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -26,7 +26,7 @@ func (app *App) methodCreateTag(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	var tag db.Tag
+	var tag assist_db.Tag
 	err := json.NewDecoder(r.Body).Decode(&tag)
 	if err != nil {
 		err = fmt.Errorf("Failed to decode tag data from the HTTP request: %w", err)

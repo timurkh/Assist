@@ -8,30 +8,21 @@ import (
 	"net/http"
 	"time"
 
-	"assist/db"
+	assist_db "assist/db"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
 	gorilla_context "github.com/gorilla/context"
 )
 
-type SessionData struct {
-	*auth.UserRecord
-	ContactInfoIssues    bool
-	DisplayNameNotUnique bool
-	PendingApproval      bool
-	Role                 string
-	Admin                bool
-}
-
 type SessionUtil struct {
 	authClient *auth.Client
-	db         *db.FirestoreDB
+	db         *assist_db.FirestoreDB
 	dev        bool
 }
 
 // init firebase auth
-func initSessionUtil(fireapp *firebase.App, db *db.FirestoreDB, dev bool) *SessionUtil {
+func initSessionUtil(fireapp *firebase.App, db *assist_db.FirestoreDB, dev bool) *SessionUtil {
 	ctx := context.Background()
 
 	authClient, err := fireapp.Auth(ctx)
@@ -44,14 +35,14 @@ func initSessionUtil(fireapp *firebase.App, db *db.FirestoreDB, dev bool) *Sessi
 	return &mdlwr
 }
 
-func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) error {
+func (su *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 
 	// Get the tokens sent by the client
 	idToken := r.FormValue("idToken")
 
 	// Decode the IDToken
-	decoded, err := am.authClient.VerifyIDToken(ctx, idToken)
+	decoded, err := su.authClient.VerifyIDToken(ctx, idToken)
 	if err != nil {
 		str := err.Error()
 		http.Error(w, str, http.StatusUnauthorized)
@@ -73,7 +64,7 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 	// The session cookie will have the same claims as the ID token.
 	// To only allow session cookie setting on recent sign-in, auth_time in ID token
 	// can be checked to ensure user was recently signed in before creating a session cookie.
-	cookie, err := am.authClient.SessionCookie(ctx, idToken, expiresIn)
+	cookie, err := su.authClient.SessionCookie(ctx, idToken, expiresIn)
 	if err != nil {
 		err = errors.New("Failed to create a session cookie: " + err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -87,18 +78,18 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 		MaxAge:   int(expiresIn.Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		Secure:   !am.dev,
+		Secure:   !su.dev,
 	})
 	w.Write([]byte(`{"status": "success"}`))
 
 	// Check if user exists in DB, add record otherwise
 	userId := decoded.UID
-	userRecord, err := am.authClient.GetUser(ctx, userId)
+	userRecord, err := su.authClient.GetUser(ctx, userId)
 	if err != nil {
 		return fmt.Errorf("Failed to get user record: %w", err)
 	}
 
-	err = am.db.UpdateUserInfoFromFirebase(ctx, userRecord)
+	err = su.db.UpdateUserInfoFromFirebase(ctx, userRecord)
 	if err != nil {
 		return fmt.Errorf("Failed to update user info: %w", err)
 	}
@@ -107,7 +98,7 @@ func (am *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
-func (am *SessionUtil) sessionLogout(w http.ResponseWriter, r *http.Request) error {
+func (su *SessionUtil) sessionLogout(w http.ResponseWriter, r *http.Request) error {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "firebaseSession",
 		Value:    "",
@@ -119,9 +110,9 @@ func (am *SessionUtil) sessionLogout(w http.ResponseWriter, r *http.Request) err
 	return nil
 }
 
-func (am *SessionUtil) authMiddleware(next http.Handler) http.Handler {
+func (su *SessionUtil) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if am.dev {
+		if su.dev {
 			log.Print("authMiddleware(" + r.URL.Path + ")")
 		}
 		switch r.URL.Path {
@@ -140,7 +131,7 @@ func (am *SessionUtil) authMiddleware(next http.Handler) http.Handler {
 
 				// Verify the session cookie. In this case an additional check is added to detect
 				// if the user's Firebase session was revoked, user deleted/disabled, etc.
-				decoded, err := am.authClient.VerifySessionCookieAndCheckRevoked(r.Context(), cookie.Value)
+				decoded, err := su.authClient.VerifySessionCookieAndCheckRevoked(r.Context(), cookie.Value)
 				if err != nil {
 					if r.URL.Path != "/about" {
 						log.Print("Session cookie is invalid. Force user to login.")
@@ -161,7 +152,7 @@ func (am *SessionUtil) authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (am *SessionUtil) getCurrentUserID(r *http.Request) string {
+func (su *SessionUtil) getCurrentUserID(r *http.Request) string {
 	sessionToken := gorilla_context.Get(r, "SessionToken")
 
 	if sessionToken != nil {
@@ -171,14 +162,8 @@ func (am *SessionUtil) getCurrentUserID(r *http.Request) string {
 	}
 }
 
-func (am *SessionUtil) getCurrentUserInfo(r *http.Request) (*auth.UserRecord, error) {
-	ctx := r.Context()
-
-	return am.authClient.GetUser(ctx, am.getCurrentUserID(r))
-}
-
-func (am *SessionUtil) getSessionData(r *http.Request) *SessionData {
-	u, err := am.getCurrentUserInfo(r)
+func (su *SessionUtil) getSessionData(r *http.Request) *SessionData {
+	u, err := su.authClient.GetUser(r.Context(), su.getCurrentUserID(r))
 
 	if err != nil {
 		log.Panic("Failed to get sessions data: ", err)
@@ -197,7 +182,7 @@ func (am *SessionUtil) getSessionData(r *http.Request) *SessionData {
 		sd.ContactInfoIssues = true
 	}
 
-	users, err := am.db.GetUserByName(r.Context(), sd.DisplayName)
+	users, err := su.db.GetUserByName(r.Context(), sd.DisplayName)
 	if users != nil && (len(users) > 1 || len(users) == 1 && users[0] != u.UID) {
 		sd.DisplayNameNotUnique = true
 		sd.ContactInfoIssues = true

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"assist/db"
+	assist_db "assist/db"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -26,7 +26,7 @@ func (app *App) methodCreateNote(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	var note db.NoteUpdate
+	var note assist_db.NoteUpdate
 	err := json.NewDecoder(r.Body).Decode(&note)
 	if err != nil {
 		err = fmt.Errorf("Failed to decode note data from the HTTP request: %w", err)
@@ -130,7 +130,7 @@ func (app *App) methodUpdateNote(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	var note db.NoteUpdate
+	var note assist_db.NoteUpdate
 	err := json.NewDecoder(r.Body).Decode(&note)
 	if err != nil {
 		err = fmt.Errorf("Failed to decode note data from the HTTP request: %w", err)

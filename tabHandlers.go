@@ -62,7 +62,7 @@ func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {
 
 func (app *App) aboutHandler(w http.ResponseWriter, r *http.Request) error {
 
-	if app.su.getCurrentUserID(r) != "" {
+	if app.sd.getCurrentUserID(r) != "" {
 		return aboutTmpl.ExecuteWithSession(app, w, r, Values{})
 	} else {
 		return aboutTmpl.Execute(w, nil)
