@@ -120,7 +120,7 @@ func (app *App) methodSetMemberTag(w http.ResponseWriter, r *http.Request) error
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&data)
-	if err != nil {
+	if err != nil || data.Tag == nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
 	}

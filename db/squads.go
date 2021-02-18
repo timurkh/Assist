@@ -49,9 +49,10 @@ type SquadInfoRecord struct {
 
 type SquadUserInfo struct {
 	UserInfo
-	Replicant bool             `json:"replicant"`
-	Status    MemberStatusType `json:"status"`
-	Tags      []string         `json:"tags"`
+	Replicant bool              `json:"replicant"`
+	Status    MemberStatusType  `json:"status"`
+	Tags      []string          `json:"tags"`
+	Notes     map[string]string `json:"notes"`
 }
 
 type SquadUserInfoRecord struct {
@@ -444,6 +445,24 @@ func (db *FirestoreDB) SetSquadMemberStatus(ctx context.Context, userId string, 
 	_, err = batch.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to change user "+userId+" status: %w", err)
+	}
+
+	return nil
+}
+
+func (db *FirestoreDB) SetSquadMemberNotes(ctx context.Context, userId string, squadId string, notes *map[string]string) error {
+
+	log.Printf("Updating note for user '%v' in squad '%v': %+v", userId, squadId, notes)
+
+	docUser := db.Squads.Doc(squadId).Collection("members").Doc(userId)
+
+	_, err := docUser.Update(ctx, []firestore.Update{
+		{Path: "Notes", Value: notes},
+	})
+
+	if err != nil {
+		log.Printf("Failed to update user notes: %v", err)
+		return err
 	}
 
 	return nil

@@ -81,9 +81,9 @@ func (db *FirestoreDB) GetSquadMemberTags(ctx context.Context, userId string, sq
 		return nil, fmt.Errorf("Failed to get squad "+squadId+" member "+userId+": %w", err)
 	}
 
-	tags, ok := doc.Data()["tags"]
+	tags, ok := doc.Data()["Tags"]
 
-	if ok {
+	if ok && tags != nil {
 		return tags.([]interface{}), nil
 	} else {
 		return nil, nil
@@ -106,12 +106,17 @@ func (db *FirestoreDB) SetSquadMemberTag(ctx context.Context, userId string, squ
 	}
 
 	tagFound := false
+	tagOldValue := ""
 
 	for i, tag := range tags {
-		name := strings.Split(tag.(string), "/")[0]
+		s := strings.Split(tag.(string), "/")
+		name := s[0]
 		if name == tagName {
-			tags[i] = tagNew
 			tagFound = true
+			if len(s) == 2 {
+				tagOldValue = s[1]
+				tags[i] = tagNew
+			}
 			break
 		}
 	}
@@ -120,14 +125,17 @@ func (db *FirestoreDB) SetSquadMemberTag(ctx context.Context, userId string, squ
 		tags = append(tags, tagNew)
 	}
 
-	err = db.SetSquadMemberTags(ctx, userId, squadId, &tags)
+	if !tagFound || tagOldValue != tagValue {
+		err = db.SetSquadMemberTags(ctx, userId, squadId, &tags)
 
-	if err != nil {
-		return nil, err
-	}
+		if err != nil {
+			return nil, err
+		}
 
-	if !tagFound {
 		db.UpdateTagCounter(ctx, squadId, tagName, tagValue, 1)
+		if tagFound {
+			db.UpdateTagCounter(ctx, squadId, tagName, tagOldValue, -1)
+		}
 	}
 
 	return tags, nil
@@ -178,7 +186,7 @@ func (db *FirestoreDB) DeleteSquadMemberTag(ctx context.Context, userId string, 
 func (db *FirestoreDB) SetSquadMemberTags(ctx context.Context, userId string, squadId string, tags *[]interface{}) error {
 
 	_, err := db.Squads.Doc(squadId).Collection("members").Doc(userId).Update(ctx, []firestore.Update{
-		{Path: "tags", Value: tags},
+		{Path: "Tags", Value: tags},
 	})
 
 	if err != nil {

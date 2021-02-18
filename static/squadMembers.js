@@ -2,20 +2,23 @@ const { createApp } = Vue
 
 const app = createApp( {
 	delimiters: ['[[', ']]'],
-	data(){
+	components: {
+		'add-note-dialog' : AddNoteDialog,
+		'add-member-dialog' : AddMemberDialog,
+		'change-status-dialog' : ChangeStatusDialog,
+		'add-tag-dialog' : AddTagDialog,
+		'show-note-dialog' : ShowNoteDialog,
+	},
+	data:function(){
 		return {
 			loading:true,
 			error_message:"",
 			squadId:squadId,
 			squad_members:[],
 			squad_owner:null,
-			statusToSet:0,
-			changeMember_index: -1,
 			changeMember: [],
-			replicant: [],
 			tags:[],
-			tagToSet:{},
-			tagToSetValue:"",
+			note:{},
 		};
 	},
 	created:function() {
@@ -36,22 +39,16 @@ const app = createApp( {
 	},
 	methods: {
 		changeStatus:function(member, index) {
-			this.changeMember_index = index;
 			this.changeMember = member;
-			this.statusToSet = member.status;
+			this.changeMember.index = index;
 			$('#changeMemberStatusModal').modal('show')
 		},
 		tagMember:function(member, index) {
-			this.changeMember_index = index;
 			this.changeMember = member;
-			this.tagToSet = this.tags[0];
+			this.changeMember.index = index;
 			$('#addTagModal').modal('show')
 		},
-		setMemberTag:function() {
-			let tag = new Object();
-			tag.Name = this.tagToSet.name;
-			if(this.getTagHasValues(this.tagToSet))
-				tag.Value = this.tagToSetValue;
+		setMemberTag:function(tag) {
 			axios({
 				method: 'POST',
 				url: `/methods/squads/${squadId}/members/${this.changeMember.id}/tags`,
@@ -60,7 +57,7 @@ const app = createApp( {
 			})
 			.then( res => {
 				this.error_message = "";
-				this.squad_members[this.changeMember_index].tags = res.data.tags;
+				this.squad_members[this.changeMember.index].tags = res.data.tags;
 			})
 			.catch(err => {
 				this.error_message = "Error while tagging member: " + this.getAxiosErrorMessage(err);
@@ -80,16 +77,16 @@ const app = createApp( {
 				this.error_message = "Error while updating member tags: " + this.getAxiosErrorMessage(err);
 			});
 		},
-		setMemberStatus:function() {
+		setMemberStatus:function(status) {
 			axios({
 				method: 'PATCH',
 				url: `/methods/squads/${squadId}/members/${this.changeMember.id}`,
-				data: { Status: this.statusToSet, },
+				data: { status: status, },
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
-				this.squad_members[this.changeMember_index].status = this.statusToSet;
+				this.squad_members[this.changeMember.index].status = status;
 			})
 			.catch(err => {
 				this.error_message = "Error while changing member status: " + this.getAxiosErrorMessage(err);
@@ -110,43 +107,76 @@ const app = createApp( {
 				this.error_message = `Error while removing user ${userId} from squad:` + this.getAxiosErrorMessage(err);
 			});
 		},
-		addMember:function() {
+		addMember:function(replicant) {
 			axios({
 				method: 'POST',
 				url: `/methods/squads/${squadId}/members`,
 				data: {
-					displayName : this.replicant.displayName,
-					email : this.replicant.email,
-					phoneNumber : this.replicant.phoneNumber,
+					displayName : replicant.displayName,
+					email : replicant.email,
+					phoneNumber : replicant.phoneNumber,
 					replicant: true,
 				},
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
 				this.error_message = "";
-				this.replicant.id = res.data.ReplicantId;
-				this.replicant.status = 1; //member
-				this.replicant.replicant = true;
-				this.squad_members.push(Object.assign({}, this.replicant));
+				replicant.id = res.data.ReplicantId;
+				replicant.status = 1; //member
+				replicant.replicant = true;
+				this.squad_members.push(replicant);
 			})
 			.catch(err => {
 				this.error_message = "Error while adding squad member: " + this.getAxiosErrorMessage(err);
 			});
-		}
-	},
-	computed: {
-		newTagValue: {
-			get: function() {
-				if (this.tagToSetValue.length == 0) {
-					this.tagToSetValue = Object.keys(this.tagToSet.values)[0];
-				}
-
-				return this.tagToSetValue;
-			},
-			set: function (value) {
-				this.tagToSetValue = value;
-			}
 		},
-	}, 
+		addNote : function (member, index) {
+			this.note = new Object();
+			this.note.dialog_title = `Add note about ${member.displayName}`;
+			this.note.member_id = member.id;
+			this.note.member_index = index;
+			$('#addNoteModal').modal('show')
+		},
+		saveNotes:function(userId, notes) {
+			method = 'PATCH';
+			url = `/methods/squads/${squadId}/members/${userId}`;
+			axios({
+				method: method,
+				url: url,
+				data: { notes : notes },
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then( res => {
+				this.error_message = "";
+			})
+			.catch(err => {
+				this.error_message = "Error while saving note: " + this.getAxiosErrorMessage(err);
+			});
+		},
+		submitNote : function(note) {
+			let member = this.squad_members[note.member_index];
+			if (member.notes == null) {
+				member.notes = {};
+			}
+			let notes = member.notes;
+			notes[note.title] = note.text;
+			this.saveNotes(note.member_id, notes);
+		},
+		showNote:function (title, text, member, index) {
+			this.note = {};
+			this.note.title = title;
+			this.note.text = text;
+			this.note.member_id = member.id;
+			this.note.member_index = index;
+			this.$refs.showNoteDialogRef.editing = false;
+			$('#showNoteModal').modal('show')
+		},
+		deleteNote:function(note) {
+			let member = this.squad_members[note.member_index];
+			let notes = member.notes;
+			delete notes[note.title];
+			this.saveNotes(note.member_id, notes);
+		},
+	},
 	mixins: [globalMixin],
 }).mount("#app");

@@ -1,4 +1,4 @@
-const NoteDialog = {
+const AddNoteDialog = {
 	props: {
 		windowId: String, 
 		title: String,
@@ -8,6 +8,11 @@ const NoteDialog = {
 		},
 	},
 	emits: ["submit-form"],
+	methods: {
+		onSubmit:function() {
+			this.$emit('submit-form', this.note);
+		},
+	},
     template:  `
 	<div class="modal fade" :id="windowId" tabindex="-1" role="dialog">
 			<div class="modal-dialog" role="document">
@@ -30,7 +35,7 @@ const NoteDialog = {
 							</div>
 						</div>
 						<div class="modal-footer">
-							<button type="submit" class="btn btn-primary" v-on:click="$emit('submit-form', note)" data-dismiss="modal">Add</button>
+							<button type="submit" class="btn btn-primary" v-on:click="onSubmit()" data-dismiss="modal">Add</button>
 						</div>
 					</form>
 				</div>

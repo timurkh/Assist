@@ -129,11 +129,11 @@
 								<td v-if="getTagHasValues(tag)">[[tag.name]]</td>
 								<td v-else scope="row"><a href="#">[[tag.name]]</a></td>
 								<td>
-									<div v-for="(c,v) in tag.values"><a href="#" v-if="v != '_'">[[v]]</a></div>
+									<div v-for="(c, v) in tag.values"><a href="#" v-if="v != '_'">[[v]]</a></div>
 								</td>
 								<td align="right">
-									<span v-if="tag.values == null">42</span>
-									<div v-for="(c, v) in tag.values">[[c]]</div>
+									<span v-if="!getTagHasValues(tag)">[[ tag.values['_'] ]]</span>
+									<div v-else v-for="(c, v) in tag.values"><span v-if="v != '_'">[[c]]</span></div>
 								</td>
 								<td align="right"><small><a href="#" v-on:click="deleteObject('tag', tag.name, i)">Delete</a></small></td>
 							</tr>

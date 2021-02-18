@@ -3,9 +3,9 @@ const { createApp } = Vue
 const app = createApp( {
 	delimiters: ['[[', ']]'],
 	components: {
-		'note-dialog' : NoteDialog,
+		'note-dialog' : AddNoteDialog,
 	},
-	data(){
+	data:function(){
 		return {
 			loading:true,
 			error_message:"",
@@ -121,8 +121,8 @@ const app = createApp( {
 		saveNote:function(note) {
 			axios({
 				method: 'PUT',
-				url: `/methods/squads/${squadId}/notes/${this.noteToEdit.id}`,
-				data: this.noteToEdit,
+				url: `/methods/squads/${squadId}/notes/${note.id}`,
+				data: note,
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {

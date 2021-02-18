@@ -1,5 +1,7 @@
 // Disable form submissions if there are invalid fields
 const escapeHTML = function(unsafe) {
+	if (unsafe == null)
+		return "";
 	return unsafe.replace(/[&<"']/g, function(m) {
 		switch (m) {
 		case '&':
@@ -23,14 +25,13 @@ const editInput = function(id) {
 		document.getElementById(id + 'Error').textContent = '';
 		switch(id){
 			case 'displayName':
-				var name = escapeHtml(input.value)
+				var name = escapeHTML(input.value)
 				if(name.length) {
 					axios({
 						method: 'PUT',
 						url: `/methods/users/me`,
-						data: {
-							name: name,
-						}
+						data: { name: name, },
+						headers: { "X-CSRF-Token": csrfToken },
 					})
 					.then( function() {
 						user.updateProfile( {displayName: name})
@@ -48,7 +49,7 @@ const editInput = function(id) {
 				}
 				break;
 			case 'email':
-				var email = escapeHtml(input.value);
+				var email = escapeHTML(input.value);
 				if (email.length) {
 					user.verifyBeforeUpdateEmail(
 						email).then(function(){
@@ -64,7 +65,7 @@ const editInput = function(id) {
 			case 'phoneNumber': 
 				document.getElementById(id + 'Error').textContent = "";
 				var provider = new firebase.auth.PhoneAuthProvider();
-				var phoneNumber = escapeHtml(input.value);
+				var phoneNumber = escapeHTML(input.value);
 
 				if (phoneNumber.length == 0) {
 					user.unlink("phone").then(function() {
@@ -206,7 +207,7 @@ firebase.auth().onAuthStateChanged(user => {
 		// init user info settings
 		var inputs = document.getElementById('userInfo').getElementsByTagName('input');
 		for (var i=0; i<inputs.length; ++i) {
-			inputs[i].value = user[inputs[i].id];
+			inputs[i].value = escapeHTML(user[inputs[i].id]);
 		}
 
 		if(document.getElementById('role')) {

@@ -336,12 +336,8 @@ func (app *App) methodUpdateSquadMember(w http.ResponseWriter, r *http.Request) 
 	userId := params["userId"]
 
 	var data struct {
-		Status *db.MemberStatusType
-		Tag    *struct {
-			Name  string
-			Value string
-		}
-		Tags *[]interface{}
+		Status *db.MemberStatusType `json:"status"`
+		Notes  *map[string]string   `json:"notes"`
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&data)
@@ -363,6 +359,9 @@ func (app *App) methodUpdateSquadMember(w http.ResponseWriter, r *http.Request) 
 	switch {
 	case data.Status != nil:
 		err = app.db.SetSquadMemberStatus(ctx, userId, squadId, *data.Status)
+	case data.Notes != nil:
+		err = app.db.SetSquadMemberNotes(ctx, userId, squadId, data.Notes)
+
 	}
 
 	if err != nil {

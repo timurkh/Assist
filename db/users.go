@@ -184,21 +184,23 @@ func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (map[
 
 	counters := make(map[string]interface{}, 0)
 
-	//squads
-	squads := make([]int, len(MemberStatusTypes))
-	for i, status := range MemberStatusTypes {
-		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "==", MemberStatusTypes[i]).Snapshots(ctx)
-		defer iter.Stop()
-		snapshot, err := iter.Next()
-		if err != nil {
-			log.Printf("Failed to get amount of user %v squads with status %v: %v", userId, status.String(), err)
-			return nil, err
+	// squads
+	{
+		squads := make([]int, len(MemberStatusTypes))
+		for i, status := range MemberStatusTypes {
+			iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "==", MemberStatusTypes[i]).Snapshots(ctx)
+			defer iter.Stop()
+			snapshot, err := iter.Next()
+			if err != nil {
+				log.Printf("Failed to get amount of user %v squads with status %v: %v", userId, status.String(), err)
+				return nil, err
+			}
+			squads[i] = snapshot.Size
 		}
-		squads[i] = snapshot.Size
+		counters["squads"] = squads
 	}
-	counters["squads"] = squads
 
-	//todo
+	// actions
 	{
 		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "in", []int{int(Admin), int(Owner)}).Where("PendingApproveCount", "!=", 0).Snapshots(ctx)
 		defer iter.Stop()

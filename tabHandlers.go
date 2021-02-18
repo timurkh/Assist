@@ -1,7 +1,6 @@
 package main
 
 import (
-	"html/template"
 	"net/http"
 
 	"github.com/gorilla/csrf"
@@ -76,7 +75,8 @@ func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) error {
-	return loginTmpl.Execute(w, struct {
-		CSRFTag template.HTML
-	}{csrf.TemplateField(r)})
+	return loginTmpl.Execute(w, Values{
+		"CSRFTag": csrf.TemplateField(r),
+		"Session": nil,
+	})
 }

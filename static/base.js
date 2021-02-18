@@ -28,7 +28,7 @@ const globalMixin = {
 			}
 		},
 		getTagHasValues : function(tag) {
-			if (tag.values == null)
+			if (tag == null || tag.values == null)
 				return false;
 			let valuesCount = Object.entries(tag.values).length;
 			return valuesCount > 1 || (valuesCount == 1 && tag.values._ == null);

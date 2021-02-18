@@ -12,88 +12,12 @@
 	</div>
 	<div v-if="!loading" v-cloak>
 		<!-- Modal Windows -->
-		<div class="modal fade" id="addMemberModal" tabindex="-1" role="dialog">
-			<div class="modal-dialog" role="document">
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title" id="changeMemberStatusModalLabel">Add Member <i class="fas fa-robot"></i></h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-						</button>
-					</div>
-					<div class="modal-body">
-						<form>
-							<div class="form-group">
+		<add-note-dialog :note="note" window-id="addNoteModal" :title="note.dialog_title" v-on:submit-form="submitNote($event)"></add-note-dialog>
+		<add-member-dialog window-id="addMemberModal" v-on:submit-form="addMember($event)"> </add-member-dialog>
+		<change-status-dialog window-id="changeMemberStatusModal" :member="changeMember" v-on:submit-form="setMemberStatus($event)"> </change-status-dialog>
+		<add-tag-dialog window-id="addTagModal" :member="changeMember" :tags="tags" v-on:submit-form="setMemberTag($event)"> </add-tag-dialog>
+		<show-note-dialog window-id="showNoteModal" :note="note" v-on:submit-form="submitNote($event)" v-on:delete="deleteNote($event)" ref="showNoteDialogRef"></show-note-dialog>
 
-								<label for="displayName">Name</label>
-								<input type="text" id="displayName" class="form-control" v-model="replicant.displayName">
-								<label for="Email">Email</label>
-								<input type="text" id="Email" class="form-control" v-model="replicant.email">
-								<label for="PhoneNumber">Phone</label>
-								<input type="text" id="PhoneNumber" class="form-control" v-model="replicant.phoneNumber">
-							</div>
-						</form>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-primary" v-on:click="addMember()" data-dismiss="modal">Add</button>
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="modal fade" id="changeMemberStatusModal" tabindex="-1" role="dialog">
-			<div class="modal-dialog" role="document">
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title" id="changeMemberStatusModalLabel">[[changeMember.displayName]] Status</h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-						</button>
-					</div>
-					<div class="modal-body">
-						<form>
-							<div class="form-group">
-								<select v-model="statusToSet" class="form-control" size="3">
-									<option  v-for="i in 3" :value="i-1">[[getStatusText(i-1)]]</option>
-								</select>
-							</div>
-						</form>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-primary" v-on:click="setMemberStatus()" data-dismiss="modal">Set Selected Status</button>
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="modal fade" id="addTagModal" tabindex="-1" role="dialog">
-			<div class="modal-dialog" role="document">
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title" id="addTagModalLabel">Tag [[changeMember.displayName]]</h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-						</button>
-					</div>
-					<div class="modal-body pb-0">
-						<form>
-							<div class="form-group">
-								<label for="tagToSet">Choose Tag</label>
-								<select id="tagToSet"  v-model="tagToSet" class="form-control">
-									<option  v-for="tag in tags" :value="tag">[[tag.name]]</option>
-								</select>
-
-								<label for="tagToSetVal" v-if="getTagHasValues(tagToSet)" class="mt-3">Choose Tag Value</label>
-								<select id="tagToSetVal" v-if="getTagHasValues(tagToSet)" v-model="newTagValue" class="form-control">
-									<option  v-for="(c, v) in tagToSet.values" :value="v">[[v]]</option>
-								</select>
-							</div>
-						</form>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-primary" v-on:click="setMemberTag()" data-dismiss="modal">Set</button>
-					</div>
-				</div>
-			</div>
-		</div>
 		<!-- Main View -->
 		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
 			[[ error_message ]]
@@ -120,7 +44,7 @@
 						<th class="text-truncate d-none d-sm-table-cell">Phone</th>
 						<th class="text-truncate">Status</th>
 						<th class="text-truncate">Tags</th>
-						<th class="text-truncate">Notes</th>
+						<th class="text-truncate d-none d-sm-table-cell">Notes</th>
 						<th class="text-truncate">Actions</th>
 				</thead>
 				<tbody>
@@ -132,15 +56,12 @@
 						<td class="text-break d-none d-sm-table-cell" :title="member.email"> [[member.email]] </td>
 						<td class="text-break d-none d-sm-table-cell" :title="member.phoneNumber"> [[member.phoneNumber]] </td>
 						<td class="text-truncate" :title="getStatusText(member.status)" > [[getStatusText(member.status)]] </td>
-						<td class="text-wrap col-2"> 
-							<span v-for="(tag, tagIndex) in member.tags" class="badge badge-primary m-1">[[tag]] <a href="#" v-on:click="deleteMemberTag(member, tag, tagIndex)"><i class="fas fa-times-circle" style="color:white;"></i></a></span>
+						<td class="text-wrap"> 
+							<span v-for="(tag, tagIndex) in member.tags" class="badge badge-secondary m-1">[[tag]] <a href="#" v-on:click="deleteMemberTag(member, tag, tagIndex)"><i class="fas fa-times-circle" style="color:white;"></i></a></span>
 						</td>
-						<td class="text-wrap col-2"> 
+						<td class="text-wrap d-none d-sm-table-cell"> 
 								
-								<a href="#" v-on:click="showNote(member)" class="badge badge-info m-1">comments</a>
-								<span>
-								<a title="Add Note" data-toggle="tooltip" v-on:click="addNote(member, index)" href="#"><i class="fas fa-edit fa-lg p-1 text-info"></i></a>
-								</span>
+								<a href="#" v-for="v,k in member.notes" v-on:click="showNote(k, v, member, index)" class="badge badge-info m-1">[[k]]</a>
 						</td>
 						<td class="text-wrap" align="center"> 
 								<span v-if="member.status != 3">
@@ -152,6 +73,9 @@
 								<span>
 								<a title="Add Tag" data-toggle="tooltip" v-on:click="tagMember(member, index)" href="#"><i class="fas fa-tag fa-lg p-1"></i></a>
 								</span>
+								<span>
+								<a title="Add Note" data-toggle="tooltip" v-on:click="addNote(member, index)" href="#"><i class="fas fa-edit fa-lg p-1"></i></a>
+								</span>
 							</div>
 						</td>
 					</tr>
@@ -161,4 +85,6 @@
 	</div>
 </div>
 
+<script src="/static/components/notes.js"></script>
+<script src="/static/components/members.js"></script>
 <script src="/static/squadMembers.js"></script>
