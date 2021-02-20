@@ -19,6 +19,7 @@ const app = createApp( {
 			changeMember: [],
 			tags:[],
 			note:{},
+			getting_more:false,
 		};
 	},
 	created:function() {
@@ -176,6 +177,20 @@ const app = createApp( {
 			let notes = member.notes;
 			delete notes[note.title];
 			this.saveNotes(note.member_id, notes);
+		},
+		getMore:function() {
+			this.getting_more = true;
+			let lastMember = this.squad_members[this.squad_members.length-1];
+			axios.get(`/methods/squads/${squadId}/members?from=${lastMember.timestamp}`)
+			.then(res => {
+				console.log(res.data);
+				this.squad_members =  [...this.squad_members, ...res.data['Members']]; 
+				this.getting_more = false;
+			})
+			.catch(error => {
+				this.error_message = "Failed to retrieve squad members and tags: " + this.getAxiosErrorMessage(error);
+				this.getting_more = false;
+			});
 		},
 	},
 	mixins: [globalMixin],

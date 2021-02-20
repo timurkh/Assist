@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
+	"sync"
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
@@ -83,6 +85,8 @@ func (db *FirestoreDB) deleteDocRecurse(ctx context.Context, doc *firestore.Docu
 func (db *FirestoreDB) DeleteCollectionRecurse(ctx context.Context, collection *firestore.CollectionRef) error {
 	iter := collection.Documents(ctx)
 
+	var wg sync.WaitGroup
+
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -90,13 +94,20 @@ func (db *FirestoreDB) DeleteCollectionRecurse(ctx context.Context, collection *
 			break
 		}
 		if err != nil {
-			fmt.Errorf("Failed to iterate through docs: %w", err)
+			log.Printf("Failed to iterate through docs: %v", err)
 		}
 
-		err = db.deleteDocRecurse(ctx, doc.Ref)
-		if err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func() {
+
+			defer wg.Done()
+			err = db.deleteDocRecurse(ctx, doc.Ref)
+			if err != nil {
+				log.Printf("Failed to delete co recourse: %v", err)
+			}
+		}()
 	}
+
+	wg.Wait()
 	return nil
 }

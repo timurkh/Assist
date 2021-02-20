@@ -11,6 +11,8 @@ const app = createApp( {
 			squadName:"",
 			squadToJoin:"",
 			userIsAdmin: userIsAdmin,
+			currentPage: 0,
+			pageSize: 5,
 		}
 	},
 	created:function() {
@@ -29,6 +31,12 @@ const app = createApp( {
 		})
 	},
 	methods: {
+		nextPage:function() {
+			  if((this.currentPage*this.pageSize) < this.own_squads.length) this.currentPage++;
+		},
+		prevPage:function() {
+			  if(this.currentPage > 1) this.currentPage--;
+		},
 		submitNewSquad:function() {
 
 			axios({

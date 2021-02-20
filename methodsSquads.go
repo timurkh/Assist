@@ -219,6 +219,8 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 	ctx := r.Context()
 
 	squadId := params["id"]
+	v := r.URL.Query()
+	from := v.Get("from")
 
 	_, authLevel := app.checkAuthorization(r, "", squadId, squadAdmin|squadOwner)
 	if authLevel == 0 {
@@ -228,7 +230,7 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	squadMembers, err := app.db.GetSquadMembers(ctx, squadId)
+	squadMembers, err := app.db.GetSquadMembers(ctx, squadId, from)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err

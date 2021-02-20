@@ -16,7 +16,6 @@ const app = createApp( {
 		})
 		.then(res => {
 			this.homeCounters = res.data;
-			console.log(this.homeCounters);
 			this.loading = false;
 		})
 		.catch(error => {

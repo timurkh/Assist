@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
@@ -53,6 +54,7 @@ type SquadUserInfo struct {
 	Status    MemberStatusType  `json:"status"`
 	Tags      []string          `json:"tags"`
 	Notes     map[string]string `json:"notes"`
+	Timestamp interface{}       `json:"timestamp"`
 }
 
 type SquadUserInfoRecord struct {
@@ -186,13 +188,25 @@ func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string) (map[st
 	return squads_map, nil
 }
 
-func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*SquadUserInfoRecord, error) {
+func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from string) ([]*SquadUserInfoRecord, error) {
 
-	log.Println("Getting members of the squad " + squadId)
+	numRecords := 10
+	log.Printf("Getting members of the squad %v\n", squadId)
 
 	squadMembers := make([]*SquadUserInfoRecord, 0)
 
-	iter := db.Squads.Doc(squadId).Collection("members").OrderBy("Timestamp", firestore.Asc).Documents(ctx)
+	query := db.Squads.Doc(squadId).Collection("members").OrderBy("Timestamp", firestore.Asc)
+	if from != "" {
+		log.Printf("\tstarting from %v\n", from)
+		timeFrom, err := time.Parse(time.RFC3339, from)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to convert from to a time struct: %w", err)
+		}
+
+		query = query.StartAfter(timeFrom)
+	}
+
+	iter := query.Limit(numRecords).Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -213,6 +227,7 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string) ([]*
 			SquadUserInfo: *s,
 		}
 		squadMembers = append(squadMembers, sr)
+		log.Printf("%+v\n", sr)
 	}
 
 	return squadMembers, nil
@@ -241,7 +256,7 @@ func (db *FirestoreDB) DeleteSquad(ctx context.Context, squadId string) error {
 			memberId := docMember.Ref.ID
 			log.Printf("Deleting squad %v from user %v", squadId, memberId)
 
-			db.Users.Doc(memberId).Collection("member_squads").Doc(squadId).Delete(ctx)
+			db.Users.Doc(memberId).Collection(USER_SQUADS).Doc(squadId).Delete(ctx)
 		}
 	}()
 
@@ -294,7 +309,7 @@ func (db *FirestoreDB) propagateChangedSquadInfo(squadId string, field string) {
 
 		userId := docMember.Ref.ID
 
-		doc := db.Users.Doc(userId).Collection("member_squads").Doc(squadId)
+		doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(squadId)
 		db.updater.dispatchCommand(doc, field, val)
 	}
 }

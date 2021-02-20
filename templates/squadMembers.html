@@ -82,6 +82,14 @@
 				</tbody>
 			</table>
 		</div>
+		<div v-if="getting_more" class="mt-5" align="center">
+			<div class="spinner-border" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+		<div v-else class="m-3" align="center">
+			<button type="button" class="btn btn-secondary btn-lg" v-on:click="getMore()">See More</button>
+		</div>
 	</div>
 </div>
 
