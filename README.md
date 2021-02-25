@@ -12,15 +12,13 @@ Squad admins & owner can create notes per squad and per squad member. Squad Note
 ### Tags
 Admins can create Squad Tags, and assign those tags to members. Tags might have values, values are exclusive (only one tag value can be assigned to same member).
 
-# Why This Portal Created
+# Why this application was created
 
-~Because I can~ As a part of technology refresh during my career break after serving 5 years as Executive Director in the world's largest provider of information technology products and services, I decided to implement a system automating certain scenarios which I face in my day-to-day life, mostly related to people, places and events.
+~~Because I can~~ As a part of technology refresh during my career break after serving 5 years as Executive Director in the world's largest provider of information technology products and services, I decided to implement a system automating certain scenarios which I face in my day-to-day life, mostly related to people, places and events.
 
-# Technologies Used & Source Codes
+# Technologies, source codes, reliability
 
-This app is written using Go + JS (Vue) + Bootstrap styles and hosted at Google App Engine. Firebase Authentication is used as identity service, Firestore DB is used to store data. Source codes are available here.
-
-# Can I rely on this system?
+This app is written using Go + JS (Vue) + Bootstrap styles and hosted at Google App Engine. Firebase Authentication is used as identity service, Firestore DB is used to store data. Source codes are available [here](https://github.com/timurkh/Assist/).
 
 This system uses Google Application Free tier and might get suspended if monthly quota is exceeded. While quota is quite material, there is always an option to deploy the system to your own subscription. Get in touch with author if you want to do it.
 
