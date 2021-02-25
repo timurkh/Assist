@@ -129,7 +129,7 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("Check GetSquadMembers", func(t *testing.T) {
-		allUsers, err := db.GetSquadMembers(ctx, ALL_USERS_SQUAD)
+		allUsers, err := db.GetSquadMembers(ctx, ALL_USERS_SQUAD, "", nil)
 		if err != nil {
 			t.Errorf("Failed to retrieve squad members: %v", err)
 		}
@@ -138,12 +138,12 @@ func TestRun(t *testing.T) {
 			t.Errorf("Wrong number of members in ALL USERS squad")
 		}
 
-		testSquad0, err := db.GetSquadMembers(ctx, "TEST_SQUAD_0")
+		testSquad0, err := db.GetSquadMembers(ctx, "TEST_SQUAD_0", "", nil)
 		if len(testSquad0) != 8 {
 			t.Errorf("Wrong number of members in TEST_SQUAD_0 squad - %v", len(testSquad0))
 		}
 
-		testSquad1, err := db.GetSquadMembers(ctx, "TEST_SQUAD_1")
+		testSquad1, err := db.GetSquadMembers(ctx, "TEST_SQUAD_1", "", nil)
 		if len(testSquad1) != 1 {
 			t.Errorf("Wrong number of members in TEST_SQUAD_1 squad - %v", len(testSquad1))
 		}
@@ -161,7 +161,7 @@ func TestRun(t *testing.T) {
 				t.Fatalf("Failed to create replicant: %v", err)
 			}
 		}
-		testSquad1, err := db.GetSquadMembers(ctx, "TEST_SQUAD_1")
+		testSquad1, err := db.GetSquadMembers(ctx, "TEST_SQUAD_1", "", nil)
 		if err != nil {
 			t.Fatalf("Failed to get squad members: %v", err)
 		}
@@ -230,7 +230,7 @@ func TestRun(t *testing.T) {
 		}
 
 		// ensure squad has correct records about users
-		testSquad0, err := db.GetSquadMembers(ctx, "TEST_SQUAD_0")
+		testSquad0, err := db.GetSquadMembers(ctx, "TEST_SQUAD_0", "", nil)
 		if len(testSquad0) != 6 {
 			t.Errorf("Wrong number of members in TEST_SQUAD_0 squad after deleting TEST_USER_0 from it - %v", len(testSquad0))
 		}

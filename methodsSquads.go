@@ -222,6 +222,13 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 	v := r.URL.Query()
 	from := v.Get("from")
 
+	filter := map[string]string{
+		"Keys":   v.Get("keys"),
+		"Status": v.Get("status"),
+		"Tag":    v.Get("tag"),
+		"Notes":  v.Get("notes"),
+	}
+
 	_, authLevel := app.checkAuthorization(r, "", squadId, squadAdmin|squadOwner)
 	if authLevel == 0 {
 		err := fmt.Errorf("Current user is not authenticated to get squad " + squadId + " details")
@@ -230,7 +237,7 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	squadMembers, err := app.db.GetSquadMembers(ctx, squadId, from)
+	squadMembers, err := app.db.GetSquadMembers(ctx, squadId, from, &filter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -238,10 +245,7 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(struct {
-		Owner   interface{}
-		Members interface{}
-	}{squadOwner, squadMembers})
+	err = json.NewEncoder(w).Encode(squadMembers)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

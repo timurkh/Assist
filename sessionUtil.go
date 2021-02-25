@@ -140,10 +140,17 @@ func (su *SessionUtil) authMiddleware(next http.Handler) http.Handler {
 					}
 				} else {
 					gorilla_context.Set(r, "SessionToken", decoded)
-					if decoded.Claims["Role"].(string) == "" && r.URL.Path != "/userinfo" {
-						log.Print("User is pending approve. Redirect to /userinfo")
-						http.Redirect(w, r, "/userinfo", http.StatusFound)
+					u, err := su.authClient.GetUser(r.Context(), decoded.UID)
+					if err != nil {
+						err = errors.New("Failed to get user details: " + err.Error())
+						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
+					} else if u.CustomClaims["Role"] == nil || u.CustomClaims["Role"].(string) == "" {
+						if r.URL.Path != "/userinfo" {
+							log.Print("User is pending approve. Redirect to /userinfo")
+							http.Redirect(w, r, "/userinfo", http.StatusFound)
+							return
+						}
 					}
 				}
 			}

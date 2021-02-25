@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -188,7 +189,7 @@ func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string) (map[st
 	return squads_map, nil
 }
 
-func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from string) ([]*SquadUserInfoRecord, error) {
+func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from string, filter *map[string]string) ([]*SquadUserInfoRecord, error) {
 
 	numRecords := 10
 	log.Printf("Getting members of the squad %v\n", squadId)
@@ -204,6 +205,14 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from
 		}
 
 		query = query.StartAfter(timeFrom)
+	}
+
+	if filter != nil {
+		f := *filter
+		if f["Keys"] != "" {
+			log.Printf("\tapplying filter by keys %v\n", f["Keys"])
+			query = query.Where("Keys", "array-contains-any", strings.Fields(strings.ToLower(f["Keys"])))
+		}
 	}
 
 	iter := query.Limit(numRecords).Documents(ctx)
@@ -227,7 +236,6 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from
 			SquadUserInfo: *s,
 		}
 		squadMembers = append(squadMembers, sr)
-		log.Printf("%+v\n", sr)
 	}
 
 	return squadMembers, nil
@@ -316,6 +324,7 @@ func (db *FirestoreDB) propagateChangedSquadInfo(squadId string, field string) {
 
 func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId string, userId string, userInfo *SquadUserInfo) error {
 
+	log.Println("Adding member " + userId + " to squad " + squadId)
 	batch := db.Client.Batch()
 
 	docMember := db.Squads.Doc(squadId).Collection("members").Doc(userId)
@@ -330,6 +339,9 @@ func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId strin
 	batch.Set(docMember, map[string]interface{}{
 		"Timestamp": firestore.ServerTimestamp,
 	}, firestore.MergeAll)
+	batch.Update(docMember, []firestore.Update{
+		{Path: "Keys", Value: userInfo.Keys()},
+	})
 	batch.Update(docSquad, []firestore.Update{
 		{Path: path, Value: firestore.Increment(1)},
 	})
@@ -491,26 +503,14 @@ func (db *FirestoreDB) CreateReplicant(ctx context.Context, replicantInfo *UserI
 		Replicant: true,
 		Status:    Member,
 	}
-	docSquad := db.Squads.Doc(squadId)
-	members := docSquad.Collection("members")
-	newReplicantDoc := members.NewDoc()
 
-	batch := db.Client.Batch()
-	batch.Set(newReplicantDoc, squadReplicantInfo)
-	batch.Set(newReplicantDoc, map[string]interface{}{
-		"Timestamp": firestore.ServerTimestamp,
-	}, firestore.MergeAll)
-	batch.Update(docSquad, []firestore.Update{
-		{Path: "MembersCount", Value: firestore.Increment(1)},
-	})
+	newReplicantDoc := db.Squads.Doc(squadId).Collection("members").NewDoc()
 
-	_, err = batch.Commit(ctx)
+	err = db.AddMemberRecordToSquad(ctx, squadId, newReplicantDoc.ID, squadReplicantInfo)
 	if err != nil {
-		return "", fmt.Errorf("Failed to add replicant '%v' to squad '%v': %w", replicantInfo, squadId, err)
+		log.Printf("Failed to add replicant record to squad: %v", err)
+		return "", err
 	}
-
-	// use same counter for real users and replicants for now
-	go db.propagateChangedSquadInfo(squadId, "MembersCount")
 
 	return newReplicantDoc.ID, nil
 }

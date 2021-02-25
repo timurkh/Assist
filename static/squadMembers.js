@@ -15,11 +15,11 @@ const app = createApp( {
 			error_message:"",
 			squadId:squadId,
 			squad_members:[],
-			squad_owner:null,
 			changeMember: [],
 			tags:[],
 			note:{},
 			getting_more:false,
+			filter:{ },
 		};
 	},
 	created:function() {
@@ -28,17 +28,34 @@ const app = createApp( {
 			axios.get(`/methods/squads/${squadId}/tags`),
 		])
 		.then(axios.spread((members, tags) => {
-			this.squad_members = members.data['Members']; 
-			this.squad_owner = members.data['Owner'];
+			this.squad_members = members.data; 
 			this.tags = tags.data;
 			this.loading = false;
 		}))
-		.catch(error => {
-			this.error_message = "Failed to retrieve squad members and tags: " + this.getAxiosErrorMessage(error);
+		.catch(err => {
+			this.error_message = "Failed to retrieve squad members and tags: " + this.getAxiosErrorMessage(err);
 			this.loading = false;
 		});
 	},
 	methods: {
+
+		getTagValues : function(tags) {
+			let tagValues = [];
+			let i=0;
+			while(tags.length>i) {
+				let tag = tags[i];
+				values = Object.entries(tag.values);
+				if (values.length > 1) {
+					for (const [key, value] of values) {
+						tagValues.push(tag.name + "/" + key);
+					}
+				} else {
+					tagValues.push(tag.name);
+				}
+				i++;
+			}
+			return tagValues;
+		},
 		changeStatus:function(member, index) {
 			this.changeMember = member;
 			this.changeMember.index = index;
@@ -183,13 +200,29 @@ const app = createApp( {
 			let lastMember = this.squad_members[this.squad_members.length-1];
 			axios.get(`/methods/squads/${squadId}/members?from=${lastMember.timestamp}`)
 			.then(res => {
-				console.log(res.data);
-				this.squad_members =  [...this.squad_members, ...res.data['Members']]; 
+				this.squad_members =  [...this.squad_members, ...res.data]; 
 				this.getting_more = false;
 			})
-			.catch(error => {
-				this.error_message = "Failed to retrieve squad members and tags: " + this.getAxiosErrorMessage(error);
+			.catch(err => {
+				this.error_message = "Failed to retrieve squad members and tags: " + this.getAxiosErrorMessage(err);
 				this.getting_more = false;
+			});
+		},
+		onFilterChange:function() {
+			console.log(this.filter);
+			axios({
+				method: 'GET',
+				url: `/methods/squads/${squadId}/members`,
+				params: this.filter, 
+			})
+			.then( res => {
+				this.error_message = "";
+				this.squad_members = res.data; 
+				this.loading = false;
+			})
+			.catch(err => {
+				this.error_message = "Failed to retrieve squad members: " + this.getAxiosErrorMessage(err);
+				this.loading = false;
 			});
 		},
 	},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"cloud.google.com/go/firestore"
 	"firebase.google.com/go/auth"
@@ -19,6 +20,33 @@ type UserInfo struct {
 type UserInfoRecord struct {
 	ID string `json:"id"`
 	UserInfo
+}
+
+func getKeys(s string) []string {
+	ret := make([]string, 0)
+	w := ""
+
+	for _, c := range s {
+		w = w + string(c)
+		ret = append(ret, w)
+	}
+	return ret
+}
+
+func (ui *UserInfo) Keys() []string {
+	ret := make([]string, 0)
+	for _, s := range strings.Fields(ui.DisplayName) {
+		ret = append(ret, getKeys(strings.ToLower(s))...)
+	}
+	for _, w := range strings.Split(ui.Email, "@") {
+		for _, s := range strings.Fields(w) {
+			ret = append(ret, getKeys(strings.ToLower(s))...)
+		}
+	}
+	for _, s := range strings.Fields(ui.PhoneNumber) {
+		ret = append(ret, getKeys(s)...)
+	}
+	return ret
 }
 
 func (db *FirestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo, err error) {
@@ -92,6 +120,15 @@ func (db *FirestoreDB) DeleteSquadRecordFromMember(ctx context.Context, userId s
 func (db *FirestoreDB) propagateChangedUserInfo(userId string, field string, val interface{}) {
 	ctx := context.Background()
 	docUser := db.Users.Doc(userId)
+	docSnapshot, err := docUser.Get(ctx)
+	if err != nil {
+		log.Printf("Failed to get user "+userId+": %v", err)
+		return
+	}
+
+	ui := &UserInfo{}
+	docSnapshot.DataTo(ui)
+
 	iter := docUser.Collection(USER_SQUADS).Documents(ctx)
 	defer iter.Stop()
 	for {
@@ -107,6 +144,7 @@ func (db *FirestoreDB) propagateChangedUserInfo(userId string, field string, val
 		squadId := docSquad.Ref.ID
 		doc := db.Squads.Doc(squadId).Collection("members").Doc(userId)
 		db.updater.dispatchCommand(doc, field, val)
+		db.updater.dispatchCommand(doc, "Keys", ui.Keys())
 	}
 }
 

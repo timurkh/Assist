@@ -37,10 +37,12 @@ func (u *AsyncUpdater) dispatchCommand(doc *firestore.DocumentRef, field string,
 	cmd := updateCommand{
 		updateKey{
 			doc.Path,
-			field},
+			field,
+		},
 		updateValue{
 			doc,
-			val},
+			val,
+		},
 	}
 
 	u.Lock()

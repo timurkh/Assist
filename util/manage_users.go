@@ -227,7 +227,7 @@ func (app *App) populateSquadInfoToUsers(ctx context.Context) {
 			log.Fatal("Error while flushing squad %v size: %w", squadId, err)
 		}
 
-		squadMembers, err := app.db.GetSquadMembers(ctx, squadId)
+		squadMembers, err := app.db.GetSquadMembers(ctx, squadId, "", nil)
 		if err != nil {
 			log.Fatal("Error while populating squads info to users: %w", err)
 		}
@@ -249,7 +249,7 @@ func (app *App) populateSquadInfoToUsers(ctx context.Context) {
 
 func (app *App) updateUsersInfoInSquads(ctx context.Context) {
 
-	allUsers, err := app.db.GetSquadMembers(ctx, db.ALL_USERS_SQUAD)
+	allUsers, err := app.db.GetSquadMembers(ctx, db.ALL_USERS_SQUAD, "", nil)
 	if err != nil {
 		log.Fatal("Error while getting list of users: %w", err)
 	}
@@ -272,6 +272,36 @@ func (app *App) updateUsersInfoInSquads(ctx context.Context) {
 	}
 }
 
+func (app *App) rebuildKeys(ctx context.Context) {
+
+	iter := app.db.Squads.Documents(ctx)
+	defer iter.Stop()
+	for {
+		docSquad, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			log.Fatal("Error while iterating through squads: %w", err)
+		}
+
+		squadId := docSquad.Ref.ID
+
+		members, err := app.db.GetSquadMembers(ctx, squadId, "", nil)
+		if err != nil {
+			log.Fatalf("Failed to get squad %v members: %v", squadId, err)
+		}
+
+		for _, member := range members {
+			docMember := docSquad.Ref.Collection("members").Doc(member.ID)
+			docMember.Update(ctx, []firestore.Update{
+				{Path: "Keys", Value: member.Keys()},
+			})
+		}
+	}
+}
+
 func (app *App) makeDBConsistent() {
 	ctx := context.Background()
 
@@ -288,7 +318,8 @@ func printUsage() {
 	Commands:
 	listUsers               - list all users
 	setRole <uid> <name>    - expected roles - Member, Admin or empty ("") which will set user pending approve 
-	makeDBConsistent		- flush denormalized DB entries stored per user and recreate them from squads collection
+	makeDBConsistent        - flush denormalized DB entries stored per user and recreate them from squads collection
+	rebuildKeys             - rebuild keys (which are used to search) for all squad members
 `)
 
 }
@@ -312,6 +343,8 @@ func main() {
 			app.listUsers()
 		case "makeDBConsistent":
 			app.makeDBConsistent()
+		case "rebuildKeys":
+			app.rebuildKeys(ctx)
 		case "setRole":
 			app.setRole(args[1], args[2])
 		default:
