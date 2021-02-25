@@ -36,11 +36,12 @@ const app = createApp( {
 			}
 		},
 		getTodoClass : function() {
-			if(this.homeCounters['pendingApprove'] > 0) {
+			let hc = this.homeCounters['pendingApprove'];
+			if(hc != null && hc.length > 0) {
 				return "card-body bg-danger";
-			} else {
-				return "card-body bg-secondary";
-			}
+			} 
+
+			return "card-body bg-secondary";
 		},
 		getEventsClass : function() {
 			if(false) {

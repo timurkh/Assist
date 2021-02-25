@@ -11,6 +11,8 @@ require (
 	github.com/gorilla/csrf v1.7.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
+	github.com/russross/blackfriday v1.6.0 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0
 	google.golang.org/api v0.37.0
 	google.golang.org/appengine v1.6.7
 	google.golang.org/grpc v1.34.0

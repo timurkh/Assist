@@ -1,7 +1,7 @@
 <script> document.getElementById("navbar-about").classList.add("active"); </script>
 
 
-<div id="app">
+<div id="app" class="m-1 p-1">
 
 	<div id="toc">
 		 <p style="h4">Table of Contents</p>
@@ -12,24 +12,14 @@
 	<h4 id="scenarios">How This Portal Could Be Used</h4>
 	<p>
 	Following scenarious are implemented:
-	<ul class="list-group">
-		<li class="list-group-item border-0">
-			<span class="badge badge-primary badge-pill">US01</span>
-			One can log into the portal using either email/password, FB identity, Google identity or phone (SMS authorization). After first login, email validation is required to proceed.
-		</li>
-		<li class="list-group-item border-0">
-			<span class="badge badge-primary badge-pill">US02</span>
-			User can create squads. Squad is visible for every user of the system.
-		</li>
-		<li class="list-group-item border-0">
-			<span class="badge badge-primary badge-pill">US03</span>
-			Either user can join squad, or squad owner can add so-called "replicants" to the squad.
-		</li>
-		<li class="list-group-item border-0">
-			<span class="badge badge-primary badge-pill">US04</span>
-			If user attempted to join the squad, his status is "Pending Approve". Squad owner can change user status either to Member or Admin. Members recieve notifications, can join events, but are not able to communicate squad or get list of all members. Admin has access to all squad members, also admin can change status of other members (but not admin ones or owner).
-		</li>
-	</ul>
+			<h5>Users</h5>
+			<p>One can log into the portal using either email/password, FB identity, Google identity or phone (SMS authorization). After first login, email validation is required to proceed. Having email validated, user gets access to the system. It is possible to enable several auth providers for the same account (i.e. use both phone and FB authorization).</p>
+			<h5>Squads</h5>
+			<p>User can create squads. Squad is visible for every user of the system. Other users can join your squad, or you can add so-called "replicants" to it yourself. If user attempted to join the squad, his status is "Pending Approve". Squad owner can change user status either to Member or Admin. Members recieve notifications, can join events, but are not able to communicate squad or get list of all members. Admin has access to all squad members, also admin can change status of other members (but not admin ones or owner).</p>
+			<h5>Notes</h5>
+			<p>Squad admins & owner can create notes per squad and per squad member. Squad Notes are intended to store & share information with the whole squad and are visible to all squad members. On the contrary, Member Notes are visible only to squad admins. Member does not have access to notes assigned to him in the squad, unless he is squad admin. 
+			<h5>Tags</h5>
+			<p>Admins can create Squad Tags, and assign those tags to members. Tags might have values, values are exclusive (only one tag value can be assigned to same member).</p>
 	</p>
 
 	<h4 id="why">Why This Portal Created</h4>

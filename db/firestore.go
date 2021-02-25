@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 
 	"cloud.google.com/go/firestore"
@@ -30,6 +31,13 @@ func SetTestPrefix(prefix string) {
 // init firestore
 func NewFirestoreDB(fireapp *firebase.App) (*FirestoreDB, error) {
 	ctx := context.Background()
+
+	if testPrefix == "" {
+		prefix := os.Getenv("TEST_PREFIX")
+		if prefix != "" {
+			SetTestPrefix(prefix)
+		}
+	}
 
 	dbClient, err := fireapp.Firestore(ctx)
 	if err != nil {

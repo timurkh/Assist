@@ -20,14 +20,20 @@ const app = createApp( {
 			note:{},
 			getting_more:false,
 			filter:{ },
+			moreRecordsAvailable: false,
 		};
 	},
 	created:function() {
+		let uri = window.location.search.substring(1); 
+		let params = new URLSearchParams(uri);
+		this.filter.status = params.get("status");
+
 		axios.all([
-			axios.get(`/methods/squads/${squadId}/members`),
+			axios.get(`/methods/squads/${squadId}/members`, {params : this.filter}),
 			axios.get(`/methods/squads/${squadId}/tags`),
 		])
 		.then(axios.spread((members, tags) => {
+			this.moreRecordsAvailable = members.data.length == 10;
 			this.squad_members = members.data; 
 			this.tags = tags.data;
 			this.loading = false;
@@ -198,8 +204,13 @@ const app = createApp( {
 		getMore:function() {
 			this.getting_more = true;
 			let lastMember = this.squad_members[this.squad_members.length-1];
-			axios.get(`/methods/squads/${squadId}/members?from=${lastMember.timestamp}`)
+			axios({
+				method: 'GET',
+				url: `/methods/squads/${squadId}/members?from=${lastMember.timestamp}`,
+				params: this.filter,
+			})
 			.then(res => {
+				this.moreRecordsAvailable = res.data.length == 10;
 				this.squad_members =  [...this.squad_members, ...res.data]; 
 				this.getting_more = false;
 			})
@@ -208,8 +219,17 @@ const app = createApp( {
 				this.getting_more = false;
 			});
 		},
-		onFilterChange:function() {
-			console.log(this.filter);
+		onFilterChange:function(e) {
+			this.loading = true;
+
+
+			// unfortunately due to firestore limitations I canot search by keys and tag at the same moment :(
+			// only one array-in is allowed
+			if(e.target.id == "searchKeys")
+				this.filter.tag = "";
+			else if(e.target.id == "selectTag")
+				this.filter.keys = "";
+			
 			axios({
 				method: 'GET',
 				url: `/methods/squads/${squadId}/members`,
@@ -217,6 +237,7 @@ const app = createApp( {
 			})
 			.then( res => {
 				this.error_message = "";
+				this.moreRecordsAvailable = res.data.length == 10;
 				this.squad_members = res.data; 
 				this.loading = false;
 			})

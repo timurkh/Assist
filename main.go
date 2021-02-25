@@ -90,11 +90,6 @@ func main() {
 		dev = true
 	}
 
-	prefix := os.Getenv("TEST_PREFIX")
-	if prefix != "" {
-		assist_db.SetTestPrefix(prefix)
-	}
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

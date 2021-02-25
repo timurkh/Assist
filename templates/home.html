@@ -63,19 +63,26 @@
 										<h6 class="text-uppercase">TODO</h6>
 									</div>
 									<div class="col-8 px-0">
-										<h6 class="text-uppercase" align="center">Please Check:</h6>
+										<h6 class="text-uppercase" align="center">Squads with Approval requests:</h6>
 										<table class="table text-white table-borderless mx-0">
-											<tr class="py-0 my-0">
+
+
+											<tr v-if="homeCounters['pendingApprove'] != null" v-for="(squad, index) in homeCounters['pendingApprove'].slice(0,3)" class="py-0 my-0">
 												<td class="py-0">
-													Squads with Approval Requests
+													<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.squad]]</a>
 												</td>
 												<td class="text-center align-middle py-0">
 													-
 												</td>
 												<td class="align-middle py-0">	
-													[[homeCounters["pendingApprove"] ]]
+													<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.count]]</a>
+												</td>
+												<tr v-if="homeCounters['pendingApprove'] != null && homeCounters['pendingApprove'].length > 3" class="py-0 my-0">
+												<td class="text-center align-middle py-0">
+													...
 												</td>
 											</tr>
+			</tr>
 										</table>
 									</div>
 								</div>

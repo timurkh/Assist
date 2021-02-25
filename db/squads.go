@@ -38,6 +38,15 @@ func (s MemberStatusType) String() string {
 	return texts[s]
 }
 
+func statusFromString(s string) MemberStatusType {
+	for _, t := range MemberStatusTypes {
+		if t.String() == s {
+			return t
+		}
+	}
+	return -1
+}
+
 type SquadInfo struct {
 	Owner               string `json:"owner"`
 	MembersCount        int    `json:"membersCount"`
@@ -212,6 +221,18 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from
 		if f["Keys"] != "" {
 			log.Printf("\tapplying filter by keys %v\n", f["Keys"])
 			query = query.Where("Keys", "array-contains-any", strings.Fields(strings.ToLower(f["Keys"])))
+		}
+
+		if f["Status"] != "" {
+			if s := statusFromString(f["Status"]); s != -1 {
+				log.Printf("\tapplying filter by status %v\n", f["Status"])
+				query = query.Where("Status", "==", s)
+			}
+		}
+
+		if f["Tag"] != "" {
+			log.Printf("\tapplying filter by tag %v\n", f["Tag"])
+			query = query.Where("Tags", "array-contains-any", strings.Fields(f["Tag"]))
 		}
 	}
 

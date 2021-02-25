@@ -14,7 +14,7 @@ Admins can create Squad Tags, and assign those tags to members. Tags might have 
 
 # Why This Portal Created
 
-~Because I can~ As a part of technology refresh during my career break after serving 5 years as Executive Director in the world's largest provider of information technology products and services, I decided to implement a system automating certain scenarios which I face in my day-to-day life, mostly related to people, places and events.
+~~Because I can~~ As a part of technology refresh during my career break after serving 5 years as Executive Director in the world's largest provider of information technology products and services, I decided to implement a system automating certain scenarios which I face in my day-to-day life, mostly related to people, places and events.
 
 # Technologies Used & Source Codes
 

@@ -240,14 +240,28 @@ func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (map[
 
 	// actions
 	{
-		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "in", []int{int(Admin), int(Owner)}).Where("PendingApproveCount", "!=", 0).Snapshots(ctx)
+		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "in", []int{int(Admin), int(Owner)}).Where("PendingApproveCount", "!=", 0).OrderBy("PendingApproveCount", firestore.Desc).Documents(ctx)
 		defer iter.Stop()
-		snapshot, err := iter.Next()
-		if err != nil {
-			log.Printf("Failed to get amount of squads with members pending approve: %v", err)
-			return nil, err
+
+		type squadCount struct {
+			Squad string `json:"squad"`
+			Count int64  `json:"count"`
 		}
-		counters["pendingApprove"] = snapshot.Size
+		squadsWithRequests := make([]*squadCount, 0)
+		for {
+
+			squad, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.Printf("Failed to get squads with members pending approve: %v", err)
+				return counters, err
+			}
+			sc := &squadCount{squad.Ref.ID, squad.Data()["PendingApproveCount"].(int64)}
+			squadsWithRequests = append(squadsWithRequests, sc)
+		}
+		counters["pendingApprove"] = squadsWithRequests
 	}
 	return counters, nil
 }

@@ -287,15 +287,27 @@ func (app *App) rebuildKeys(ctx context.Context) {
 		}
 
 		squadId := docSquad.Ref.ID
+		log.Println("Processing squad " + squadId)
 
-		members, err := app.db.GetSquadMembers(ctx, squadId, "", nil)
-		if err != nil {
-			log.Fatalf("Failed to get squad %v members: %v", squadId, err)
-		}
+		iter := docSquad.Ref.Collection("members").Documents(ctx)
+		defer iter.Stop()
+		for {
+			docMember, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.Fatalf("Failed to get squad members: %v", err)
+			}
 
-		for _, member := range members {
-			docMember := docSquad.Ref.Collection("members").Doc(member.ID)
-			docMember.Update(ctx, []firestore.Update{
+			member := &db.SquadUserInfo{}
+			err = docMember.DataTo(member)
+			if err != nil {
+				log.Fatalf("Failed to get squad %v members: %v", squadId, err)
+			}
+
+			log.Println("\tUpdating member " + member.DisplayName)
+			docMember.Ref.Update(ctx, []firestore.Update{
 				{Path: "Keys", Value: member.Keys()},
 			})
 		}

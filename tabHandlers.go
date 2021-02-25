@@ -16,7 +16,7 @@ var (
 	squadDetailsTmpl = parseBodyTemplate("squadDetails.html")
 	squadNotesTmpl   = parseBodyTemplate("squadNotes.html")
 	eventsTmpl       = parseBodyTemplate("events.html")
-	aboutTmpl        = parseBodyTemplate("about.html")
+	aboutTmpl        = parseAboutTemplate()
 )
 
 func (app *App) squadsHandler(w http.ResponseWriter, r *http.Request) error {
