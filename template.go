@@ -39,15 +39,19 @@ func parseBodyTemplate(filename string) *appTemplate {
 func parseAboutTemplate() *appTemplate {
 	tmpl := template.Must(template.ParseFiles("templates/base.html"))
 
-	// Put the named file into a template called "body"
 	markdown, err := ioutil.ReadFile("README.md")
 	if err != nil {
 		panic(fmt.Errorf("could not read README.md: %v", err))
 	}
 	html := blackfriday.Run(markdown)
 
-	script := "<script src=\"static/about.js\"></script>"
-	template.Must(tmpl.New("body").Parse(string(html) + script))
+	template.Must(tmpl.New("readme").Parse(string(html)))
+
+	b, err := ioutil.ReadFile("templates/about.html")
+	if err != nil {
+		panic(fmt.Errorf("could not read template: %v", err))
+	}
+	template.Must(tmpl.New("body").Parse(string(b)))
 
 	return &appTemplate{*tmpl.Lookup("base.html")}
 }

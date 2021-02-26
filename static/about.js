@@ -9,7 +9,7 @@ const app = createApp( {
 	},
 	mounted:function() {
 		this.$nextTick(() => {
-			 const matches = document.querySelectorAll(`h4`);
+			 const matches = document.querySelectorAll(`h3`);
 			  matches.forEach(value => {
 					const ul = document.createElement('ul');
 					const li = document.createElement('li');
