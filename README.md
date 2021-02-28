@@ -1,5 +1,7 @@
 ### How this application could be used
 
+This app is a kind of 'minimal CRM for personal usage'. While developing it, I've taken scenarios from my shooting club as a model: we have several hundreds members and events with pre registration. GMail groups + FB + Excel mix was sufficient to handle all scenarios for years, but not too convinient.
+
 ##### Users
 One can log into the portal using either email/password, FB identity, Google identity or phone (SMS authorization). After first login, email validation is required to proceed. Having email validated, user gets access to the system. It is possible to enable several auth providers for the same account (i.e. use both phone and FB authorization).
 
@@ -12,16 +14,14 @@ Squad admins & owner can create notes per squad and per squad member. Squad Note
 ##### Tags
 Admins can create Squad Tags, and assign those tags to members. Tags might have values, values are exclusive (only one tag value can be assigned to same member).
 
-### Why this application was created
-
-~~Because I can~~ As a part of technology refresh during my career break after serving 5 years as Executive Director in the world's largest provider of information technology products and services, I decided to implement a system automating certain scenarios which I face in my day-to-day life, mostly related to people, places and events.
-
 ### Technologies, source codes, reliability
 
 This app is written using Go + JS (Vue) + Bootstrap styles and hosted at Google App Engine. Firebase Authentication is used as identity service, Firestore DB is used to store data. Source codes are available [here](https://github.com/timurkh/Assist/).
 
 This system uses Google Application Free tier and might get suspended if monthly quota is exceeded. While quota is quite material, there is always an option to deploy the system to your own subscription. Get in touch with author if you want to do it.
 
-### About Author
+### About author and why this application was created
+
+~~Because I can~~ As a part of technology refresh during my career break after serving 5 years as Executive Director in the world's largest provider of information technology products and services, I decided to implement few apps (web & android) automating certain scenarios which I face in my day-to-day life, mostly related to people, places and events.
 
 Author is available [here](https://www.linkedin.com/in/timur-k/), my CV could be downloaded [here](https://storage.googleapis.com/assist-bucket/Resume-Timur-Khakimyanov.pdf). 

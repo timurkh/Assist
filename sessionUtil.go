@@ -189,21 +189,22 @@ func (su *SessionUtil) getSessionData(r *http.Request) *SessionData {
 		sd.ContactInfoIssues = true
 	}
 
-	users, err := su.db.GetUserByName(r.Context(), sd.DisplayName)
-	if users != nil && (len(users) > 1 || len(users) == 1 && users[0] != u.UID) {
-		sd.DisplayNameNotUnique = true
-		sd.ContactInfoIssues = true
-	}
-
-	if err != nil {
-		log.Printf("Got error while checking user name uniqueness: %v", err)
-	}
-
 	if role, ok := u.CustomClaims["Role"]; ok {
 		sd.Role = role.(string)
 		sd.Admin = sd.Role == "Admin"
 	} else {
 		sd.PendingApproval = true
+
+		users, err := su.db.GetUserByName(r.Context(), sd.DisplayName)
+		if users != nil && (len(users) > 1 || len(users) == 1 && users[0] != u.UID) {
+			sd.DisplayNameNotUnique = true
+			sd.ContactInfoIssues = true
+		}
+
+		if err != nil {
+			log.Printf("Got error while checking user name uniqueness: %v", err)
+		}
+
 	}
 
 	return sd

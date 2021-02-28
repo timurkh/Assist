@@ -84,7 +84,7 @@ type App struct {
 func main() {
 	args := os.Args[1:]
 
-	dev := true
+	dev := false
 	if len(args) == 1 && args[0] == "--dev" {
 		log.Println("Running in DEBUG mode")
 		dev = true

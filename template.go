@@ -65,6 +65,7 @@ func (tmpl *appTemplate) ExecuteWithSession(app *App, w http.ResponseWriter, r *
 
 	values["Session"] = app.sd.getSessionData(r)
 	values["CSRFTag"] = csrf.TemplateField(r)
+	values["Dev"] = app.dev
 
 	if err := tmpl.Execute(w, values); err != nil {
 		log.Panicf("could not write template: %v", err)
