@@ -1,6 +1,8 @@
 package main
 
 import (
+	assist_db "assist/db"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/csrf"
@@ -71,7 +73,44 @@ func (app *App) aboutHandler(w http.ResponseWriter, r *http.Request) error {
 
 func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 
-	return userinfoTmpl.ExecuteWithSession(app, w, r, Values{})
+	u, err := app.sd.getCurrentUserRecord(r)
+	if err != nil {
+		log.Panic("Failed to get user info: ", err)
+		return nil
+	}
+
+	currentUserData := app.sd.getCurrentUserData(r)
+
+	currentUserInfo := &struct {
+		ContactInfoIssues    bool
+		EmailVerified        bool
+		DisplayNameNotUnique bool
+		Role                 string
+		PendingApprove       bool
+	}{
+
+		EmailVerified:     u.EmailVerified,
+		ContactInfoIssues: !u.EmailVerified || len(currentUserData.DisplayName) == 0,
+		Role:              currentUserData.Status.String(),
+	}
+
+	if currentUserData.Status == assist_db.PendingApprove {
+		currentUserInfo.PendingApprove = true
+
+		users, err := app.db.GetUserByName(r.Context(), currentUserData.DisplayName)
+		if users != nil && (len(users) > 1 || len(users) == 1 && users[0] != u.UID) {
+			currentUserInfo.DisplayNameNotUnique = true
+			currentUserInfo.ContactInfoIssues = true
+		}
+
+		if err != nil {
+			log.Printf("Got error while checking user name uniqueness: %v", err)
+		}
+
+	}
+
+	return userinfoTmpl.ExecuteWithSession(app, w, r, Values{
+		"CurrentUserInfo": currentUserInfo})
 }
 
 func (app *App) loginHandler(w http.ResponseWriter, r *http.Request) error {

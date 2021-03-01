@@ -17,6 +17,14 @@ type UserInfo struct {
 	PhoneNumber string `json:"phoneNumber"`
 }
 
+type UserData struct {
+	UID         string
+	DisplayName string
+	Email       string
+	Status      MemberStatusType
+	Admin       bool
+}
+
 type UserInfoRecord struct {
 	ID string `json:"id"`
 	UserInfo
@@ -57,6 +65,20 @@ func (db *FirestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo,
 
 	s := &UserInfo{}
 	doc.DataTo(s)
+
+	return s, nil
+}
+
+func (db *FirestoreDB) GetUserData(ctx context.Context, userId string) (sd *UserData, err error) {
+	doc, err := db.Users.Doc(userId).Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get user "+userId+": %w", err)
+	}
+
+	s := &UserData{}
+	doc.DataTo(s)
+	s.UID = userId
+	s.Admin = s.Status == Admin
 
 	return s, nil
 }
@@ -218,50 +240,65 @@ func (db *FirestoreDB) UpdateUserStatusFromFirebase(ctx context.Context, uid str
 	return nil
 }
 
-func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (map[string]interface{}, error) {
+func (db *FirestoreDB) GetSquadsCount(ctx context.Context, userId string) (interface{}, error) {
+	squads := make([]int, len(MemberStatusTypes))
+	iter := db.Users.Doc(userId).Collection(USER_SQUADS).Documents(ctx)
+	defer iter.Stop()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		} else if err != nil {
+			log.Printf("Error while quering user squads: %v", err)
+			return nil, err
+		}
+		status := doc.Data()["Status"].(int64)
+		squads[status] = squads[status] + 1
+	}
+	return squads, nil
+}
 
-	counters := make(map[string]interface{}, 0)
+func (db *FirestoreDB) GetSquadsWithPendingRequests(ctx context.Context, userId string) (interface{}, error) {
+	iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "in", []int{int(Admin), int(Owner)}).Where("PendingApproveCount", "!=", 0).OrderBy("PendingApproveCount", firestore.Desc).Documents(ctx)
+	defer iter.Stop()
+
+	type squadCount struct {
+		Squad string `json:"squad"`
+		Count int64  `json:"count"`
+	}
+	squadsWithRequests := make([]*squadCount, 0)
+	for {
+
+		squad, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("Failed to get squads with members pending approve: %v", err)
+			return nil, err
+		}
+		sc := &squadCount{squad.Ref.ID, squad.Data()["PendingApproveCount"].(int64)}
+		squadsWithRequests = append(squadsWithRequests, sc)
+	}
+
+	return squadsWithRequests, nil
+}
+
+func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (counters map[string]interface{}, err error) {
+
+	counters = make(map[string]interface{}, 0)
 
 	// squads
-	{
-		squads := make([]int, len(MemberStatusTypes))
-		for i, status := range MemberStatusTypes {
-			iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "==", MemberStatusTypes[i]).Snapshots(ctx)
-			defer iter.Stop()
-			snapshot, err := iter.Next()
-			if err != nil {
-				log.Printf("Failed to get amount of user %v squads with status %v: %v", userId, status.String(), err)
-				return nil, err
-			}
-			squads[i] = snapshot.Size
-		}
-		counters["squads"] = squads
+	counters["squads"], err = db.GetSquadsCount(ctx, userId)
+	if err != nil {
+		return nil, err
 	}
 
 	// actions
-	{
-		iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "in", []int{int(Admin), int(Owner)}).Where("PendingApproveCount", "!=", 0).OrderBy("PendingApproveCount", firestore.Desc).Documents(ctx)
-		defer iter.Stop()
-
-		type squadCount struct {
-			Squad string `json:"squad"`
-			Count int64  `json:"count"`
-		}
-		squadsWithRequests := make([]*squadCount, 0)
-		for {
-
-			squad, err := iter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				log.Printf("Failed to get squads with members pending approve: %v", err)
-				return counters, err
-			}
-			sc := &squadCount{squad.Ref.ID, squad.Data()["PendingApproveCount"].(int64)}
-			squadsWithRequests = append(squadsWithRequests, sc)
-		}
-		counters["pendingApprove"] = squadsWithRequests
+	counters["pendingApprove"], err = db.GetSquadsWithPendingRequests(ctx, userId)
+	if err != nil {
+		return nil, err
 	}
+
 	return counters, nil
 }

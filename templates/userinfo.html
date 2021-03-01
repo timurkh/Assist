@@ -3,7 +3,7 @@
 <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 <script src="static/userinfo.js"></script>
 
-{{if .Session.ContactInfoIssues}}
+{{if .CurrentUserInfo.ContactInfoIssues}}
 
 <div class="container">
 	<div class="alert alert-primary mt-2" role="alert">
@@ -21,7 +21,7 @@
 		</div>
 	</div>
 </div>
-{{else if .Session.PendingApproval}}
+{{else if .CurrentUserInfo.PendingApprove}}
 <div class="container">
 	<div class="alert alert-primary mt-2" role="alert">
 		<div class="row align-items-center">
@@ -59,7 +59,7 @@
 							</div>
 						</div>
 						<small id="displayNameError" class="error text-danger">
-							{{if .Session.DisplayNameNotUnique}}
+							{{if .CurrentUserInfo.DisplayNameNotUnique}}
 							This name is already taken. Please choose another name.
 							{{else if .Session.DisplayName}}
 							{{else}}
@@ -78,7 +78,7 @@
 							</div>
 						</div>
 						<small id="emailError" class="error text-danger">
-							{{if .Session.EmailVerified}}
+							{{if .CurrentUserInfo.EmailVerified}}
 
 							{{else if .Session.Email}}
 							Your email {{.Session.Email}} is not verified yet. Click <a href="#" onclick="sendVerificationEmail(event)">here</a> to recieve a verification link.

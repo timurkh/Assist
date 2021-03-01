@@ -1,23 +1,16 @@
 package main
 
 import (
+	assist_db "assist/db"
 	"net/http"
 
 	"firebase.google.com/go/auth"
 )
 
-type SessionData struct {
-	*auth.UserRecord
-	ContactInfoIssues    bool
-	DisplayNameNotUnique bool
-	PendingApproval      bool
-	Role                 string
-	Admin                bool
-}
-
 type SessionDataGetter interface {
-	getSessionData(r *http.Request) *SessionData
+	getCurrentUserData(r *http.Request) *assist_db.UserData
 	getCurrentUserID(r *http.Request) string
+	getCurrentUserRecord(r *http.Request) (*auth.UserRecord, error)
 }
 
 type SessionMiddleware interface {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	assist_db "assist/db"
 	"context"
 	"flag"
 	"fmt"
@@ -13,16 +12,19 @@ import (
 	"sync"
 	"testing"
 
+	assist_db "assist/db"
+
 	firebase "firebase.google.com/go"
+	"firebase.google.com/go/auth"
 	"github.com/gorilla/mux"
 )
 
 var (
 	testUserId      = "TEST_METHOD_USER"
 	testSquadId     = "Super Huge Squad"
-	replicantsCount = 10000
+	replicantsCount = 1000
 	maxThreadsCount = 8
-	db              *assist_db.FirestoreDB
+	adb             *assist_db.FirestoreDB
 	ctx             = context.Background()
 	router          = mux.NewRouter()
 )
@@ -32,8 +34,8 @@ var recreate = flag.Bool("recreate", false, "Set this flag to purge the database
 type SessionTestUtil struct {
 }
 
-func (stu *SessionTestUtil) getSessionData(r *http.Request) *SessionData {
-	sd := &SessionData{
+func (stu *SessionTestUtil) getCurrentUserData(r *http.Request) *assist_db.UserData {
+	sd := &assist_db.UserData{
 		Admin: true,
 	}
 
@@ -42,6 +44,11 @@ func (stu *SessionTestUtil) getSessionData(r *http.Request) *SessionData {
 
 func (stu *SessionTestUtil) getCurrentUserID(r *http.Request) string {
 	return testUserId
+}
+
+func (stu *SessionTestUtil) getCurrentUserRecord(r *http.Request) (*auth.UserRecord, error) {
+
+	return nil, nil
 }
 
 func TestInit(t *testing.T) {
@@ -58,7 +65,7 @@ func TestInit(t *testing.T) {
 		}
 
 		// init firestore
-		db, err = assist_db.NewFirestoreDB(fireapp)
+		adb, err = assist_db.NewFirestoreDB(fireapp)
 		if err != nil {
 			log.Fatalf("Failed to init database: %v", err)
 		}
@@ -68,7 +75,7 @@ func TestInit(t *testing.T) {
 
 		app := App{
 			os.Stderr,
-			db,
+			adb,
 			su,
 			nil, //SessionMiddleware is not required
 			true,
@@ -79,7 +86,7 @@ func TestInit(t *testing.T) {
 
 	if *recreate {
 		t.Run("Clean test DB", func(t *testing.T) {
-			err := db.DeleteCollectionRecurse(ctx, db.Squads)
+			err := adb.DeleteCollectionRecurse(ctx, adb.Squads)
 			if err != nil {
 				t.Fatalf("Failed to clean test data: %v", err)
 			}
@@ -87,7 +94,7 @@ func TestInit(t *testing.T) {
 		})
 
 		t.Run("Create ALL_USERS squad", func(t *testing.T) {
-			_, err := db.Squads.Doc(assist_db.ALL_USERS_SQUAD).Set(ctx, &struct{ Description string }{"Special squad with all users"})
+			_, err := adb.Squads.Doc(assist_db.ALL_USERS_SQUAD).Set(ctx, &struct{ Description string }{"Special squad with all users"})
 			if err != nil {
 				t.Fatalf("Failed to touch ALL_SQUADS doc: %v", err)
 			}
@@ -99,7 +106,7 @@ func TestInit(t *testing.T) {
 				Email:       "test@mail.com",
 				PhoneNumber: "1900555111110",
 			}
-			err := db.CreateUser(ctx, testUserId, userInfo)
+			err := adb.CreateUser(ctx, testUserId, userInfo)
 			if err != nil {
 				t.Fatalf("Failed to create user: %v", err)
 			}
@@ -155,5 +162,61 @@ func TestInit(t *testing.T) {
 
 			wg.Wait() // wait until all threads will finish
 		})
+	}
+}
+
+func BenchmarkMethodGetHome(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		req, _ := http.NewRequest("GET", "/users/me/home", nil)
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, req)
+
+		if rr.Result().StatusCode != 200 {
+			b.Fatalf("Failed to retrieve home counters: %v", rr.Result())
+		}
+
+	}
+}
+
+func BenchmarkGetHomeCounters(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := adb.GetHomeCounters(ctx, testUserId)
+		if err != nil {
+			b.Fatalf("Failed to retrieve home counters: %v", err)
+		}
+
+	}
+}
+
+func BenchmarkGetSquadsCount(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := adb.GetSquadsCount(ctx, testUserId)
+		if err != nil {
+			b.Fatalf("Failed to retrieve home counters: %v", err)
+		}
+
+	}
+}
+
+func BenchmarkGetSquadsWithPendingRequests(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := adb.GetSquadsWithPendingRequests(ctx, testUserId)
+		if err != nil {
+			b.Fatalf("Failed to retrieve home counters: %v", err)
+		}
+
+	}
+}
+
+func BenchmarkMethodGetMembers(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		req, _ := http.NewRequest("GET", "/squads/"+testSquadId+"/members", nil)
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, req)
+
+		if rr.Result().StatusCode != 200 {
+			b.Fatalf("Failed to retrieve squad members: %v", rr.Result())
+		}
+
 	}
 }

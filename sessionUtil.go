@@ -21,6 +21,12 @@ type SessionUtil struct {
 	dev        bool
 }
 
+func TimeTrack(name string, start time.Time) {
+	elapsed := time.Since(start)
+
+	log.Println(fmt.Sprintf("%s took %s", name, elapsed))
+}
+
 // init firebase auth
 func initSessionUtil(fireapp *firebase.App, db *assist_db.FirestoreDB, dev bool) *SessionUtil {
 	ctx := context.Background()
@@ -110,52 +116,65 @@ func (su *SessionUtil) sessionLogout(w http.ResponseWriter, r *http.Request) err
 	return nil
 }
 
-func (su *SessionUtil) authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if su.dev {
-			log.Print("authMiddleware(" + r.URL.Path + ")")
-		}
-		switch r.URL.Path {
-		case "/sessionLogin":
-		case "/login":
-		default:
-			// Get the ID token sent by the client
-			cookie, err := r.Cookie("firebaseSession")
+func (su *SessionUtil) isSessionValid(w http.ResponseWriter, r *http.Request) bool {
+	if su.dev {
+		defer TimeTrack("isSessionValid "+r.URL.Path, time.Now())
+	}
+	switch r.URL.Path {
+	case "/sessionLogin":
+	case "/sessionLogout":
+	case "/login":
+	default:
+		// Get the ID token sent by the client
+		cookie, err := r.Cookie("firebaseSession")
+		if err != nil {
+			if r.URL.Path != "/about" {
+				log.Print("Session cookie is unavailable. Force user to login.")
+				http.Redirect(w, r, "/login", http.StatusFound)
+				return false
+			}
+		} else {
+
+			// Check refoked token is quite expensive, do not do it for now
+			//decoded, err := su.authClient.VerifySessionCookieAndCheckRevoked(r.Context(), cookie.Value)
+			decoded, err := su.authClient.VerifySessionCookie(r.Context(), cookie.Value)
 			if err != nil {
 				if r.URL.Path != "/about" {
-					log.Print("Session cookie is unavailable. Force user to login.")
+					log.Print("Session cookie is invalid. Force user to login.")
 					http.Redirect(w, r, "/login", http.StatusFound)
-					return
+					return false
 				}
 			} else {
-
-				// Verify the session cookie. In this case an additional check is added to detect
-				// if the user's Firebase session was revoked, user deleted/disabled, etc.
-				decoded, err := su.authClient.VerifySessionCookieAndCheckRevoked(r.Context(), cookie.Value)
+				gorilla_context.Set(r, "SessionToken", decoded)
+				sd, err := su.db.GetUserData(r.Context(), decoded.UID)
 				if err != nil {
 					if r.URL.Path != "/about" {
-						log.Print("Session cookie is invalid. Force user to login.")
-						http.Redirect(w, r, "/login", http.StatusFound)
-						return
-					}
-				} else {
-					gorilla_context.Set(r, "SessionToken", decoded)
-					u, err := su.authClient.GetUser(r.Context(), decoded.UID)
-					if err != nil {
 						err = errors.New("Failed to get user details: " + err.Error())
 						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					} else if u.CustomClaims["Role"] == nil || u.CustomClaims["Role"].(string) == "" {
-						if r.URL.Path != "/userinfo" {
-							log.Print("User is pending approve. Redirect to /userinfo")
-							http.Redirect(w, r, "/userinfo", http.StatusFound)
-							return
-						}
+						return false
+					}
+				} else {
+					gorilla_context.Set(r, "SessionData", sd)
+					if sd.Status == assist_db.PendingApprove {
+						log.Print("User is pending approve. Redirect to /userinfo")
+						http.Redirect(w, r, "/userinfo", http.StatusFound)
+						return false
 					}
 				}
 			}
 		}
-		next.ServeHTTP(w, r)
+	}
+	return true
+}
+
+func (su *SessionUtil) authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if su.dev {
+			defer TimeTrack("Processing "+r.URL.Path, time.Now())
+		}
+		if su.isSessionValid(w, r) {
+			next.ServeHTTP(w, r)
+		}
 	})
 }
 
@@ -169,43 +188,14 @@ func (su *SessionUtil) getCurrentUserID(r *http.Request) string {
 	}
 }
 
-func (su *SessionUtil) getSessionData(r *http.Request) *SessionData {
+func (su *SessionUtil) getCurrentUserData(r *http.Request) *assist_db.UserData {
+	sessionData := gorilla_context.Get(r, "SessionData")
+
+	return sessionData.(*assist_db.UserData)
+}
+
+func (su *SessionUtil) getCurrentUserRecord(r *http.Request) (*auth.UserRecord, error) {
 	u, err := su.authClient.GetUser(r.Context(), su.getCurrentUserID(r))
 
-	if err != nil {
-		log.Panic("Failed to get sessions data: ", err)
-		return nil
-	}
-
-	sd := &SessionData{
-		UserRecord: u,
-	}
-
-	if !sd.EmailVerified {
-		sd.ContactInfoIssues = true
-	}
-
-	if len(sd.DisplayName) == 0 {
-		sd.ContactInfoIssues = true
-	}
-
-	if role, ok := u.CustomClaims["Role"]; ok {
-		sd.Role = role.(string)
-		sd.Admin = sd.Role == "Admin"
-	} else {
-		sd.PendingApproval = true
-
-		users, err := su.db.GetUserByName(r.Context(), sd.DisplayName)
-		if users != nil && (len(users) > 1 || len(users) == 1 && users[0] != u.UID) {
-			sd.DisplayNameNotUnique = true
-			sd.ContactInfoIssues = true
-		}
-
-		if err != nil {
-			log.Printf("Got error while checking user name uniqueness: %v", err)
-		}
-
-	}
-
-	return sd
+	return u, err
 }

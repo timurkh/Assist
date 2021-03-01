@@ -1,6 +1,7 @@
 package main
 
 import (
+	"assist/db"
 	assist_db "assist/db"
 	"encoding/json"
 	"fmt"
@@ -24,8 +25,8 @@ const (
 
 func (app *App) checkAuthorization(r *http.Request, userId string, squadId string, requiredLevel AuthenticatedLevel) (_ string, level AuthenticatedLevel) {
 
-	sd := app.sd.getSessionData(r)
-	if sd.Admin {
+	sd := app.sd.getCurrentUserData(r)
+	if sd.Status == db.Admin {
 		level = systemAdmin
 	}
 

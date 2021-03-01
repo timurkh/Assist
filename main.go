@@ -9,6 +9,8 @@ import (
 
 	"context"
 
+	_ "net/http/pprof"
+
 	firebase "firebase.google.com/go"
 )
 

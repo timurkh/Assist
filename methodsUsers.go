@@ -1,6 +1,7 @@
 package main
 
 import (
+	"assist/db"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -15,10 +16,10 @@ func (app *App) methodSetUser(w http.ResponseWriter, r *http.Request) error {
 
 	userId := params["id"]
 	// authorization check
-	sd := app.sd.getSessionData(r)
+	sd := app.sd.getCurrentUserData(r)
 	if userId == "me" {
 		userId = app.sd.getCurrentUserID(r)
-	} else if sd.Admin {
+	} else if sd.Status == db.Admin {
 		// ok, admin can do that
 	} else {
 		// operation is not authorized, return error
