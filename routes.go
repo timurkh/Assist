@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	gorilla_context "github.com/gorilla/context"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -106,8 +107,10 @@ func (app *App) registerHandlers() {
 }
 
 func (app *App) registerMethodHandlers(rm *mux.Router) {
+
 	// squads
 	rm.Methods("POST").Path("/squads").Handler(appHandler(app.methodCreateSquad))
+	rm.Methods("GET").Path("/squads").Handler(appHandler(app.methodGetSquads))
 	rm.Methods("DELETE").Path("/squads/{id}").Handler(appHandler(app.methodDeleteSquad))
 	rm.Methods("GET").Path("/squads/{id}").Handler(appHandler(app.methodGetSquad))
 
@@ -120,7 +123,7 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 
 	// users
 	rm.Methods("PUT").Path("/users/{id}").Handler(appHandler(app.methodSetUser))
-	rm.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetSquads))
+	rm.Methods("GET").Path("/users/{userId}/squads").Handler(appHandler(app.methodGetUserSquads))
 	rm.Methods("GET").Path("/users/{userId}/home").Handler(appHandler(app.methodGetHome))
 
 	// squad tags
@@ -138,4 +141,26 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 	rm.Methods("POST").Path("/squads/{squadId}/notes").Handler(appHandler(app.methodCreateNote))
 	rm.Methods("GET").Path("/squads/{squadId}/notes").Handler(appHandler(app.methodGetNotes))
 	rm.Methods("DELETE").Path("/squads/{squadId}/notes/{noteId}").Handler(appHandler(app.methodDeleteNote))
+
+	// events
+	rm.Methods("POST").Path("/events").Handler(appHandler(app.methodCreateEvent))
+	rm.Methods("DELETE").Path("/events/{eventId}").Handler(appHandler(app.methodDeleteEvent))
+	rm.Methods("GET").Path("/users/{userId}/events").Handler(appHandler(app.methodGetEvents))
+	rm.Methods("POST").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodRegisterParticipant))
+	rm.Methods("GET").Path("/events/{eventId}/participants").Handler(appHandler(app.methodGetParticipants))
+	rm.Methods("PATCH").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodUpdateParticipant))
+	rm.Methods("DELETE").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodRemoveParticipant))
+
+	rm.Use(app.assertAuthWasChecked)
+}
+
+func (app *App) assertAuthWasChecked(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r)
+
+		authCheck := gorilla_context.Get(r, "AuthChecked")
+		if authCheck == nil {
+			log.Println("Authentication check is missing for " + r.URL.Path)
+		}
+	})
 }

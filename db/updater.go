@@ -11,75 +11,75 @@ import (
 
 const maxUpdateHandlers = 4
 
-type updateKey struct {
-	path  string
-	field string
+type updatesList struct {
+	doc    *firestore.DocumentRef
+	values *list.List
 }
 
 type updateValue struct {
-	doc *firestore.DocumentRef
-	val interface{}
-}
-
-type updateCommand struct {
-	updateKey
-	updateValue
+	field string
+	val   interface{}
 }
 
 type AsyncUpdater struct {
 	sync.Mutex
-	cmdMap   map[updateKey]*list.List
+	cmdMap   map[string]*updatesList
 	semaChan chan struct{}
 }
 
 // Map command and launch command handler
-func (u *AsyncUpdater) dispatchCommand(doc *firestore.DocumentRef, field string, val interface{}) {
-	cmd := updateCommand{
-		updateKey{
-			doc.Path,
-			field,
-		},
-		updateValue{
-			doc,
-			val,
-		},
+func (u *AsyncUpdater) dispatchCommand(doc *firestore.DocumentRef, field string, value interface{}) {
+	key := doc.Path
+	val := updateValue{
+		field,
+		value,
 	}
 
 	u.Lock()
 	defer u.Unlock()
 
-	listOfCommands, ok := u.cmdMap[cmd.updateKey]
+	updates, ok := u.cmdMap[key]
 	if !ok {
-		listOfCommands = list.New()
-		u.cmdMap[cmd.updateKey] = listOfCommands
+		updates = &updatesList{
+			doc,
+			list.New(),
+		}
+		u.cmdMap[key] = updates
 	}
-	listOfCommands.PushBack(cmd.updateValue)
-	go u.commandHandler(cmd.updateKey)
+	updates.values.PushBack(val)
+	go u.commandHandler(key)
 }
 
 // Amount of simultaneously launched command handlers is limited
-func (u *AsyncUpdater) commandHandler(updateKey updateKey) {
+func (u *AsyncUpdater) commandHandler(key string) {
 	u.semaChan <- struct{}{}
 	defer func() {
 		<-u.semaChan
 	}()
 
 	u.Lock()
-	cmdList := u.cmdMap[updateKey]
-	delete(u.cmdMap, updateKey)
+	// take key out of map
+	updates := u.cmdMap[key]
+	delete(u.cmdMap, key)
 	u.Unlock()
 
-	if cmdList != nil { // other goroutine could already do the job
-		updateValue := cmdList.Back().Value.(updateValue)
+	if updates != nil { // other goroutine could already do the job before we took they key out of map
+		valuesMap := make(map[string]interface{}, 0)
+		for v := updates.values.Front(); v != nil; v = v.Next() {
+			uv := v.Value.(updateValue)
+			valuesMap[uv.field] = uv.val
+		}
 
-		_, err := updateValue.doc.Update(context.Background(), []firestore.Update{
-			{
-				Path:  updateKey.field,
-				Value: updateValue.val,
-			},
-		})
+		updateArray := make([]firestore.Update, 0)
+		for k, v := range valuesMap {
+			updateArray = append(updateArray, firestore.Update{
+				Path:  k,
+				Value: v,
+			})
+		}
+		_, err := updates.doc.Update(context.Background(), updateArray)
 		if err != nil {
-			log.Printf("Error while updating %v.%v to '%v':%v\n", updateKey.path, updateKey.field, updateValue.val, err)
+			log.Printf("Error while updating %v with %+v: %v\n", key, updateArray, err)
 		}
 	}
 }
@@ -87,7 +87,7 @@ func (u *AsyncUpdater) commandHandler(updateKey updateKey) {
 func initAsyncUpdater() *AsyncUpdater {
 
 	u := &AsyncUpdater{
-		cmdMap:   make(map[updateKey]*list.List),
+		cmdMap:   make(map[string]*updatesList),
 		semaChan: make(chan struct{}, maxUpdateHandlers),
 	}
 

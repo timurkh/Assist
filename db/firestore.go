@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
@@ -13,16 +15,19 @@ import (
 )
 
 const ALL_USERS_SQUAD = "All Users"
-const USER_SQUADS = "member_squads"
+const MEMBERS = "members"
 
 type FirestoreDB struct {
-	Client  *firestore.Client
-	Squads  *firestore.CollectionRef
-	Users   *firestore.CollectionRef
-	updater *AsyncUpdater
+	Client        *firestore.Client
+	Squads        *firestore.CollectionRef
+	Users         *firestore.CollectionRef
+	Events        *firestore.CollectionRef
+	updater       *AsyncUpdater
+	userDataCache sync.Map
 }
 
 var testPrefix string = ""
+var numRecords int = 10
 
 func SetTestPrefix(prefix string) {
 	testPrefix = prefix
@@ -53,10 +58,11 @@ func NewFirestoreDB(fireapp *firebase.App) (*FirestoreDB, error) {
 	}
 
 	return &FirestoreDB{
-		dbClient,
-		dbClient.Collection(testPrefix + "squads"),
-		dbClient.Collection(testPrefix + "squads").Doc(ALL_USERS_SQUAD).Collection("members"),
-		initAsyncUpdater(),
+		Client:  dbClient,
+		Squads:  dbClient.Collection(testPrefix + "squads"),
+		Users:   dbClient.Collection(testPrefix + "squads").Doc(ALL_USERS_SQUAD).Collection("members"),
+		Events:  dbClient.Collection(testPrefix + "events"),
+		updater: initAsyncUpdater(),
 	}, nil
 }
 
@@ -117,5 +123,111 @@ func (db *FirestoreDB) DeleteCollectionRecurse(ctx context.Context, collection *
 	}
 
 	wg.Wait()
+	return nil
+}
+
+func (db *FirestoreDB) propagateChangedGroupInfo(docRef *firestore.DocumentRef, collection string, id string, fields ...string) {
+	ctx := context.Background()
+	doc, err := docRef.Get(ctx)
+	if err != nil {
+		log.Printf("Failed to get object %v: %v", id, err)
+	}
+
+	vals := make([]interface{}, len(fields))
+	for i, field := range fields {
+		vals[i] = doc.Data()[field]
+	}
+
+	iter := docRef.Collection(collection).Where("Replicant", "!=", true).Documents(ctx)
+	defer iter.Stop()
+	for {
+		docMember, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("Error while getting group %v member: %v", id, err.Error())
+			break
+		}
+
+		userId := docMember.Ref.ID
+
+		log.Println("\t\t" + userId)
+
+		doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(id)
+		for i, field := range fields {
+			db.updater.dispatchCommand(doc, field, vals[i])
+		}
+	}
+}
+
+func (db *FirestoreDB) GetFilteredDocuments(ctx context.Context, collection *firestore.CollectionRef, from string, filter *map[string]string) (*firestore.DocumentIterator, error) {
+	query := collection.OrderBy("Timestamp", firestore.Asc)
+	if from != "" {
+		log.Printf("\tstarting from %v\n", from)
+		timeFrom, err := time.Parse(time.RFC3339, from)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to convert from to a time struct: %w", err)
+		}
+
+		query = query.StartAfter(timeFrom)
+	}
+
+	if filter != nil {
+		f := *filter
+		if f["Keys"] != "" {
+			log.Printf("\tapplying filter by keys %v\n", f["Keys"])
+			query = query.Where("Keys", "array-contains-any", strings.Fields(strings.ToLower(f["Keys"])))
+		}
+
+		if f["Status"] != "" {
+			if s := statusFromString(f["Status"]); s != -1 {
+				log.Printf("\tapplying filter by status %v\n", f["Status"])
+				query = query.Where("Status", "==", s)
+			}
+		}
+
+		if f["Tag"] != "" {
+			log.Printf("\tapplying filter by tag %v\n", f["Tag"])
+			query = query.Where("Tags", "array-contains-any", strings.Fields(f["Tag"]))
+		}
+	}
+
+	return query.Limit(numRecords).Documents(ctx), nil
+}
+
+func (db *FirestoreDB) DeleteGroup(ctx context.Context, groupType string, groupCollection *firestore.CollectionRef, membersCollection string, groupId string) error {
+
+	log.Println("Deleting " + groupType + " " + groupId)
+
+	docGroup := groupCollection.Doc(groupId)
+
+	//delete this event from all participants
+	go func() {
+		iter := docGroup.Collection(MEMBERS).Documents(ctx)
+		defer iter.Stop()
+		for {
+			docUser, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.Printf("Error while iterating through %v %v participants: %v", groupType, groupId, err.Error())
+				break
+			}
+
+			userId := docUser.Ref.ID
+			log.Printf("Deleting %v %v from user %v", groupType, groupId, userId)
+
+			db.Users.Doc(userId).Collection(membersCollection).Doc(groupId).Delete(ctx)
+		}
+	}()
+
+	//delete squad itself
+	err := db.deleteDocRecurse(ctx, docGroup)
+	if err != nil {
+		return fmt.Errorf("Error while deleting %v %v: %w", groupType, groupId, err)
+	}
+
 	return nil
 }

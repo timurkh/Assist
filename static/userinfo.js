@@ -210,12 +210,6 @@ firebase.auth().onAuthStateChanged(user => {
 			inputs[i].value = escapeHTML(user[inputs[i].id]);
 		}
 
-		if(document.getElementById('role')) {
-			user.getIdTokenResult().then((idTokenResult) => {
-					document.getElementById('role').value = idTokenResult.claims.Role; 
-			});
-		}
-
 		// init auth providers
 		var pd = user.providerData;
 		for(var i=0; i<pd.length; ++i) {

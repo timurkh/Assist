@@ -18,7 +18,7 @@ const app = createApp( {
 	created:function() {
 		axios({
 			method: 'GET',
-			url: `/methods/users/me/squads`,
+			url: `/methods/squads`,
 		})
 		.then(res => {
 			this.own_squads = res.data['Own']; 

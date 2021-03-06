@@ -6,6 +6,8 @@
 <script> var userIsAdmin = false; </script>
 {{end}}
 
+<script> var currentUserId = `{{.Session.UID}}`;</script>
+
 <div id="app">
 	<div v-if="loading">
 		<div class="mt-5" align="center">
@@ -16,8 +18,12 @@
 	</div>
 	<div v-if="!loading" v-cloak>
 		<!-- Modal Windows -->
-		<add-event-dialog :evnt="newEvnt" window-id="addEventModal" title="Create Event" v-on:submit-form="addEvent($event)"></add-event-dialog> 
+		<add-event-dialog :evnt="newEvnt" :squads="squads" window-id="addEventModal" title="Create Event" v-on:submit-form="addEvent($event)"></add-event-dialog> 
 
+		<!-- Main View -->
+		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
+			[[ error_message ]]
+		</div>
 		<div class="d-flex flex-wrap">
 			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 mb-1 mx-1">
 				<ol class="breadcrumb mb-0 p-0">
@@ -32,44 +38,44 @@
 
 		<div class="mx-3">
 			<div class="m-1">
-				<div class="row border pb-3">
-					<div class="col-sm-4">
+				<div v-for="(e, i) in events" class="row border pb-3">
+					<div class="col-sm-2">
 						<div class="d-flex justify-content-center align-items-center">
-							<h1 class="mb-0 mr-2 text-primary font-weight-normal">04</h1>
+							<h1 class="mb-0 mr-2 text-primary font-weight-normal">[[e.date.toLocaleString('en-US', {day : '2-digit'})]]</h1>
 							<div>
-								<p class="font-weight-bold mb-0 text-dark">Feb</p>
-								<p class="mb-0">2018</p>
+								<p class="font-weight-bold mb-0 text-dark">[[ e.date.toLocaleString('en-US', { month: 'short' })]]</p>
+								<p class="mb-0">[[e.date.getFullYear()]]</p>
 							</div>
 						</div>
 					</div>
 					<div class="col-sm-4 pl-3">
-						<p class="mb-0">9.30 PM - 10:30 PM</p>
-						<p class="text-dark font-weight-bold mb-0">Lorem ipsum dolor sit amit</p>
+						<p v-if="e.timeFrom" class="mb-0">[[e.timeFrom]] - [[e.timeTo]]</p>
+						<p class="text-dark font-weight-bold mb-0">Squad: [[e.squadId]]</p>
+						<p class="text-dark mb-0">[[e.text]]</p>
 					</div>
 					<div class="col-sm-4 pl-3">
-						<span class="badge badge-primary">I am owner</span>
+						<span v-if="e.ownerId==currentUserId" class="badge badge-primary">I am owner</span>
+						<span v-else-if="e.status==2" class="badge badge-success">I am going</span>
+						<span v-else-if="e.status==1" class="badge badge-warning">Applied, waiting confirmation</span>
+						<span v-else class="badge badge-secondary">I do not go</span>
 						<p class="text-dark font-weight-bold mb-0">Appointments:
 						<p class="mb-0">17 confirmed, 4 pending approval</p>
 					</div>
-				</div>
-				<div class="row border pb-3">
-					<div class="col-sm-4 border-right-lg border-right-md-0">
-						<div class="d-flex justify-content-center align-items-center">
-							<h1 class="mb-0 mr-2 text-primary font-weight-normal">04</h1>
-							<div>
-								<p class="font-weight-bold mb-0 text-dark">Feb</p>
-								<p class="mb-0">2018</p>
-							</div>
-						</div>
-					</div>
-					<div class="col-sm-4 pl-3">
-						<p class="mb-0">9.30 PM - 10:30 PM</p>
-						<p class="text-dark font-weight-bold mb-0">Lorem ipsum dolor sit amit</p>
-					</div>
-					<div class="col-sm-4 pl-3">
-						<span class="badge badge-warning">Pending approval</span>
-						<p class="text-dark font-weight-bold mb-0">Appointments:</p>
-						<p class="mb-0">17 confirmed, 4 pending approval</p>
+					<div class="col-sm-2 pl-3">
+						<a v-if="userIsAdmin || (squads[e.squadId] != null && squads[e.squadId].status > 1)" title="Check attendies" href="#" @click.stop.prevent="showAttendies(e, i)">
+							<i class="m-3 fas fa-list-alt fa-lg"></i>
+						</a>
+						<a v-if="userIsAdmin || e.ownerId == currentUserId" title="Delete event" href="#" @click.stop.prevent="deleteEvent(e, i)">
+							<i class="m-3 fa fa-trash fa-lg"></i>
+						</a>
+						<span v-if="e.ownerId != currentUserId" class="m-0 p-0">
+							<a v-if="e.status == 0" title="Count me in!" href="#" @click.stop.prevent="registerForEvent(e, i)">
+								<i class="m-3 fas fa-sign-in-alt fa-lg"></i>
+							</a>
+							<a v-else title="Will not attend :(" href="#" @click.stop.prevent="declineEvent(e ,i)">
+								<i class="m-3 fas fa-sign-out-alt fa-lg"></i>
+							</a>
+						</span>
 					</div>
 				</div>
 			</div>

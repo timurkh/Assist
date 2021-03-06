@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
 	"testing"
 	"time"
 
@@ -14,6 +15,8 @@ var db *FirestoreDB
 var ctx = context.Background()
 
 func TestInitDB(t *testing.T) {
+
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	t.Run("Init test firestore DB", func(t *testing.T) {
 		fireapp, err := firebase.NewApp(ctx, nil)
@@ -68,7 +71,7 @@ func TestRun(t *testing.T) {
 				Email:       fmt.Sprint(i, "test@mail.com"),
 				PhoneNumber: fmt.Sprint("1900555111110", i),
 			}
-			err := db.CreateUser(ctx, fmt.Sprint("TEST_USER_", i), userInfo)
+			err := db.CreateUser(ctx, fmt.Sprint("TEST_USER_", i), userInfo, Member)
 			if err != nil {
 				t.Fatalf("Failed to create user: %v", err)
 			}
@@ -82,7 +85,7 @@ func TestRun(t *testing.T) {
 				Email:       fmt.Sprint(i, "pending@mail.com"),
 				PhoneNumber: fmt.Sprint("1900555111120", i),
 			}
-			err := db.CreateUser(ctx, fmt.Sprint("PENDING_APPROVE_USER_", i), userInfo)
+			err := db.CreateUser(ctx, fmt.Sprint("PENDING_APPROVE_USER_", i), userInfo, Member)
 			if err != nil {
 				t.Fatalf("Failed to create pending approve user: %v", err)
 			}
@@ -95,7 +98,7 @@ func TestRun(t *testing.T) {
 			Email:       "test@mail.com",
 			PhoneNumber: "19005550000000",
 		}
-		err := db.CreateUser(ctx, "SUPER_USER", userInfo)
+		err := db.CreateUser(ctx, "SUPER_USER", userInfo, Member)
 		if err != nil {
 			t.Fatalf("Failed to create user: %v", err)
 		}
@@ -275,30 +278,42 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("Check SetSquadMemberStatus", func(t *testing.T) {
+		testUser := "PENDING_APPROVE_USER_1"
+		testSquad := "TEST_SQUAD_0"
+
 		//delete user from squad
-		err := db.SetSquadMemberStatus(ctx, "PENDING_APPROVE_USER_1", "TEST_SQUAD_0", Member)
+		err := db.SetSquadMemberStatus(ctx, testUser, testSquad, Member)
 		if err != nil {
 			t.Errorf("Failed to set status member: %v", err)
 		}
 
 		// ensure squad members have correct records about squads
 		for i := 5; i >= 0; i-- {
-			own_squads, _, err := db.GetSquads(ctx, "PENDING_APPROVE_USER_1", false)
+			own_squads, _, err := db.GetSquads(ctx, testUser, false)
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
 
-			if own_squads[0].MembersCount != 6 || own_squads[0].PendingApproveCount != 0 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
+			if own_squads[0].MembersCount != 6 || own_squads[0].PendingApproveCount != 0 || own_squads[0].ID != testSquad || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
 				if i != 0 {
-					t.Logf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+					t.Logf("Wrong squad info for the only squad for %v - %+v", testUser, own_squads[0])
 					time.Sleep(100 * time.Millisecond)
 					t.Log("Trying once more")
 				} else {
-					t.Errorf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+					t.Errorf("Wrong squad info for the only squad for %v - %+v", testUser, own_squads[0])
 				}
 			} else {
 				break
 			}
+		}
+
+		// ensure records in squad are also correct
+		squadInfo, err := db.GetSquad(ctx, testSquad)
+		if err != nil {
+			t.Errorf("Failed to retrieve squadInfo: %v", err)
+		}
+		if squadInfo.MembersCount != 6 || squadInfo.PendingApproveCount != 0 {
+			t.Errorf("Wrong squad info for squad %v - %+v", testSquad, squadInfo)
 		}
 
 		// set back user status to PendingApprove

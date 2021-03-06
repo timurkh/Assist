@@ -36,7 +36,8 @@ type SessionTestUtil struct {
 
 func (stu *SessionTestUtil) getCurrentUserData(r *http.Request) *assist_db.UserData {
 	sd := &assist_db.UserData{
-		Admin: true,
+		Admin:  true,
+		Status: assist_db.Admin,
 	}
 
 	return sd
@@ -106,7 +107,7 @@ func TestInit(t *testing.T) {
 				Email:       "test@mail.com",
 				PhoneNumber: "1900555111110",
 			}
-			err := adb.CreateUser(ctx, testUserId, userInfo)
+			err := adb.CreateUser(ctx, testUserId, userInfo, assist_db.Member)
 			if err != nil {
 				t.Fatalf("Failed to create user: %v", err)
 			}
@@ -180,7 +181,7 @@ func BenchmarkMethodGetHome(b *testing.B) {
 
 func BenchmarkGetHomeCounters(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := adb.GetHomeCounters(ctx, testUserId)
+		_, err := adb.GetHomeCounters(ctx, testUserId, false)
 		if err != nil {
 			b.Fatalf("Failed to retrieve home counters: %v", err)
 		}
@@ -200,7 +201,7 @@ func BenchmarkGetSquadsCount(b *testing.B) {
 
 func BenchmarkGetSquadsWithPendingRequests(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := adb.GetSquadsWithPendingRequests(ctx, testUserId)
+		_, err := adb.GetSquadsWithPendingRequests(ctx, testUserId, false)
 		if err != nil {
 			b.Fatalf("Failed to retrieve home counters: %v", err)
 		}

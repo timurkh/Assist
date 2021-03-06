@@ -70,17 +70,26 @@ func (db *FirestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo,
 }
 
 func (db *FirestoreDB) GetUserData(ctx context.Context, userId string) (sd *UserData, err error) {
-	doc, err := db.Users.Doc(userId).Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get user "+userId+": %w", err)
+
+	//TODO implement update of cache on user data change
+	v, found := db.userDataCache.Load(userId)
+	if found {
+		return v.(*UserData), nil
+	} else {
+
+		doc, err := db.Users.Doc(userId).Get(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get user "+userId+": %w", err)
+		}
+
+		ud := &UserData{}
+		doc.DataTo(ud)
+		ud.UID = userId
+		ud.Admin = ud.Status == Admin
+
+		db.userDataCache.Store(userId, ud)
+		return ud, nil
 	}
-
-	s := &UserData{}
-	doc.DataTo(s)
-	s.UID = userId
-	s.Admin = s.Status == Admin
-
-	return s, nil
 }
 
 func (db *FirestoreDB) GetUserByName(ctx context.Context, userName string) (users []string, err error) {
@@ -114,10 +123,10 @@ func (db *FirestoreDB) AddSquadRecordToMember(ctx context.Context, userId string
 	return nil
 }
 
-func (db *FirestoreDB) CreateUser(ctx context.Context, userId string, userInfo *UserInfo) error {
+func (db *FirestoreDB) CreateUser(ctx context.Context, userId string, userInfo *UserInfo, status MemberStatusType) error {
 
 	var sui = SquadUserInfo{
-		Status: Member}
+		Status: status}
 	sui.UserInfo = *userInfo
 	err := db.AddMemberRecordToSquad(ctx, ALL_USERS_SQUAD, userId, &sui)
 	if err != nil {
@@ -133,7 +142,7 @@ func (db *FirestoreDB) DeleteSquadRecordFromMember(ctx context.Context, userId s
 
 	_, err := doc.Delete(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to add squad to user "+userId+": %w", err)
+		return fmt.Errorf("Failed to delete squad from user "+userId+": %w", err)
 	}
 
 	return nil
@@ -181,6 +190,8 @@ func (db *FirestoreDB) UpdateUser(ctx context.Context, userId string, field stri
 
 	go db.propagateChangedUserInfo(userId, field, val)
 
+	db.userDataCache.Delete(userId)
+
 	return nil
 }
 
@@ -195,7 +206,7 @@ func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecor
 			Email:       userRecord.Email,
 			PhoneNumber: userRecord.PhoneNumber,
 		}
-		db.CreateUser(ctx, userId, userInfo)
+		db.CreateUser(ctx, userId, userInfo, PendingApprove)
 
 		if err != nil {
 			return fmt.Errorf("Failed to add user to database: %w", err)
@@ -209,33 +220,7 @@ func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecor
 		}
 	}
 
-	var role string
-	if r, ok := userRecord.CustomClaims["Role"]; ok {
-		role = r.(string)
-	}
-	db.UpdateUserStatusFromFirebase(ctx, userId, role)
-
-	return nil
-}
-
-func (db *FirestoreDB) UpdateUserStatusFromFirebase(ctx context.Context, uid string, role string) error {
-
-	status := PendingApprove
-	switch role {
-	case "Admin":
-		status = Admin
-	default:
-		status = Member
-	}
-	_, err := db.Users.Doc(uid).Update(ctx, []firestore.Update{
-		{
-			Path:  "Status",
-			Value: status,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("error while updating user %v status in DB: %v\n", uid, err.Error())
-	}
+	db.userDataCache.Delete(userId)
 
 	return nil
 }
@@ -258,15 +243,31 @@ func (db *FirestoreDB) GetSquadsCount(ctx context.Context, userId string) (inter
 	return squads, nil
 }
 
-func (db *FirestoreDB) GetSquadsWithPendingRequests(ctx context.Context, userId string) (interface{}, error) {
-	iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "in", []int{int(Admin), int(Owner)}).Where("PendingApproveCount", "!=", 0).OrderBy("PendingApproveCount", firestore.Desc).Documents(ctx)
-	defer iter.Stop()
-
+func (db *FirestoreDB) GetSquadsWithPendingRequests(ctx context.Context, userId string, admin bool) (interface{}, error) {
 	type squadCount struct {
 		Squad string `json:"squad"`
 		Count int64  `json:"count"`
 	}
 	squadsWithRequests := make([]*squadCount, 0)
+
+	if admin {
+		doc, err := db.Squads.Doc(ALL_USERS_SQUAD).Get(ctx)
+		if err != nil {
+			log.Printf("Failed to get counters for ALL_USERS_SQUAD: %v", err)
+			return nil, err
+		}
+		pc := doc.Data()["PendingApproveCount"]
+		if pc != nil {
+			pcv := pc.(int64)
+			if pcv > 0 {
+				squadsWithRequests = append(squadsWithRequests, &squadCount{ALL_USERS_SQUAD, pcv})
+			}
+		}
+	}
+
+	iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "in", []int{int(Admin), int(Owner)}).Where("PendingApproveCount", "!=", 0).OrderBy("PendingApproveCount", firestore.Desc).Documents(ctx)
+	defer iter.Stop()
+
 	for {
 
 		squad, err := iter.Next()
@@ -284,7 +285,7 @@ func (db *FirestoreDB) GetSquadsWithPendingRequests(ctx context.Context, userId 
 	return squadsWithRequests, nil
 }
 
-func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (counters map[string]interface{}, err error) {
+func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string, admin bool) (counters map[string]interface{}, err error) {
 
 	counters = make(map[string]interface{}, 0)
 
@@ -295,7 +296,7 @@ func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string) (coun
 	}
 
 	// actions
-	counters["pendingApprove"], err = db.GetSquadsWithPendingRequests(ctx, userId)
+	counters["pendingApprove"], err = db.GetSquadsWithPendingRequests(ctx, userId, admin)
 	if err != nil {
 		return nil, err
 	}

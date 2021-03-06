@@ -156,9 +156,11 @@ func (su *SessionUtil) isSessionValid(w http.ResponseWriter, r *http.Request) bo
 				} else {
 					gorilla_context.Set(r, "SessionData", sd)
 					if sd.Status == assist_db.PendingApprove {
-						log.Print("User is pending approve. Redirect to /userinfo")
-						http.Redirect(w, r, "/userinfo", http.StatusFound)
-						return false
+						if r.URL.Path != "/userinfo" {
+							log.Print("User is pending approve. Redirect to /userinfo")
+							http.Redirect(w, r, "/userinfo", http.StatusFound)
+							return false
+						}
 					}
 				}
 			}

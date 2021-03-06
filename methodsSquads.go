@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
+	gorilla_context "github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -16,7 +18,7 @@ import (
 type AuthenticatedLevel uint8
 
 const (
-	authenticatedUser AuthenticatedLevel = 1 << iota
+	myself AuthenticatedLevel = 1 << iota
 	squadMember
 	squadAdmin
 	squadOwner
@@ -25,15 +27,22 @@ const (
 
 func (app *App) checkAuthorization(r *http.Request, userId string, squadId string, requiredLevel AuthenticatedLevel) (_ string, level AuthenticatedLevel) {
 
+	if app.dev {
+		defer TimeTrack("checkAuthorization "+r.URL.Path, time.Now())
+	}
+
+	currentUserId := app.sd.getCurrentUserID(r)
 	sd := app.sd.getCurrentUserData(r)
+
 	if sd.Status == db.Admin {
 		level = systemAdmin
 	}
 
-	currentUserId := app.sd.getCurrentUserID(r)
 	if userId == "me" {
 		userId = currentUserId
-		level = level | (authenticatedUser & requiredLevel)
+		if sd.Status != db.PendingApprove {
+			level = level | (myself & requiredLevel)
+		}
 	}
 
 	if squadId != "" {
@@ -49,6 +58,8 @@ func (app *App) checkAuthorization(r *http.Request, userId string, squadId strin
 			}
 		}
 	}
+
+	gorilla_context.Set(r, "AuthChecked", true)
 
 	return userId, level
 }
@@ -93,14 +104,20 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	params := mux.Vars(r)
 	userId := params["userId"]
 
-	if userId != "me" {
-		err := fmt.Errorf("Can retrieve home values only for myself")
-		http.Error(w, err.Error(), http.StatusNotImplemented)
+	// authorization check
+	userId, authLevel := app.checkAuthorization(r, userId, "", myself)
+	if authLevel == 0 {
+		// operation is not authorized, return error
+		err := fmt.Errorf("Cannot retrieve home values for user %v", userId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return err
 	}
-	userId = app.sd.getCurrentUserID(r)
 
-	homeCounters, err := app.db.GetHomeCounters(ctx, userId)
+	userId = app.sd.getCurrentUserID(r)
+	sd := app.sd.getCurrentUserData(r)
+
+	homeCounters, err := app.db.GetHomeCounters(ctx, userId, sd.Admin)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -118,18 +135,56 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
+func (app *App) methodGetUserSquads(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := r.Context()
 
 	params := mux.Vars(r)
 	userId := params["userId"]
 
+	v := r.URL.Query()
+	status := v.Get("status")
+
 	// authorization check
-	userId, authLevel := app.checkAuthorization(r, userId, "", authenticatedUser)
+	authLevel := myself
+	if userId != "me" {
+		authLevel = systemAdmin
+	}
+	userId, authLevel = app.checkAuthorization(r, userId, "", authLevel)
 	if authLevel == 0 {
 		// operation is not authorized, return error
 		err := fmt.Errorf("Current user is not authorized to get squads for user %v", userId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
+	user_squads, err := app.db.GetUserSquadsMap(ctx, userId, status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	err = json.NewEncoder(w).Encode(user_squads)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+	return nil
+}
+
+func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
+
+	ctx := r.Context()
+
+	// authorization check
+	userId, authLevel := app.checkAuthorization(r, "me", "", myself)
+	if authLevel == 0 {
+		// operation is not authorized, return error
+		err := fmt.Errorf("Current user %v is not authorized to get squads", userId)
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return err
@@ -264,11 +319,11 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 	userId := params["userId"]
 
 	var memberStatus assist_db.MemberStatusType
-	userId, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadAdmin|squadOwner)
+	userId, authLevel := app.checkAuthorization(r, userId, squadId, myself|squadAdmin|squadOwner)
 
 	if authLevel&(squadOwner|squadAdmin|systemAdmin) != 0 {
 		memberStatus = assist_db.Member
-	} else if authLevel&authenticatedUser != 0 {
+	} else if authLevel&myself != 0 {
 		memberStatus = assist_db.PendingApprove
 	} else {
 		err := fmt.Errorf("Current user is not authorized to to add user " + userId + " to squad " + squadId)
@@ -391,7 +446,7 @@ func (app *App) methodDeleteMemberFromSquad(w http.ResponseWriter, r *http.Reque
 	userId := params["userId"]
 
 	// authorization check
-	userId, authLevel := app.checkAuthorization(r, userId, squadId, authenticatedUser|squadOwner|squadAdmin)
+	userId, authLevel := app.checkAuthorization(r, userId, squadId, myself|squadOwner|squadAdmin)
 	if authLevel == 0 {
 		// operation is not authorized, return error
 		err := fmt.Errorf("Current user is not authorized to remove user " + userId + " from squad " + squadId)
