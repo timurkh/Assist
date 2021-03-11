@@ -59,8 +59,8 @@
 						<span v-else-if="e.status==1" class="badge badge-warning">Applied, waiting confirmation</span>
 						<span v-else class="badge badge-secondary">I do not go</span>
 						<div class="m-0" v-for="i in 4">
-							<span v-if=" e[getStatusText(i)] > 0 ">
-									[[e[getStatusText(i)] ]] [[getStatusText(i)]]
+							<span v-if=" e[getEventStatusText(i)] > 0 ">
+									[[e[getEventStatusText(i)] ]] [[getEventStatusText(i)]]
 							</span>
 						</div>
 					</div>

@@ -31,21 +31,6 @@ const app = createApp( {
 		});
 	},
 	methods: {
-		getStatusText : function(status) {
-
-			switch(status) {
-				case 0:
-					return "not going";
-				case 1:
-					return "applied";
-				case 2:
-					return "going";
-				case 3:
-					return "attended";
-				case 4:
-					return "no-show";
-			};
-		},
 		addEvent:function(e) {
 			e.date = new Date(e.date);
 			axios({

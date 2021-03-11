@@ -298,33 +298,3 @@ func (db *FirestoreDB) GetSquadsWithPendingRequests(ctx context.Context, userId 
 
 	return squadsWithRequests, nil
 }
-
-func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string, admin bool) (counters *map[string]interface{}, err error) {
-	errs := make([]error, 2)
-	var squads, pendingApprove interface{}
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	// squads
-	go func() {
-		squads, errs[0] = db.GetSquadsCount(ctx, userId)
-		wg.Done()
-	}()
-
-	// actions
-	go func() {
-		pendingApprove, errs[1] = db.GetSquadsWithPendingRequests(ctx, userId, admin)
-		wg.Done()
-	}()
-
-	wg.Wait()
-	counters = &map[string]interface{}{"squads": squads, "pendingApprove": pendingApprove}
-
-	for _, e := range errs {
-		if e != nil {
-			return nil, e
-		}
-	}
-
-	return counters, nil
-}

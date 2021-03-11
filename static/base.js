@@ -6,6 +6,21 @@ const globalMixin = {
 		}
 	},
 	methods: {
+		getEventStatusText : function(status) {
+
+			switch(status) {
+				case 0:
+					return "not going";
+				case 1:
+					return "applied";
+				case 2:
+					return "going";
+				case 3:
+					return "attended";
+				case 4:
+					return "no-show";
+			};
+		},
 		getStatusText : function(status) {
 
 			switch(status) {

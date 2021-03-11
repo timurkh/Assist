@@ -98,44 +98,6 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
-
-	ctx := r.Context()
-
-	params := mux.Vars(r)
-	userId := params["userId"]
-
-	// authorization check
-	userId, authLevel := app.checkAuthorization(r, userId, "", myself)
-	if authLevel == 0 {
-		// operation is not authorized, return error
-		err := fmt.Errorf("Cannot retrieve home values for user %v", userId)
-		log.Println(err.Error())
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return err
-	}
-
-	userId = app.sd.getCurrentUserID(r)
-	sd := app.sd.getCurrentUserData(r)
-
-	homeCounters, err := app.db.GetHomeCounters(ctx, userId, sd.Admin)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return err
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	err = json.NewEncoder(w).Encode(homeCounters)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return err
-	}
-
-	return err
-}
-
 func (app *App) methodGetUserSquads(w http.ResponseWriter, r *http.Request) error {
 
 	ctx := r.Context()

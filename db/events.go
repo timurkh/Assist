@@ -20,6 +20,7 @@ const (
 	Going
 	Attended
 	NoShow
+	EventOwner
 )
 
 func (s ParticipantStatusType) String() string {
@@ -29,6 +30,7 @@ func (s ParticipantStatusType) String() string {
 		"Going",
 		"Attended",
 		"NoShow",
+		"Owner",
 	}
 
 	return texts[s]
@@ -74,6 +76,9 @@ func (db *FirestoreDB) CreateEvent(ctx context.Context, event *EventInfo) (id st
 		if err != nil {
 			return "", err
 		}
+
+		event.Status = EventOwner
+		db.AddEventRecordToParticipant(ctx, event.OwnerId, doc.ID, event)
 
 		return doc.ID, nil
 	}
@@ -122,6 +127,35 @@ func (db *FirestoreDB) GetUserEventsMap(ctx context.Context, userId string) (map
 		}
 
 		events[doc.Ref.ID] = e
+
+	}
+
+	return events, nil
+}
+
+func (db *FirestoreDB) GetUserEvents(ctx context.Context, userId string, limit int) ([]*EventInfo, error) {
+	events := make([]*EventInfo, 0)
+
+	var iter *firestore.DocumentIterator
+	iter = db.Users.Doc(userId).Collection(USER_EVENTS).OrderBy("Date", firestore.Asc).Limit(limit).Documents(ctx)
+
+	defer iter.Stop()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get user events: %w", err)
+		}
+
+		e := &EventInfo{}
+		err = doc.DataTo(e)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get user squads: %w", err)
+		}
+
+		events = append(events, e)
 
 	}
 

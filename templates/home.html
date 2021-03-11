@@ -35,7 +35,7 @@
 									<div class="col-8 px-0">
 										<h6 class="text-uppercase" align="center">Total [[getSquadsCount()]]:</h6>
 										<table class="table text-white table-borderless mx-0">
-											<tr v-for="(count, index) in homeCounters['squads']" class="py-0 my-0">
+											<tr v-for="(count, index) in squads" class="py-0 my-0">
 												<td class="py-0">
 													[[getStatusText(index)]]
 												</td>
@@ -67,7 +67,7 @@
 										<table class="table text-white table-borderless mx-0">
 
 
-											<tr v-if="homeCounters['pendingApprove'] != null" v-for="(squad, index) in homeCounters['pendingApprove'].slice(0,3)" class="py-0 my-0">
+											<tr v-if="pendingApprove != null" v-for="(squad, index) in pendingApprove.slice(0,3)" class="py-0 my-0">
 												<td class="py-0">
 													<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.squad]]</a>
 												</td>
@@ -77,12 +77,12 @@
 												<td class="align-middle py-0">	
 													<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.count]]</a>
 												</td>
-												<tr v-if="homeCounters['pendingApprove'] != null && homeCounters['pendingApprove'].length > 3" class="py-0 my-0">
+											</tr>
+											<tr v-if="pendingApprove != null && pendingApprove.length > 3" class="py-0 my-0">
 												<td class="text-center align-middle py-0">
 													...
 												</td>
 											</tr>
-			</tr>
 										</table>
 									</div>
 								</div>
@@ -101,6 +101,24 @@
 									</div>
 									<div class="col-8 px-0">
 										<h6 class="text-uppercase" align="center">Upcoming Events:</h6>
+										<table class="table text-white table-borderless mx-0">
+											<tr v-if="events != null" v-for="(event, index) in events.slice(0,3)" class="py-0 my-0">
+												<td class="py-0">
+													<a href="/events" class="text-reset">[[getDate(event.date)]] [[event.text]]</a>
+												</td>
+												<td class="text-center align-middle py-0">
+													-
+												</td>
+												<td class="align-middle py-0">	
+													<a href="/events" class="text-reset">[[getEventStatusText(event.status)]]</a>
+												</td>
+											</tr>
+											<tr v-if="events != null && events.length > 3" class="py-0 my-0">
+												<td class="text-center align-middle py-0">
+													...
+												</td>
+											</tr>
+										</table>
 									</div>
 								</div>
 							</div>

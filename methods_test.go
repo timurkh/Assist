@@ -184,16 +184,6 @@ func BenchmarkMethodGetHome(b *testing.B) {
 	}
 }
 
-func BenchmarkGetHome_DBCounters(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_, err := adb.GetHomeCounters(ctx, testUserId, true)
-		if err != nil {
-			b.Fatalf("Failed to retrieve home counters: %v", err)
-		}
-
-	}
-}
-
 func BenchmarkGetHome_DBCounters_SquadsCount(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := adb.GetSquadsCount(ctx, testUserId)

@@ -6,7 +6,9 @@ const app = createApp( {
 		return {
 			loading:true,
 			error_message:"",
-			homeCounters:[],
+			squads:[],
+			pendingApprove:[],
+			events:[],
 		};
 	},
 	created:function() {
@@ -15,7 +17,9 @@ const app = createApp( {
 			url: `/methods/users/me/home`,
 		})
 		.then(res => {
-			this.homeCounters = res.data;
+			this.squads = res.data.squads;
+			this.pendingApprove = res.data.pendingApprove;
+			this.events = res.data.events.map(x => {x.date = new Date(x.date); return x});
 			this.loading = false;
 		})
 		.catch(error => {
@@ -24,9 +28,16 @@ const app = createApp( {
 		})
 	},
 	methods: {
+		getDate(date) {
+			return date.toLocaleString('ru', {
+				    day:   '2-digit',
+				    month: '2-digit',
+				    year:  '2-digit'
+				  });
+		},
 		getSquadsCount : function() {
-			if(this.homeCounters[`squads`] != null)
-				return this.homeCounters['squads'].reduce((a,c) => a+c);
+			if(this.squads != null)
+				return this.squads.reduce((a,c) => a+c);
 		},
 		getSquadsClass : function() {
 			if(this.getSquadsCount() > 0) {
@@ -36,7 +47,7 @@ const app = createApp( {
 			}
 		},
 		getTodoClass : function() {
-			let hc = this.homeCounters['pendingApprove'];
+			let hc = this.pendingApprove;
 			if(hc != null && hc.length > 0) {
 				return "card-body bg-danger";
 			} 
