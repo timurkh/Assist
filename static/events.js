@@ -31,6 +31,21 @@ const app = createApp( {
 		});
 	},
 	methods: {
+		getStatusText : function(status) {
+
+			switch(status) {
+				case 0:
+					return "not going";
+				case 1:
+					return "applied";
+				case 2:
+					return "going";
+				case 3:
+					return "attended";
+				case 4:
+					return "no-show";
+			};
+		},
 		addEvent:function(e) {
 			e.date = new Date(e.date);
 			axios({
@@ -40,7 +55,7 @@ const app = createApp( {
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {
-				e.id = res.data.ID;
+				e.id = res.data.id;
 				e.ownerId = currentUserId;
 				this.error_message = "";
 				this.events.push(e);
@@ -70,7 +85,7 @@ const app = createApp( {
 		registerForEvent(e, i) {
 			axios({
 				method: 'POST',
-				url: `/methods/events/${e.id}/participants/${currentUserId}`,
+				url: `/methods/events/${e.id}/participants/me`,
 				headers: { "X-CSRF-Token": csrfToken },
 			})
 			.then( res => {

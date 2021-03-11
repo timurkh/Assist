@@ -33,11 +33,11 @@ const AddEventDialog = {
 				<form>
 					<div class="modal-body">
 						<div class="row">
-							<div class="col form-group">
+							<div class="col-5 form-group">
 								<label for="dateTitle">Date</label>
 								<input type="date" id="date" class="input-sm form-control" v-model="evnt.date">
 							</div>
-							<div class="col form-group">
+							<div class="col-7 form-group">
 								<label for="dateTitle">Time</label>
 								<div class="row">
 									<div class="col-5 pr-0">

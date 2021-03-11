@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"cloud.google.com/go/firestore"
 	"firebase.google.com/go/auth"
@@ -71,7 +72,6 @@ func (db *FirestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo,
 
 func (db *FirestoreDB) GetUserData(ctx context.Context, userId string) (sd *UserData, err error) {
 
-	//TODO implement update of cache on user data change
 	v, found := db.userDataCache.Load(userId)
 	if found {
 		return v.(*UserData), nil
@@ -250,19 +250,21 @@ func (db *FirestoreDB) GetSquadsWithPendingRequests(ctx context.Context, userId 
 	}
 	squadsWithRequests := make([]*squadCount, 0)
 
+	var wg sync.WaitGroup
+	var errAdminSquad error
+	var adminSquadPendingCount int64
 	if admin {
-		doc, err := db.Squads.Doc(ALL_USERS_SQUAD).Get(ctx)
-		if err != nil {
-			log.Printf("Failed to get counters for ALL_USERS_SQUAD: %v", err)
-			return nil, err
-		}
-		pc := doc.Data()["PendingApproveCount"]
-		if pc != nil {
-			pcv := pc.(int64)
-			if pcv > 0 {
-				squadsWithRequests = append(squadsWithRequests, &squadCount{ALL_USERS_SQUAD, pcv})
+		wg.Add(1)
+		go func() {
+			doc, errAdminSquad := db.Squads.Doc(ALL_USERS_SQUAD).Get(ctx)
+			if errAdminSquad == nil {
+				pc := doc.Data()["PendingApproveCount"]
+				if pc != nil {
+					adminSquadPendingCount = pc.(int64)
+				}
 			}
-		}
+			wg.Done()
+		}()
 	}
 
 	iter := db.Users.Doc(userId).Collection(USER_SQUADS).Where("Status", "in", []int{int(Admin), int(Owner)}).Where("PendingApproveCount", "!=", 0).OrderBy("PendingApproveCount", firestore.Desc).Documents(ctx)
@@ -282,23 +284,46 @@ func (db *FirestoreDB) GetSquadsWithPendingRequests(ctx context.Context, userId 
 		squadsWithRequests = append(squadsWithRequests, sc)
 	}
 
+	wg.Wait()
+
+	if errAdminSquad != nil {
+		log.Printf("Failed to get counters for ALL_USERS_SQUAD: %v", errAdminSquad)
+		return nil, errAdminSquad
+	}
+
+	if adminSquadPendingCount > 0 {
+		sc := &squadCount{ALL_USERS_SQUAD, adminSquadPendingCount}
+		squadsWithRequests = append([]*squadCount{sc}, squadsWithRequests...)
+	}
+
 	return squadsWithRequests, nil
 }
 
-func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string, admin bool) (counters map[string]interface{}, err error) {
-
-	counters = make(map[string]interface{}, 0)
+func (db *FirestoreDB) GetHomeCounters(ctx context.Context, userId string, admin bool) (counters *map[string]interface{}, err error) {
+	errs := make([]error, 2)
+	var squads, pendingApprove interface{}
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	// squads
-	counters["squads"], err = db.GetSquadsCount(ctx, userId)
-	if err != nil {
-		return nil, err
-	}
+	go func() {
+		squads, errs[0] = db.GetSquadsCount(ctx, userId)
+		wg.Done()
+	}()
 
 	// actions
-	counters["pendingApprove"], err = db.GetSquadsWithPendingRequests(ctx, userId, admin)
-	if err != nil {
-		return nil, err
+	go func() {
+		pendingApprove, errs[1] = db.GetSquadsWithPendingRequests(ctx, userId, admin)
+		wg.Done()
+	}()
+
+	wg.Wait()
+	counters = &map[string]interface{}{"squads": squads, "pendingApprove": pendingApprove}
+
+	for _, e := range errs {
+		if e != nil {
+			return nil, e
+		}
 	}
 
 	return counters, nil

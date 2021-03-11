@@ -13,6 +13,8 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0
+	golang.org/x/perf v0.0.0-20210220033136-40a54f11e909 // indirect
+	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/api v0.37.0
 	google.golang.org/appengine v1.6.7
 	google.golang.org/grpc v1.34.0

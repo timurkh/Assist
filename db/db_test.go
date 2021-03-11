@@ -39,7 +39,7 @@ func TestInitDB(t *testing.T) {
 
 		SetTestPrefix("test_")
 
-		db, err = NewFirestoreDB(fireapp)
+		db, err = NewFirestoreDB(fireapp, true)
 		if err != nil {
 			t.Fatalf("NewFirestoreDB failed: %v", err)
 		}

@@ -19,10 +19,12 @@ const app = createApp( {
 	},
 	created:function() {
 		axios.all([
+			axios.get(`/methods/squads/${squadId}`),
 			axios.get(`/methods/squads/${squadId}/notes`),
 			axios.get(`/methods/squads/${squadId}/tags`),
 		])
-		.then(axios.spread((notes, tags) => {
+		.then(axios.spread((squad,notes, tags) => {
+			this.squad = squad.data;
 			this.notes = notes.data;
 			this.tags = tags.data;
 			this.loading = false;

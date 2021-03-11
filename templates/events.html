@@ -31,7 +31,7 @@
 				</ol>
 			</div>
 
-			<div class="ml-auto p-0 mr-1 mb-1">
+			<div v-if="Object.keys(squads).length > 0"  class="ml-auto p-0 mr-1 mb-1">
 				<button type="button" class="btn btn-info add-new p-1 ml-1" data-toggle="modal" data-target="#addEventModal"><i class="fa fa-plus"></i> Create Event</button>
 			</div>
 		</div>
@@ -58,8 +58,11 @@
 						<span v-else-if="e.status==2" class="badge badge-success">I am going</span>
 						<span v-else-if="e.status==1" class="badge badge-warning">Applied, waiting confirmation</span>
 						<span v-else class="badge badge-secondary">I do not go</span>
-						<p class="text-dark font-weight-bold mb-0">Appointments:
-						<p class="mb-0">17 confirmed, 4 pending approval</p>
+						<div class="m-0" v-for="i in 4">
+							<span v-if=" e[getStatusText(i)] > 0 ">
+									[[e[getStatusText(i)] ]] [[getStatusText(i)]]
+							</span>
+						</div>
 					</div>
 					<div class="col-sm-2 pl-3">
 						<a v-if="userIsAdmin || (squads[e.squadId] != null && squads[e.squadId].status > 1)" title="Check attendies" href="#" @click.stop.prevent="showAttendies(e, i)">

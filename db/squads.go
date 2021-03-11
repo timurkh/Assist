@@ -92,7 +92,9 @@ type MemberSquadInfoRecord struct {
 
 func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, ownerId string) (err error) {
 
-	log.Println("Creating squad " + squadId)
+	if db.dev {
+		log.Println("Creating squad " + squadId)
+	}
 
 	_, err = db.Squads.Doc(squadId).Create(ctx, map[string]interface{}{
 		"Owner":               ownerId,
@@ -114,7 +116,9 @@ func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, ownerId 
 
 func (db *FirestoreDB) GetSquads(ctx context.Context, userId string, includeAllUsersSquad bool) ([]*MemberSquadInfoRecord, []*MemberSquadInfoRecord, error) {
 
-	log.Println("Getting squads for user " + userId)
+	if db.dev {
+		log.Println("Getting squads for user " + userId)
+	}
 
 	user_squads_map, err := db.GetUserSquadsMap(ctx, userId, "")
 	if err != nil {
@@ -223,7 +227,7 @@ func (db *FirestoreDB) GetUserSquadsMap(ctx context.Context, userID string, stat
 	if status == "" {
 		iter = db.Users.Doc(userID).Collection(USER_SQUADS).Documents(ctx)
 	} else if status == "admin" {
-		iter = db.Users.Doc(userID).Collection(USER_SQUADS).Where("Status", ">", Admin).Documents(ctx)
+		iter = db.Users.Doc(userID).Collection(USER_SQUADS).Where("Status", ">=", Admin).Documents(ctx)
 	} else {
 		return nil, fmt.Errorf("Do not know what to do with status=%v", status)
 	}
@@ -257,7 +261,9 @@ func (db *FirestoreDB) GetUserSquadsMap(ctx context.Context, userID string, stat
 
 func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from string, filter *map[string]string) ([]*SquadUserInfoRecord, error) {
 
-	log.Printf("Getting members of the squad %v\n", squadId)
+	if db.dev {
+		log.Printf("Getting members of the squad %v\n", squadId)
+	}
 
 	squadMembers := make([]*SquadUserInfoRecord, 0)
 
@@ -296,7 +302,9 @@ func (db *FirestoreDB) DeleteSquad(ctx context.Context, squadId string) error {
 
 func (db *FirestoreDB) GetSquad(ctx context.Context, ID string) (*SquadInfo, error) {
 
-	log.Println("Getting details for squad " + ID)
+	if db.dev {
+		log.Println("Getting details for squad " + ID)
+	}
 
 	doc, err := db.Squads.Doc(ID).Get(ctx)
 	if err != nil {
@@ -318,7 +326,9 @@ func (db *FirestoreDB) propagateChangedSquadInfo(squadId string, fields ...strin
 
 func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId string, userId string, userInfo *SquadUserInfo) error {
 
-	log.Println("Adding member " + userId + " to squad " + squadId)
+	if db.dev {
+		log.Println("Adding member " + userId + " to squad " + squadId)
+	}
 	batch := db.Client.Batch()
 
 	docSquad := db.Squads.Doc(squadId)
@@ -420,15 +430,24 @@ func (db *FirestoreDB) FlushSquadSize(ctx context.Context, squadId string) error
 }
 
 func (db *FirestoreDB) GetSquadMemberStatus(ctx context.Context, userId string, squadId string) (MemberStatusType, error) {
-	doc, err := db.Squads.Doc(squadId).Collection(MEMBERS).Doc(userId).Get(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("Failed to get squad "+squadId+": %w", err)
-	}
-	status, ok := doc.Data()["Status"]
-	if ok {
-		return MemberStatusType(status.(int64)), nil
+
+	cacheKey := squadId + "/" + userId
+	v, found := db.memberStatusCache.Load(cacheKey)
+	if found {
+		return v.(MemberStatusType), nil
 	} else {
-		return 0, fmt.Errorf("Failed to get squad " + squadId + " status")
+		doc, err := db.Squads.Doc(squadId).Collection(MEMBERS).Doc(userId).Get(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("Failed to get squad "+squadId+": %w", err)
+		}
+		status, ok := doc.Data()["Status"]
+		if ok {
+			t := MemberStatusType(status.(int64))
+			db.memberStatusCache.Store(cacheKey, t)
+			return t, nil
+		} else {
+			return 0, fmt.Errorf("Failed to get squad " + squadId + " status")
+		}
 	}
 }
 
@@ -471,18 +490,22 @@ func (db *FirestoreDB) SetSquadMemberStatus(ctx context.Context, userId string, 
 		return fmt.Errorf("Failed to change user "+userId+" status: %w", err)
 	}
 
-	if changedCount != 0 && squadId != ALL_USERS_SQUAD {
+	if squadId == ALL_USERS_SQUAD {
+		db.userDataCache.Delete(userId)
+	} else if changedCount != 0 {
 		go db.propagateChangedSquadInfo(squadId, "MembersCount", "PendingApproveCount")
 	}
 
-	db.userDataCache.Delete(userId)
+	db.memberStatusCache.Delete(squadId + "/" + userId)
 
 	return nil
 }
 
 func (db *FirestoreDB) SetSquadMemberNotes(ctx context.Context, userId string, squadId string, notes *map[string]string) error {
 
-	log.Printf("Updating note for user '%v' in squad '%v': %+v", userId, squadId, notes)
+	if db.dev {
+		log.Printf("Updating note for user '%v' in squad '%v': %+v", userId, squadId, notes)
+	}
 
 	docUser := db.Squads.Doc(squadId).Collection(MEMBERS).Doc(userId)
 
@@ -499,7 +522,9 @@ func (db *FirestoreDB) SetSquadMemberNotes(ctx context.Context, userId string, s
 }
 
 func (db *FirestoreDB) CreateReplicant(ctx context.Context, replicantInfo *UserInfo, squadId string) (replicantId string, err error) {
-	log.Println("Creating replicant " + replicantInfo.DisplayName + " in squad " + squadId)
+	if db.dev {
+		log.Println("Creating replicant " + replicantInfo.DisplayName + " in squad " + squadId)
+	}
 
 	squadReplicantInfo := &SquadUserInfo{
 		UserInfo:  *replicantInfo,
@@ -519,7 +544,9 @@ func (db *FirestoreDB) CreateReplicant(ctx context.Context, replicantInfo *UserI
 }
 
 func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squadId string, memberStatus MemberStatusType) error {
-	log.Println("Adding user " + userId + " to squad " + squadId)
+	if db.dev {
+		log.Println("Adding user " + userId + " to squad " + squadId)
+	}
 
 	userInfo, err := db.GetUser(ctx, userId)
 	if err != nil {
@@ -555,7 +582,9 @@ func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squa
 }
 
 func (db *FirestoreDB) DeleteMemberFromSquad(ctx context.Context, userId string, squadId string) error {
-	log.Println("Removing user " + userId + " from squad " + squadId)
+	if db.dev {
+		log.Println("Removing user " + userId + " from squad " + squadId)
+	}
 
 	err := db.DeleteSquadRecordFromMember(ctx, userId, squadId)
 	if err != nil {

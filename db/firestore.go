@@ -18,12 +18,14 @@ const ALL_USERS_SQUAD = "All Users"
 const MEMBERS = "members"
 
 type FirestoreDB struct {
-	Client        *firestore.Client
-	Squads        *firestore.CollectionRef
-	Users         *firestore.CollectionRef
-	Events        *firestore.CollectionRef
-	updater       *AsyncUpdater
-	userDataCache sync.Map
+	dev               bool
+	Client            *firestore.Client
+	Squads            *firestore.CollectionRef
+	Users             *firestore.CollectionRef
+	Events            *firestore.CollectionRef
+	updater           *AsyncUpdater
+	userDataCache     sync.Map
+	memberStatusCache sync.Map
 }
 
 var testPrefix string = ""
@@ -33,8 +35,14 @@ func SetTestPrefix(prefix string) {
 	testPrefix = prefix
 }
 
+func TimeTrack(name string, start time.Time) {
+	elapsed := time.Since(start)
+
+	log.Println(fmt.Sprintf("%s took %s", name, elapsed))
+}
+
 // init firestore
-func NewFirestoreDB(fireapp *firebase.App) (*FirestoreDB, error) {
+func NewFirestoreDB(fireapp *firebase.App, dev bool) (*FirestoreDB, error) {
 	ctx := context.Background()
 
 	if testPrefix == "" {
@@ -58,6 +66,7 @@ func NewFirestoreDB(fireapp *firebase.App) (*FirestoreDB, error) {
 	}
 
 	return &FirestoreDB{
+		dev:     dev,
 		Client:  dbClient,
 		Squads:  dbClient.Collection(testPrefix + "squads"),
 		Users:   dbClient.Collection(testPrefix + "squads").Doc(ALL_USERS_SQUAD).Collection("members"),
@@ -176,19 +185,25 @@ func (db *FirestoreDB) GetFilteredDocuments(ctx context.Context, collection *fir
 	if filter != nil {
 		f := *filter
 		if f["Keys"] != "" {
-			log.Printf("\tapplying filter by keys %v\n", f["Keys"])
+			if db.dev {
+				log.Printf("\tapplying filter by keys %v\n", f["Keys"])
+			}
 			query = query.Where("Keys", "array-contains-any", strings.Fields(strings.ToLower(f["Keys"])))
 		}
 
 		if f["Status"] != "" {
 			if s := statusFromString(f["Status"]); s != -1 {
-				log.Printf("\tapplying filter by status %v\n", f["Status"])
+				if db.dev {
+					log.Printf("\tapplying filter by status %v\n", f["Status"])
+				}
 				query = query.Where("Status", "==", s)
 			}
 		}
 
 		if f["Tag"] != "" {
-			log.Printf("\tapplying filter by tag %v\n", f["Tag"])
+			if db.dev {
+				log.Printf("\tapplying filter by tag %v\n", f["Tag"])
+			}
 			query = query.Where("Tags", "array-contains-any", strings.Fields(f["Tag"]))
 		}
 	}

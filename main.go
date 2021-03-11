@@ -14,34 +14,6 @@ import (
 	firebase "firebase.google.com/go"
 )
 
-func initTestApp() *App {
-	//
-	app := App{
-		logWriter: os.Stderr,
-	}
-
-	ctx := context.Background()
-
-	// init fireapp
-	fireapp, err := firebase.NewApp(ctx, nil)
-	if err != nil {
-		log.Fatalf("firebase.NewApp: %v", err)
-	}
-
-	// init firestore
-	app.db, err = assist_db.NewFirestoreDB(fireapp)
-	if err != nil {
-		log.Fatalf("Failed to init database: %v", err)
-	}
-
-	// init firebase auth
-	su := initSessionUtil(fireapp, app.db, app.dev)
-	app.sm = su
-	app.sd = su
-
-	return &app
-}
-
 func initApp(dev bool) (*App, error) {
 	//
 	app := App{
@@ -62,7 +34,7 @@ func initApp(dev bool) (*App, error) {
 	}
 
 	// init firestore
-	app.db, err = assist_db.NewFirestoreDB(fireapp)
+	app.db, err = assist_db.NewFirestoreDB(fireapp, app.dev)
 	if err != nil {
 		log.Fatalf("Failed to init database: %v", err)
 	}

@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Test configuration
 var (
 	testUserId      = "TEST_METHOD_USER"
 	testSquadId     = "Super Huge Squad"
@@ -29,8 +30,10 @@ var (
 	router          = mux.NewRouter()
 )
 
+// Run flags
 var recreate = flag.Bool("recreate", false, "Set this flag to purge the database and create everything from scratch")
 
+// Fake session objects
 type SessionTestUtil struct {
 }
 
@@ -52,6 +55,7 @@ func (stu *SessionTestUtil) getCurrentUserRecord(r *http.Request) (*auth.UserRec
 	return nil, nil
 }
 
+// Init app and DB (if recreate flag specified)
 func TestInit(t *testing.T) {
 
 	t.Run("Init test app ", func(t *testing.T) {
@@ -66,7 +70,7 @@ func TestInit(t *testing.T) {
 		}
 
 		// init firestore
-		adb, err = assist_db.NewFirestoreDB(fireapp)
+		adb, err = assist_db.NewFirestoreDB(fireapp, false)
 		if err != nil {
 			log.Fatalf("Failed to init database: %v", err)
 		}
@@ -78,8 +82,8 @@ func TestInit(t *testing.T) {
 			os.Stderr,
 			adb,
 			su,
-			nil, //SessionMiddleware is not required
-			true,
+			nil,   //SessionMiddleware is not required
+			false, // dev mode, set to true if want logs
 		}
 
 		app.registerMethodHandlers(router)
@@ -166,6 +170,7 @@ func TestInit(t *testing.T) {
 	}
 }
 
+// Benchmarking home screen and particular components
 func BenchmarkMethodGetHome(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		req, _ := http.NewRequest("GET", "/users/me/home", nil)
@@ -179,9 +184,9 @@ func BenchmarkMethodGetHome(b *testing.B) {
 	}
 }
 
-func BenchmarkGetHomeCounters(b *testing.B) {
+func BenchmarkGetHome_DBCounters(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := adb.GetHomeCounters(ctx, testUserId, false)
+		_, err := adb.GetHomeCounters(ctx, testUserId, true)
 		if err != nil {
 			b.Fatalf("Failed to retrieve home counters: %v", err)
 		}
@@ -189,7 +194,7 @@ func BenchmarkGetHomeCounters(b *testing.B) {
 	}
 }
 
-func BenchmarkGetSquadsCount(b *testing.B) {
+func BenchmarkGetHome_DBCounters_SquadsCount(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := adb.GetSquadsCount(ctx, testUserId)
 		if err != nil {
@@ -199,7 +204,7 @@ func BenchmarkGetSquadsCount(b *testing.B) {
 	}
 }
 
-func BenchmarkGetSquadsWithPendingRequests(b *testing.B) {
+func BenchmarkGetHome_DBCounters_SquadsWithPendingRequests(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := adb.GetSquadsWithPendingRequests(ctx, testUserId, false)
 		if err != nil {
@@ -209,6 +214,7 @@ func BenchmarkGetSquadsWithPendingRequests(b *testing.B) {
 	}
 }
 
+// Benchmark squad members screen
 func BenchmarkMethodGetMembers(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		req, _ := http.NewRequest("GET", "/squads/"+testSquadId+"/members", nil)
@@ -217,6 +223,20 @@ func BenchmarkMethodGetMembers(b *testing.B) {
 
 		if rr.Result().StatusCode != 200 {
 			b.Fatalf("Failed to retrieve squad members: %v", rr.Result())
+		}
+
+	}
+}
+
+// Benchmark squad details screen
+func BenchmarkMethodGetSquad(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		req, _ := http.NewRequest("GET", "/squads/"+testSquadId, nil)
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, req)
+
+		if rr.Result().StatusCode != 200 {
+			b.Fatalf("Failed to retrieve squad info: %v", rr.Result())
 		}
 
 	}

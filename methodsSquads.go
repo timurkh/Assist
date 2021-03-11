@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	gorilla_context "github.com/gorilla/context"
@@ -251,17 +252,45 @@ func (app *App) methodGetSquad(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	squadInfo, err := app.db.GetSquad(r.Context(), squadId)
-	if err != nil {
-		err = fmt.Errorf("Failed to retrieve squad %v info: %w", squadId, err)
-		log.Println(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return err
+	errs := make([]error, 3)
+	var ret struct {
+		*db.SquadInfo
+		OwnerInfo *db.UserInfo              `json:"ownerInfo"`
+		Admins    []*db.SquadUserInfoRecord `json:"admins"`
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		ret.SquadInfo, errs[0] = app.db.GetSquad(r.Context(), squadId)
+		if errs[0] == nil {
+			ret.OwnerInfo, errs[2] = app.db.GetUser(r.Context(), ret.SquadInfo.Owner)
+		}
+
+		wg.Done()
+	}()
+
+	go func() {
+		filter := map[string]string{"Status": "Admin"}
+		ret.Admins, errs[1] = app.db.GetSquadMembers(r.Context(), squadId, "", &filter)
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	for _, err := range errs {
+		if err != nil {
+			err = fmt.Errorf("Failed to retrieve squad %v info: %w", squadId, err)
+			log.Println(err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(squadInfo)
+	err := json.NewEncoder(w).Encode(ret)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
