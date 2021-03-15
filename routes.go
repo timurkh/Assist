@@ -154,13 +154,28 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 	rm.Use(app.assertAuthWasChecked)
 }
 
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
+}
+
 func (app *App) assertAuthWasChecked(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
 
-		authCheck := gorilla_context.Get(r, "AuthChecked")
-		if authCheck == nil {
-			log.Println("Authentication check is missing for " + r.URL.Path)
+		lw := &loggingResponseWriter{w, http.StatusOK}
+
+		next.ServeHTTP(lw, r)
+
+		if lw.statusCode == http.StatusOK {
+			authCheck := gorilla_context.Get(r, "AuthChecked")
+			if authCheck == nil {
+				log.Println("* Auth check sever failure\n*\n*\n* Authentication check is missing for " + r.URL.Path + "\n*\n*\n*")
+			}
 		}
 	})
 }

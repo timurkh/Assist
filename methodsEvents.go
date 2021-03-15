@@ -83,13 +83,9 @@ func (app *App) methodGetEvents(w http.ResponseWriter, r *http.Request) error {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
 	}
-	squadIds := make([]string, len(squads))
-	for i, s := range squads {
-		squadIds[i] = s.ID
-	}
 
-	if len(squadIds) > 0 {
-		events, err := app.db.GetEvents(ctx, squadIds, userId)
+	if len(squads) > 0 {
+		events, err := app.db.GetEvents(ctx, squads, userId)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err

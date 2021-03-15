@@ -51,7 +51,11 @@ const app = createApp( {
 			});
 		},
 		showAttendies(e, i) {
-
+			let url = `/events/` + e.id + `/participants`;
+			if (i != 0) {
+				url += `?status=`+this.getEventStatusText(i);
+			}
+			window.location.href = url;
 		},
 		deleteEvent(e, i) {
 			axios({

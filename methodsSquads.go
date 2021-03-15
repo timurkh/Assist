@@ -122,7 +122,7 @@ func (app *App) methodGetUserSquads(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	user_squads, err := app.db.GetUserSquadsMap(ctx, userId, status)
+	user_squads, err := app.db.GetUserSquadsMap(ctx, userId, status, authLevel&systemAdmin != 0)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -153,7 +153,7 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	own_squads, other_squads, err := app.db.GetSquads(ctx, userId, authLevel&systemAdmin != 0)
+	other_squads, err := app.db.GetSquads(ctx, userId)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -163,10 +163,7 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	err = json.NewEncoder(w).Encode(struct {
-		Own   interface{}
-		Other interface{}
-	}{own_squads, other_squads})
+	err = json.NewEncoder(w).Encode(other_squads)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

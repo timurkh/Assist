@@ -52,8 +52,11 @@
 					<div class="modal-body">
 						<form>
 							<div class="form-group">
-								<select v-model="squadToJoin" class="form-control" size="3">
-									<option  v-for="(squad, index) in other_squads" :value="{id:squad.id, index:index}">[[squad.id]]</option>
+								<input type="text" id="squadNamePrefix" class="form-control" v-model="squadNamePrefix" placeholder="Filter">
+							</div>
+							<div class="form-group">
+								<select v-model="squadToJoin" class="form-control" size="5">
+									<option  v-for="(squad, index) in other_squads.filter(squad => squad.toLowerCase().includes(squadNamePrefix.toLowerCase()))" :value="{id:squad.id, index:index}">[[squad]]</option>
 								</select>
 							</div>
 						</form>
@@ -82,7 +85,7 @@
 			</div>
 
 			<div class="ml-auto p-0 mr-1 mb-1">
-				<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#joinSquadModal"><i class="fas fa-user-plus"></i> Join Squad</button>
+				<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" @click="showJoinSquadModal"><i class="fas fa-user-plus"></i> Join Squad</button>
 				<button type="button" class="btn btn-info add-new p-1 ml-1" data-toggle="modal" data-target="#addNewSquadModal"><i class="fa fa-plus"></i> Create Squad</button>
 			</div>
 		</div>

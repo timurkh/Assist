@@ -179,38 +179,44 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("Check GetSquads", func(t *testing.T) {
-		own_squads, other_squads, err := db.GetSquads(ctx, "SUPER_USER", true)
+		testSquad := "TEST_SQUAD_0"
+
+		ownSquads, err := db.GetUserSquadsMap(ctx, "SUPER_USER", "", true)
 		if err != nil {
 			t.Errorf("Failed to retrieve squads: %v", err)
 		}
 
-		if len(own_squads) != 3 {
-			t.Errorf("Wrong number of own_squads for SUPER_USER - %v", len(own_squads))
+		if len(ownSquads) != 3 {
+			t.Errorf("Wrong number of ownSquads for SUPER_USER - %v", len(ownSquads))
 		}
 
-		if len(other_squads) != 0 {
-			t.Errorf("Wrong number of other_squads for SUPER_USER - %v", len(other_squads))
+		otherSquads, err := db.GetSquads(ctx, "SUPER_USER")
+
+		if len(otherSquads) != 0 {
+			t.Errorf("Wrong number of otherSquads for SUPER_USER - %v", len(otherSquads))
 		}
 
 		for i := 15; i >= 0; i-- {
-			own_squads, other_squads, err = db.GetSquads(ctx, "TEST_USER_0", false)
+			ownSquads, err := db.GetUserSquadsMap(ctx, "TEST_USER_0", "", false)
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
-			if len(own_squads) != 1 {
-				t.Errorf("Wrong number of own_squads for TEST_USER_0 - %v", len(own_squads))
-			}
-			if len(other_squads) != 1 {
-				t.Errorf("Wrong number of other_squads for TEST_USER_0 - %v", len(other_squads))
+			if len(ownSquads) != 1 {
+				t.Errorf("Wrong number of ownSquads for TEST_USER_0 - %v", len(ownSquads))
 			}
 
-			if own_squads[0].MembersCount != 6 || own_squads[0].PendingApproveCount != 2 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
+			otherSquads, err := db.GetSquads(ctx, "TEST_USER_0")
+			if len(otherSquads) != 1 {
+				t.Errorf("Wrong number of otherSquads for TEST_USER_0 - %v", len(otherSquads))
+			}
+
+			if ownSquads[testSquad].MembersCount != 6 || ownSquads[testSquad].PendingApproveCount != 2 || ownSquads[testSquad].Owner != "SUPER_USER" || ownSquads[testSquad].Status != Member {
 				if i != 0 {
-					t.Logf("Wrong squad info for the only squad for TEST_USER_0 - %+v", own_squads[0])
+					t.Logf("Wrong squad info for the only squad for TEST_USER_0 - %+v", ownSquads[testSquad])
 					time.Sleep(100 * time.Millisecond)
 					t.Log("Trying once more")
 				} else {
-					t.Errorf("Wrong squad info for the only squad for TEST_USER_0 - %+v", own_squads[0])
+					t.Errorf("Wrong squad info for the only squad for TEST_USER_0 - %+v", ownSquads[testSquad])
 				}
 			} else {
 				break
@@ -220,56 +226,60 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("Check DeleteMemberFromSquad", func(t *testing.T) {
+		testSquad := "TEST_SQUAD_0"
+
 		//delete user from squad
-		err := db.DeleteMemberFromSquad(ctx, "TEST_USER_0", "TEST_SQUAD_0")
+		err := db.DeleteMemberFromSquad(ctx, "TEST_USER_0", testSquad)
 		if err != nil {
 			t.Errorf("Failed to delete member from squad: %v", err)
 		}
 
 		//delete pending approve from squad
-		err = db.DeleteMemberFromSquad(ctx, "PENDING_APPROVE_USER_0", "TEST_SQUAD_0")
+		err = db.DeleteMemberFromSquad(ctx, "PENDING_APPROVE_USER_0", testSquad)
 		if err != nil {
 			t.Errorf("Failed to delete member from squad: %v", err)
 		}
 
 		// ensure squad has correct records about users
-		testSquad0, err := db.GetSquadMembers(ctx, "TEST_SQUAD_0", "", nil)
+		testSquad0, err := db.GetSquadMembers(ctx, testSquad, "", nil)
 		if len(testSquad0) != 6 {
-			t.Errorf("Wrong number of members in TEST_SQUAD_0 squad after deleting TEST_USER_0 from it - %v", len(testSquad0))
+			t.Errorf("Wrong number of members in %v squad after deleting TEST_USER_0 from it - %v", testSquad, len(testSquad0))
 		}
 
 		// ensure user has correct records about squads
-		own_squads, other_squads, err := db.GetSquads(ctx, "TEST_USER_0", false)
+		ownSquads, err := db.GetUserSquads(ctx, "TEST_USER_0", "")
 		if err != nil {
 			t.Errorf("Failed to retrieve squads: %v", err)
 		}
-		if len(own_squads) != 0 {
-			t.Errorf("Wrong number of own_squads for TEST_USER_0 - %v", len(own_squads))
+		if len(ownSquads) != 0 {
+			t.Errorf("Wrong number of ownSquads for TEST_USER_0 - %v", len(ownSquads))
 		}
-		if len(other_squads) != 2 {
-			t.Errorf("Wrong number of other_squads for TEST_USER_0 - %v", len(other_squads))
+		otherSquads, err := db.GetSquads(ctx, "TEST_USER_0")
+		if len(otherSquads) != 2 {
+			t.Errorf("Wrong number of otherSquads for TEST_USER_0 - %v", len(otherSquads))
 		}
 
 		// ensure another user has correct records about squads
 		for i := 15; i >= 0; i-- {
-			own_squads, other_squads, err = db.GetSquads(ctx, "TEST_USER_1", false)
+			ownSquads, err := db.GetUserSquadsMap(ctx, "TEST_USER_1", "", false)
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
-			if len(own_squads) != 1 {
-				t.Errorf("Wrong number of own_squads for TEST_USER_1 - %v", len(own_squads))
+			if len(ownSquads) != 1 {
+				t.Errorf("Wrong number of ownSquads for TEST_USER_1 - %v", len(ownSquads))
 			}
-			if len(other_squads) != 1 {
-				t.Errorf("Wrong number of other_squads for TEST_USER_1 - %v", len(own_squads))
+			otherSquads, err := db.GetSquads(ctx, "TEST_USER_1")
+			if len(otherSquads) != 1 {
+				t.Errorf("Wrong number of otherSquads for TEST_USER_1 - %v", len(otherSquads))
 			}
 
-			if own_squads[0].MembersCount != 5 || own_squads[0].PendingApproveCount != 1 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
+			if ownSquads[testSquad].MembersCount != 5 || ownSquads[testSquad].PendingApproveCount != 1 || ownSquads[testSquad].Owner != "SUPER_USER" || ownSquads[testSquad].Status != Member {
 				if i != 0 {
-					t.Logf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+					t.Logf("Wrong squad info for the only squad for TEST_USER_1 - %+v", ownSquads[testSquad])
 					time.Sleep(100 * time.Millisecond)
 					t.Log("Trying once more")
 				} else {
-					t.Errorf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+					t.Errorf("Wrong squad info for the only squad for TEST_USER_1 - %+v", ownSquads[testSquad])
 				}
 			} else {
 				break
@@ -289,18 +299,18 @@ func TestRun(t *testing.T) {
 
 		// ensure squad members have correct records about squads
 		for i := 5; i >= 0; i-- {
-			own_squads, _, err := db.GetSquads(ctx, testUser, false)
+			ownSquads, err := db.GetUserSquadsMap(ctx, testUser, "", false)
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
 
-			if own_squads[0].MembersCount != 6 || own_squads[0].PendingApproveCount != 0 || own_squads[0].ID != testSquad || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
+			if ownSquads[testSquad].MembersCount != 6 || ownSquads[testSquad].PendingApproveCount != 0 || ownSquads[testSquad].Owner != "SUPER_USER" || ownSquads[testSquad].Status != Member {
 				if i != 0 {
-					t.Logf("Wrong squad info for the only squad for %v - %+v", testUser, own_squads[0])
+					t.Logf("Wrong squad info for the only squad for %v - %+v", testUser, ownSquads[testSquad])
 					time.Sleep(100 * time.Millisecond)
 					t.Log("Trying once more")
 				} else {
-					t.Errorf("Wrong squad info for the only squad for %v - %+v", testUser, own_squads[0])
+					t.Errorf("Wrong squad info for the only squad for %v - %+v", testUser, ownSquads[testSquad])
 				}
 			} else {
 				break
@@ -324,18 +334,18 @@ func TestRun(t *testing.T) {
 
 		// ensure squad members have correct records about squads
 		for i := 5; i >= 0; i-- {
-			own_squads, _, err := db.GetSquads(ctx, "TEST_USER_1", false)
+			ownSquads, err := db.GetUserSquadsMap(ctx, "TEST_USER_1", "", false)
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
 
-			if own_squads[0].MembersCount != 5 || own_squads[0].PendingApproveCount != 1 || own_squads[0].ID != "TEST_SQUAD_0" || own_squads[0].Owner != "SUPER_USER" || own_squads[0].Status != Member {
+			if ownSquads[testSquad].MembersCount != 5 || ownSquads[testSquad].PendingApproveCount != 1 || ownSquads[testSquad].Owner != "SUPER_USER" || ownSquads[testSquad].Status != Member {
 				if i != 0 {
-					t.Logf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+					t.Logf("Wrong squad info for the only squad for TEST_USER_1 - %+v", ownSquads[testSquad])
 					time.Sleep(100 * time.Millisecond)
 					t.Log("Trying once more")
 				} else {
-					t.Errorf("Wrong squad info for the only squad for TEST_USER_1 - %+v", own_squads[0])
+					t.Errorf("Wrong squad info for the only squad for TEST_USER_1 - %+v", ownSquads[testSquad])
 				}
 			} else {
 				break
@@ -350,28 +360,30 @@ func TestRun(t *testing.T) {
 			t.Errorf("Failed to delete member from squad: %v", err)
 		}
 
-		own_squads, other_squads, err := db.GetSquads(ctx, "SUPER_USER", true)
+		ownSquadsMap, err := db.GetUserSquadsMap(ctx, "SUPER_USER", "", true)
 		if err != nil {
 			t.Errorf("Failed to retrieve squads: %v", err)
 		}
 
-		if len(own_squads) != 2 {
-			t.Errorf("Wrong number of own_squads for SUPER_USER - %v", len(own_squads))
+		if len(ownSquadsMap) != 2 {
+			t.Errorf("Wrong number of ownSquads for SUPER_USER - %v", len(ownSquadsMap))
 		}
 
-		if len(other_squads) != 0 {
-			t.Errorf("Wrong number of other_squads for SUPER_USER - %v", len(other_squads))
+		otherSquads, err := db.GetSquads(ctx, "SUPER_USER")
+		if len(otherSquads) != 0 {
+			t.Errorf("Wrong number of otherSquads for SUPER_USER - %v", len(otherSquads))
 		}
 
-		own_squads, other_squads, err = db.GetSquads(ctx, "TEST_USER_1", false)
+		ownSquads, err := db.GetUserSquads(ctx, "TEST_USER_1", "")
 		if err != nil {
 			t.Errorf("Failed to retrieve squads: %v", err)
 		}
-		if len(own_squads) != 0 {
-			t.Errorf("Wrong number of own_squads for TEST_USER_1 - %v", len(own_squads))
+		if len(ownSquads) != 0 {
+			t.Errorf("Wrong number of ownSquads for TEST_USER_1 - %v", len(ownSquads))
 		}
-		if len(other_squads) != 1 {
-			t.Errorf("Wrong number of other_squads for TEST_USER_1 - %v", len(other_squads))
+		otherSquads, err = db.GetSquads(ctx, "TEST_USER_1")
+		if len(otherSquads) != 1 {
+			t.Errorf("Wrong number of otherSquads for TEST_USER_1 - %v", len(otherSquads))
 		}
 	})
 }

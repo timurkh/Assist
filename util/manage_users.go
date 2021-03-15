@@ -33,7 +33,7 @@ func initFirebase(ctx context.Context) *App {
 		log.Fatalf("error getting Auth client: %v\n", err)
 	}
 
-	dbClient, err := db.NewFirestoreDB(fireapp)
+	dbClient, err := db.NewFirestoreDB(fireapp, true)
 	if err != nil {
 		log.Fatalf("Failed to init database: %v", err)
 	}
@@ -108,11 +108,6 @@ func (app *App) setRole(uid string, name string) {
 	err = app.authClient.SetCustomUserClaims(ctx, uid, user.CustomClaims)
 	if err != nil {
 		log.Fatalf("error setting custom claims %v\n", err)
-	}
-
-	app.db.UpdateUserStatusFromFirebase(ctx, uid, name)
-	if err != nil {
-		log.Fatalf("error updating user status %v\n", err)
 	}
 }
 
@@ -257,7 +252,7 @@ func (app *App) updateUsersInfoInSquads(ctx context.Context) {
 	for _, user := range allUsers {
 
 		log.Printf("Updating user %v details in squads:\n", user.ID)
-		userSquads, err := app.db.GetUserSquads(ctx, user.ID)
+		userSquads, err := app.db.GetUserSquadsMap(ctx, user.ID, "", false)
 		if err != nil {
 			log.Fatal("Error while getting user %v squads: %w", user.ID, err)
 		}

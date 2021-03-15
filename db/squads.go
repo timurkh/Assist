@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
@@ -114,21 +115,19 @@ func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, ownerId 
 	return err
 }
 
-func (db *FirestoreDB) GetSquads(ctx context.Context, userId string, includeAllUsersSquad bool) ([]*MemberSquadInfoRecord, []*MemberSquadInfoRecord, error) {
+func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]string, error) {
 
 	if db.dev {
 		log.Println("Getting squads for user " + userId)
 	}
 
-	user_squads_map, err := db.GetUserSquadsMap(ctx, userId, "")
+	userSquadsMap, err := db.GetUserSquadsMap(ctx, userId, "", false)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	other_squads := make([]*MemberSquadInfoRecord, 0)
-	user_squads := make([]*MemberSquadInfoRecord, 0, len(user_squads_map))
-
-	iter := db.Squads.OrderBy("Timestamp", firestore.Asc).Documents(ctx)
+	otherSquads := make([]string, 0)
+	iter := db.Squads.Select().Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -136,58 +135,32 @@ func (db *FirestoreDB) GetSquads(ctx context.Context, userId string, includeAllU
 			break
 		}
 		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to get squads: %w", err)
+			return nil, fmt.Errorf("Failed to get squads: %w", err)
 		}
 
 		if doc.Ref.ID == ALL_USERS_SQUAD {
 			continue
 		}
 
-		if memberSI, ok := user_squads_map[doc.Ref.ID]; ok {
-			user_squads = append(user_squads, memberSI)
-		} else {
-			s := &MemberSquadInfo{}
-			err = doc.DataTo(s)
-			if err != nil {
-				return nil, nil, fmt.Errorf("Failed to get squads: %w", err)
-			}
+		if _, ok := userSquadsMap[doc.Ref.ID]; !ok {
 
-			sr := &MemberSquadInfoRecord{
-				ID:              doc.Ref.ID,
-				MemberSquadInfo: *s,
-			}
-
-			other_squads = append(other_squads, sr)
+			otherSquads = append(otherSquads, doc.Ref.ID)
 		}
 	}
 
-	if includeAllUsersSquad {
-		uberSquadInfo, err := db.GetSquad(ctx, ALL_USERS_SQUAD)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to get ALL USERS squad info: %w", err)
-		}
-
-		var uberSquad MemberSquadInfoRecord
-		uberSquad.ID = ALL_USERS_SQUAD
-		uberSquad.SquadInfo = *uberSquadInfo
-		uberSquad.Status = Owner
-
-		user_squads = append([]*MemberSquadInfoRecord{&uberSquad}, user_squads...)
-	}
-
-	return user_squads, other_squads, nil
+	return otherSquads, nil
 }
 
-func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string, status string) ([]*MemberSquadInfoRecord, error) {
+func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string, status string) ([]string, error) {
 
-	squads := make([]*MemberSquadInfoRecord, 0)
+	squads := make([]string, 0)
 
 	var iter *firestore.DocumentIterator
 
 	if status == "" {
-		iter = db.Users.Doc(userID).Collection(USER_SQUADS).Documents(ctx)
+		iter = db.Users.Doc(userID).Collection(USER_SQUADS).Select().Documents(ctx)
 	} else if status == "admin" {
-		iter = db.Users.Doc(userID).Collection(USER_SQUADS).Where("Status", ">", Admin).Documents(ctx)
+		iter = db.Users.Doc(userID).Collection(USER_SQUADS).Where("Status", ">", Admin).Select().Documents(ctx)
 	} else {
 		return nil, fmt.Errorf("Do not know what to do with status=%v", status)
 	}
@@ -202,26 +175,34 @@ func (db *FirestoreDB) GetUserSquads(ctx context.Context, userID string, status 
 			return nil, fmt.Errorf("Failed to get user squads: %w", err)
 		}
 
-		s := &MemberSquadInfo{}
-		err = doc.DataTo(s)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to get user squads: %w", err)
-		}
-
-		sr := &MemberSquadInfoRecord{
-			ID:              doc.Ref.ID,
-			MemberSquadInfo: *s,
-		}
-		squads = append(squads, sr)
+		squads = append(squads, doc.Ref.ID)
 
 	}
 
 	return squads, nil
 }
 
-func (db *FirestoreDB) GetUserSquadsMap(ctx context.Context, userID string, status string) (map[string]*MemberSquadInfoRecord, error) {
+func (db *FirestoreDB) GetUserSquadsMap(ctx context.Context, userID string, status string, includeAllUsersSquad bool) (map[string]*MemberSquadInfoRecord, error) {
 
 	squads_map := make(map[string]*MemberSquadInfoRecord, 0)
+
+	var wg sync.WaitGroup
+	var errAllUsers error
+
+	if includeAllUsersSquad {
+		var uberSquad MemberSquadInfoRecord
+		squads_map[ALL_USERS_SQUAD] = &uberSquad
+
+		wg.Add(1)
+		go func() {
+			var uberSquadInfo *SquadInfo
+			uberSquadInfo, errAllUsers = db.GetSquad(ctx, ALL_USERS_SQUAD)
+			uberSquad.ID = ALL_USERS_SQUAD
+			uberSquad.SquadInfo = *uberSquadInfo
+			uberSquad.Status = Owner
+			wg.Done()
+		}()
+	}
 
 	var iter *firestore.DocumentIterator
 	if status == "" {
@@ -254,6 +235,11 @@ func (db *FirestoreDB) GetUserSquadsMap(ctx context.Context, userID string, stat
 		}
 		squads_map[sr.ID] = sr
 
+	}
+
+	wg.Wait()
+	if errAllUsers != nil {
+		return nil, fmt.Errorf("Failed to get ALL USERS squad info: %w", errAllUsers)
 	}
 
 	return squads_map, nil

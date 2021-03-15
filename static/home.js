@@ -55,7 +55,7 @@ const app = createApp( {
 			return "card-body bg-secondary";
 		},
 		getEventsClass : function() {
-			if(false) {
+			if(this.events != null && this.events.length > 0) {
 				return "card-body bg-warning";
 			} else {
 				return "card-body bg-secondary";

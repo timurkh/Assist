@@ -10,6 +10,7 @@ const app = createApp( {
 			error_message:"",
 			squadName:"",
 			squadToJoin:"",
+			squadNamePrefix:"",
 			userIsAdmin: userIsAdmin,
 			currentPage: 0,
 			pageSize: 5,
@@ -18,11 +19,10 @@ const app = createApp( {
 	created:function() {
 		axios({
 			method: 'GET',
-			url: `/methods/squads`,
+			url: `/methods/users/me/squads`,
 		})
 		.then(res => {
-			this.own_squads = res.data['Own']; 
-			this.other_squads = res.data['Other']; 
+			this.own_squads = res.data; 
 			this.loading = false;
 		})
 		.catch(error => {
@@ -89,7 +89,6 @@ const app = createApp( {
 				this.error_message = "";
 				var squad = this.own_squads[index];
 				squad.membersCount--;
-				this.other_squads.push(squad);
 				this.own_squads.splice(index, 1);
 			})
 			.catch(err => {
@@ -121,6 +120,20 @@ const app = createApp( {
 		},
 		showSquadMembers:function(squadId, index) {
 			window.location.href = `/squads/` + encodeURI(squadId) + `/members`;
+		},
+		showJoinSquadModal:function() {
+			axios({
+				method: 'GET',
+				url: `/methods/squads`,
+			})
+			.then(res => {
+				this.other_squads = res.data; 
+				$('#joinSquadModal').modal('show')
+			})
+			.catch(error => {
+				this.error_message = "Failed to retrieve list of squads: " + this.getAxiosErrorMessage(error);
+				this.loading = false;
+			})
 		},
 	},
 	mixins: [globalMixin],
