@@ -80,7 +80,7 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 	userId, authLevel := app.checkAuthorization(r, "me", "", myself)
 	if authLevel == 0 {
 		// operation is not authorized, return error
-		err := fmt.Errorf("Current user is not authorized to create squads", userId)
+		err := fmt.Errorf("Current user %v is not authorized to create squads", userId)
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return err
