@@ -147,7 +147,7 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 	rm.Methods("POST").Path("/events").Handler(appHandler(app.methodCreateEvent))
 	rm.Methods("DELETE").Path("/events/{eventId}").Handler(appHandler(app.methodDeleteEvent))
 	rm.Methods("GET").Path("/users/{userId}/events").Handler(appHandler(app.methodGetEvents))
-	rm.Methods("POST").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodRegisterParticipant))
+	rm.Methods("POST").Path("/events/{eventId}/participants/{userIds}").Handler(appHandler(app.methodRegisterParticipant))
 	rm.Methods("GET").Path("/events/{eventId}/participants").Handler(appHandler(app.methodGetParticipants))
 	rm.Methods("GET").Path("/events/{eventId}").Handler(appHandler(app.methodGetEventDetails))
 	rm.Methods("PATCH").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodUpdateParticipant))

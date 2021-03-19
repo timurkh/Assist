@@ -76,7 +76,7 @@
 						<td class="border text-break d-none d-sm-table-cell" :title="member.phoneNumber"> [[member.phoneNumber]] </td>
 						<td class="border text-truncate" :title="getEventStatusText(member.status)" > [[getEventStatusText(member.status)]] </td>
 						<td class="border text-wrap"> 
-							<span v-for="(tag, tagIndex) in member.tags" class="badge badge-secondary m-1">[[tag]] <a href="#" v-on:click="deleteMemberTag(member, tag, tagIndex)"><i class="fas fa-times-circle" style="color:white;"></i></a></span>
+							<span v-for="(tag, tagIndex) in member.tags" class="badge badge-secondary m-1">[[tag]]</span>
 						</td>
 						<td class="border text-wrap" align="center"> 
 									<a title="Remove Member" data-toggle="tooltip" v-on:click="removeParticipant(member, index)" href="#"><i class="fas fa-sign-out-alt fa-lg p-1"></i></a>

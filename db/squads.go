@@ -257,6 +257,21 @@ func (db *FirestoreDB) GetUserSquadsMap(ctx context.Context, userID string, stat
 	return squads_map, nil
 }
 
+func (db *FirestoreDB) GetSquadMember(ctx context.Context, squadId string, userId string) (*SquadUserInfo, error) {
+	doc, err := db.Squads.Doc(squadId).Collection(MEMBERS).Doc(userId).Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get squad %v member %v: %w", squadId, userId, err)
+	}
+
+	s := &SquadUserInfo{}
+	err = doc.DataTo(s)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get squad %v member %v: %w", squadId, userId, err)
+	}
+
+	return s, nil
+}
+
 func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from *time.Time, filter *map[string]string) ([]*SquadUserInfoRecord, error) {
 
 	if db.dev {
@@ -316,7 +331,7 @@ func (db *FirestoreDB) GetSquad(ctx context.Context, ID string) (*SquadInfo, err
 }
 
 func (db *FirestoreDB) propagateChangedSquadInfo(squadId string, fields ...string) {
-	db.propagateChangedGroupInfo(db.Squads.Doc(squadId), MEMBERS, squadId, fields...)
+	db.propagateChangedGroupInfo(db.Squads.Doc(squadId), USER_SQUADS, squadId, fields...)
 }
 
 func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId string, userId string, userInfo *SquadUserInfo) error {

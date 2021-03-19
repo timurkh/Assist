@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	gorilla_context "github.com/gorilla/context"
@@ -210,24 +211,41 @@ func (app *App) methodRegisterParticipant(w http.ResponseWriter, r *http.Request
 	params := mux.Vars(r)
 	ctx := r.Context()
 
-	userId := params["userId"]
+	userIdsString := params["userIds"]
 	eventId := params["eventId"]
 
-	var status assist_db.ParticipantStatusType
-	userId, authLevel := app.checkAuthorizationForEvent(r, userId, eventId, myself|squadAdmin|squadOwner)
+	userIds := strings.Split(userIdsString, ",")
 
+	eventInfo, err := app.db.GetEvent(r.Context(), eventId)
+	if err != nil {
+		err := fmt.Errorf("Failed to get event %v details", eventId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	var authLevel AuthenticatedLevel
+	var currentUserId string
+	if len(userIds) == 1 {
+		currentUserId, authLevel = app.checkAuthorization(r, userIds[0], eventInfo.SquadId, myself|squadAdmin|squadOwner)
+		userIds[0] = currentUserId
+	} else {
+		currentUserId, authLevel = app.checkAuthorization(r, userIds[0], eventInfo.SquadId, myself|squadAdmin|squadOwner)
+	}
+
+	var status assist_db.ParticipantStatusType
 	if authLevel&(squadOwner|squadAdmin|systemAdmin) != 0 {
 		status = assist_db.Going
 	} else if authLevel&myself != 0 {
 		status = assist_db.Applied
 	} else {
-		err := fmt.Errorf("Current user is not authorized to register participant " + userId + " for event " + eventId)
+		err = fmt.Errorf("Current user is not authorized to register participant " + currentUserId + " for event " + eventId)
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return err
 	}
 
-	err := app.db.RegisterParticipant(ctx, userId, eventId, status)
+	err = app.db.RegisterParticipants(ctx, userIds, eventId, eventInfo, status)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

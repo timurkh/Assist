@@ -74,33 +74,48 @@ const app = createApp( {
 			}
 		},
 		registerForEvent(e, i) {
-			axios({
-				method: 'POST',
-				url: `/methods/events/${e.id}/participants/me`,
-				headers: { "X-CSRF-Token": csrfToken },
-			})
-			.then( res => {
-				this.error_message = "";
-				this.events[i].status = res.data.status;
-			})
-			.catch(err => {
-				this.error_message = "Error while adding squad member: " + this.getAxiosErrorMessage(err);
-			});
-		},
-		declineEvent(e, i) {
-			if(confirm(`Please confirm you really want to decline event ${e.text}.`)) {
+			if( !e.changingStatus ) {
+				e.changingStatus = true;
 				axios({
-					method: 'DELETE',
+					method: 'POST',
 					url: `/methods/events/${e.id}/participants/me`,
 					headers: { "X-CSRF-Token": csrfToken },
 				})
 				.then( res => {
 					this.error_message = "";
-					this.events[i].status = 0;
+					e.status = res.data.status;
+					let st = this.getEventStatusText(res.data.status).toLowerCase();
+					e[st] = 0 + e[st];
+					e[st]++;
+					e.changingStatus = false;
 				})
 				.catch(err => {
-					this.error_message = `Error while removing user ${currentUserId} from event: ` + this.getAxiosErrorMessage(err);
+					this.error_message = "Error while adding squad member: " + this.getAxiosErrorMessage(err);
+					e.changingStatus = false;
 				});
+			}
+		},
+		declineEvent(e, i) {
+			if( !e.changingStatus ) {
+				if(confirm(`Please confirm you really want to decline event ${e.text}.`)) {
+					e.changingStatus = true;
+					axios({
+						method: 'DELETE',
+						url: `/methods/events/${e.id}/participants/me`,
+						headers: { "X-CSRF-Token": csrfToken },
+					})
+					.then( res => {
+						this.error_message = "";
+						let st = this.getEventStatusText(e.status).toLowerCase();
+						e[st]--;
+						this.events[i].status = 0;
+						e.changingStatus = false;
+					})
+					.catch(err => {
+						this.error_message = `Error while removing user ${currentUserId} from event: ` + this.getAxiosErrorMessage(err);
+						e.changingStatus = false;
+					});
+				}
 			}
 		},
 		getParticipantsByStatus(e, i) {

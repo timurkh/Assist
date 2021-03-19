@@ -136,7 +136,7 @@ func (db *FirestoreDB) DeleteCollectionRecurse(ctx context.Context, collection *
 	return nil
 }
 
-func (db *FirestoreDB) propagateChangedGroupInfo(docRef *firestore.DocumentRef, collection string, id string, fields ...string) {
+func (db *FirestoreDB) propagateChangedGroupInfo(docRef *firestore.DocumentRef, userCollection string, id string, fields ...string) {
 	ctx := context.Background()
 	doc, err := docRef.Get(ctx)
 	if err != nil {
@@ -148,7 +148,7 @@ func (db *FirestoreDB) propagateChangedGroupInfo(docRef *firestore.DocumentRef, 
 		vals[i] = doc.Data()[field]
 	}
 
-	iter := docRef.Collection(collection).Where("Replicant", "!=", true).Documents(ctx)
+	iter := docRef.Collection(MEMBERS).Where("Replicant", "!=", true).Documents(ctx)
 	defer iter.Stop()
 	for {
 		docMember, err := iter.Next()
@@ -162,7 +162,7 @@ func (db *FirestoreDB) propagateChangedGroupInfo(docRef *firestore.DocumentRef, 
 
 		userId := docMember.Ref.ID
 
-		doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(id)
+		doc := db.Users.Doc(userId).Collection(userCollection).Doc(id)
 		for i, field := range fields {
 			db.updater.dispatchCommand(doc, field, vals[i])
 		}

@@ -93,7 +93,7 @@ const app = createApp( {
 			if(confirm(`Please confirm you want to remove user ${user.displayName} from event '${this.evnt.text}'`)) {
 				axios({
 					method: 'DELETE',
-					url: `/methods/events/${evnt.id}/participants/${user.id}`,
+					url: `/methods/events/${eventId}/participants/${user.id}`,
 					headers: { "X-CSRF-Token": csrfToken },
 				})
 				.then( res => {
@@ -101,7 +101,7 @@ const app = createApp( {
 					this.eventParticipants.splice(index, 1);
 				})
 				.catch(err => {
-					this.error_message = `Error while removing user ${user.displayName} from event:` + this.getAxiosErrorMessage(err);
+					this.error_message = `Error while removing user ${user.displayName} from event: ` + this.getAxiosErrorMessage(err);
 				});
 			}
 		},
@@ -183,7 +183,20 @@ const app = createApp( {
 			}
 		},
 		addParticipant : function (e) {
-			console.log(e);
+			let users = e.map(u => u.id).join(",");
+			axios({
+				method: 'POST',
+				url: `/methods/events/${eventId}/participants/${users}`,
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then( res => {
+				this.error_message = "";
+				var participants = e.map( u => { u.status = res.data.status; return u;}); 
+				this.eventParticipants = this.eventParticipants.concat(participants);
+			})
+			.catch(err => {
+				this.error_message = "Error while adding event participants: " + this.getAxiosErrorMessage(err);
+			});
 		},
 	},
 	mixins: [globalMixin],

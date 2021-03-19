@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -75,8 +77,10 @@ type EventRecord struct {
 
 type ParticipantInfo struct {
 	UserInfo
-	Status    ParticipantStatusType `json:"status"`
+	Replicant bool                  `json:"replicant"`
+	Tags      []string              `json:"tags"`
 	Timestamp interface{}           `json:"timestamp"`
+	Status    ParticipantStatusType `json:"status"`
 }
 
 type ParticipantRecord struct {
@@ -230,37 +234,72 @@ func (db *FirestoreDB) GetEvents(ctx context.Context, squads []string, userId st
 	return events, nil
 }
 
-func (db *FirestoreDB) RegisterParticipant(ctx context.Context, userId string, eventId string, status ParticipantStatusType) error {
-	log.Println("Registering user " + userId + " for event " + eventId)
+func (db *FirestoreDB) RegisterParticipants(ctx context.Context, userIds []string, eventId string, eventInfo *EventInfo, status ParticipantStatusType) error {
+	log.Println("Registering users " + strings.Join(userIds, ", ") + " for event " + eventId)
 
-	userInfo, err := db.GetUser(ctx, userId)
-	if err != nil {
-		return err
+	errs := make([]error, len(userIds))
+	var wg sync.WaitGroup
+
+	for i, uid := range userIds {
+
+		wg.Add(1)
+
+		go func(userId string) {
+
+			defer wg.Done()
+
+			// if I cared about conistency more, I would need
+			// some distributed lock here to keep status numbers
+			// consistent; now it is possilbe to send multiple
+			// requests to add (or remove) participant from event
+			// and counters would be screwed, but I dot think
+			// this is important
+			if st, err := db.GetParticipantStatus(ctx, userId, eventId); err != nil {
+
+				var userInfo *SquadUserInfo
+				userInfo, errs[i] = db.GetSquadMember(ctx, eventInfo.SquadId, userId)
+				if errs[i] != nil {
+					return
+				}
+
+				participant := &ParticipantInfo{
+					UserInfo:  userInfo.UserInfo,
+					Replicant: userInfo.Replicant,
+					Tags:      userInfo.Tags,
+					Status:    status,
+				}
+
+				errs[i] = db.AddParticipantRecordToEvent(ctx, eventId, userId, participant)
+				if errs[i] != nil {
+					return
+				}
+
+				eventInfo.Status = status
+
+				errs[i] = db.AddEventRecordToParticipant(ctx, userId, eventId, eventInfo)
+				if errs[i] != nil {
+					return
+				}
+			} else {
+				errs[i] = fmt.Errorf("User %v is already registered for event %v with status %v", userId, eventId, st.String())
+			}
+
+		}(uid)
 	}
 
-	participant := &ParticipantInfo{
-		UserInfo: *userInfo,
-		Status:   status,
+	wg.Wait()
+
+	var combinedError error
+	for _, err := range errs {
+		if err != nil {
+			if combinedError == nil {
+				combinedError = fmt.Errorf("Failed to register one or more participants for event:")
+			}
+			combinedError = fmt.Errorf("%s\n\t%w", combinedError, err)
+		}
 	}
 
-	err = db.AddParticipantRecordToEvent(ctx, eventId, userId, participant)
-	if err != nil {
-		return err
-	}
-
-	eventInfo, err := db.GetEvent(ctx, eventId)
-	if err != nil {
-		return err
-	}
-
-	eventInfo.Status = status
-
-	err = db.AddEventRecordToParticipant(ctx, userId, eventId, eventInfo)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return combinedError
 }
 
 func (db *FirestoreDB) AddParticipantRecordToEvent(ctx context.Context, eventId string, userId string, userInfo *ParticipantInfo) error {
@@ -289,8 +328,6 @@ func (db *FirestoreDB) AddParticipantRecordToEvent(ctx context.Context, eventId 
 		return fmt.Errorf("Failed to add participant "+userId+" to event "+eventId+": %w", err)
 	}
 
-	go db.propagateChangedEventInfo(eventId, path)
-
 	return nil
 }
 
@@ -307,7 +344,7 @@ func (db *FirestoreDB) AddEventRecordToParticipant(ctx context.Context, userId s
 }
 
 func (db *FirestoreDB) propagateChangedEventInfo(eventId string, fields ...string) {
-	db.propagateChangedGroupInfo(db.Events.Doc(eventId), MEMBERS, eventId, fields...)
+	db.propagateChangedGroupInfo(db.Events.Doc(eventId), USER_EVENTS, eventId, fields...)
 }
 
 func (db *FirestoreDB) GetParticipants(ctx context.Context, eventId string, from *time.Time, filter *map[string]string) ([]*ParticipantRecord, error) {
@@ -433,8 +470,6 @@ func (db *FirestoreDB) DeleteParticipantRecordFromEvent(ctx context.Context, eve
 	if err != nil {
 		return fmt.Errorf("Failed to delete user %v from event %v: %w", userId, eventId, err)
 	}
-
-	go db.propagateChangedEventInfo(eventId, status.String())
 
 	return nil
 }
