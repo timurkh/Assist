@@ -54,7 +54,7 @@ type appHandler func(http.ResponseWriter, *http.Request) error
 
 func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil {
-		log.Println("appHandler error:" + e.Error())
+		log.Println("appHandler error: " + e.Error())
 	}
 }
 
@@ -95,6 +95,7 @@ func (app *App) registerHandlers() {
 	r.Methods("GET").Path("/squads/{squadId}").Handler(appHandler(app.squadDetailsHandler))
 	r.Methods("GET").Path("/squads").Handler(appHandler(app.squadsHandler))
 	r.Methods("GET").Path("/events").Handler(appHandler(app.eventsHandler))
+	r.Methods("GET").Path("/events/{eventId}/participants").Handler(appHandler(app.eventParticipantsHandler))
 	r.Methods("GET").Path("/about").Handler(appHandler(app.aboutHandler))
 
 	r.Handle("/", http.RedirectHandler("/home", http.StatusFound))
@@ -148,8 +149,10 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 	rm.Methods("GET").Path("/users/{userId}/events").Handler(appHandler(app.methodGetEvents))
 	rm.Methods("POST").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodRegisterParticipant))
 	rm.Methods("GET").Path("/events/{eventId}/participants").Handler(appHandler(app.methodGetParticipants))
+	rm.Methods("GET").Path("/events/{eventId}").Handler(appHandler(app.methodGetEventDetails))
 	rm.Methods("PATCH").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodUpdateParticipant))
 	rm.Methods("DELETE").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodRemoveParticipant))
+	rm.Methods("GET").Path("/events/{eventId}/candidates").Handler(appHandler(app.methodGetCandidates))
 
 	rm.Use(app.assertAuthWasChecked)
 }

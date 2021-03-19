@@ -14,7 +14,7 @@
 		<!-- Modal Windows -->
 		<add-note-dialog :note="note" window-id="addNoteModal" :title="note.dialog_title" v-on:submit-form="submitNote($event)"></add-note-dialog>
 		<add-member-dialog window-id="addMemberModal" v-on:submit-form="addMember($event)"> </add-member-dialog>
-		<change-status-dialog window-id="changeMemberStatusModal" :member="changeMember" v-on:submit-form="setMemberStatus($event)"> </change-status-dialog>
+		<change-status-dialog window-id="changeMemberStatusModal" :status-count="3" :get-status="this.getStatusText" :member="changeMember" v-on:submit-form="setMemberStatus($event)"> </change-status-dialog>
 		<add-tag-dialog window-id="addTagModal" :member="changeMember" :tags="tags" v-on:submit-form="setMemberTag($event)"> </add-tag-dialog>
 		<show-note-dialog window-id="showNoteModal" :note="note" v-on:submit-form="submitNote($event)" v-on:delete="deleteNote($event)" ref="showNoteDialogRef"></show-note-dialog>
 
@@ -80,24 +80,24 @@
 						<td class="border text-break d-none d-sm-table-cell" :title="member.phoneNumber"> [[member.phoneNumber]] </td>
 						<td class="border text-truncate" :title="getStatusText(member.status)" > [[getStatusText(member.status)]] </td>
 						<td class="border text-wrap"> 
-							<span v-for="(tag, tagIndex) in member.tags" class="badge badge-secondary m-1">[[tag]] <a href="#" v-on:click="deleteMemberTag(member, tag, tagIndex)"><i class="fas fa-times-circle" style="color:white;"></i></a></span>
+							<span v-for="(tag, tagIndex) in member.tags" class="badge badge-secondary m-1">[[tag]] <a href="#" v-on:click.stop.prevent="deleteMemberTag(member, tag, tagIndex)"><i class="fas fa-times-circle" style="color:white;"></i></a></span>
 						</td>
 						<td class="border text-wrap d-none d-sm-table-cell"> 
 								
-								<a href="#" v-for="v,k in member.notes" v-on:click="showNote(k, v, member, index)" class="badge badge-info m-1">[[k]]</a>
+								<a href="#" v-for="v,k in member.notes" v-on:click.stop.prevent="showNote(k, v, member, index)" class="badge badge-info m-1">[[k]]</a>
 						</td>
 						<td class="border text-wrap" align="center"> 
 								<span v-if="member.status != 3">
-									<a title="Remove Member" data-toggle="tooltip" v-on:click="removeMember(member.id, index)" href="#"><i class="fas fa-sign-out-alt fa-lg p-1"></i></a>
+									<a title="Remove Member" data-toggle="tooltip" v-on:click.stop.prevent="removeMember(member, index)" href="#"><i class="fas fa-sign-out-alt fa-lg p-1"></i></a>
 								</span>
 								<span v-if="member.status != 3">
-									<a title="Change member status" data-toggle="tooltip" v-on:click="changeStatus(member, index)" href="#"><i class="fas fa-chevron-circle-up fa-lg p-1"></i></i></a>
+									<a title="Change member status" data-toggle="tooltip" v-on:click.stop.prevent="changeStatus(member, index)" href="#"><i class="fas fa-chevron-circle-up fa-lg p-1"></i></i></a>
 								</span>
 								<span>
-								<a title="Add Tag" data-toggle="tooltip" v-on:click="tagMember(member, index)" href="#"><i class="fas fa-tag fa-lg p-1"></i></a>
+								<a title="Add Tag" data-toggle="tooltip" v-on:click.stop.prevent="tagMember(member, index)" href="#"><i class="fas fa-tag fa-lg p-1"></i></a>
 								</span>
 								<span>
-								<a title="Add Note" data-toggle="tooltip" v-on:click="addNote(member, index)" href="#"><i class="fas fa-edit fa-lg p-1"></i></a>
+								<a title="Add Note" data-toggle="tooltip" v-on:click.stop.prevent="addNote(member, index)" href="#"><i class="fas fa-edit fa-lg p-1"></i></a>
 								</span>
 							</div>
 						</td>

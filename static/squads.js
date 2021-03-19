@@ -51,13 +51,14 @@ const app = createApp( {
 				var squad = {
 					id: this.squadName, 
 					membersCount: 1,
+					pendingApproveCount: 0,
 					status: 3
 				};
 				this.error_message = "";
-				this.own_squads.push(squad);
+				this.own_squads[squad.id] = squad;
 			})
 			.catch(err => {
-				if(err.response.status == 409) {
+				if(err.response != null && err.response.status == 409) {
 					this.error_message = "This name is already taken, please choose another name.";
 				} else {
 					this.error_message = "Error while adding new squad: " + this.getAxiosErrorMessage(err);
@@ -65,35 +66,38 @@ const app = createApp( {
 			});
 		},
 		deleteSquad:function(id, index) {
-			axios({
-				method: 'DELETE',
-				url: '/methods/squads/' + id,
-				headers: { "X-CSRF-Token": csrfToken },
-			})
-			.then( res => {
-				this.error_message = "";
-				this.own_squads.splice(index, 1);
-			})
-			.catch(err => {
-				this.error_message = "Error while removing squad " + id + ": " + this.getAxiosErrorMessage(err);
-			});
+			if(confirm(`Please confirm you want to delete squad ${id}`)){
+				axios({
+					method: 'DELETE',
+					url: '/methods/squads/' + id,
+					headers: { "X-CSRF-Token": csrfToken },
+				})
+				.then( res => {
+					this.error_message = "";
+					delete(this.own_squads[index]);
+				})
+				.catch(err => {
+					this.error_message = "Error while removing squad " + id + ": " + this.getAxiosErrorMessage(err);
+				});
+			}
 		},
 		leaveSquad:function(id, index) {
-			index = index;
-			axios({
-				method: 'DELETE',
-				url: '/methods/squads/' + id + '/members/me',
-				headers: { "X-CSRF-Token": csrfToken },
-			})
-			.then( res => {
-				this.error_message = "";
-				var squad = this.own_squads[index];
-				squad.membersCount--;
-				this.own_squads.splice(index, 1);
-			})
-			.catch(err => {
-				this.error_message = "Error while removing squad " + id + ": " + this.getAxiosErrorMessage(err);
-			});
+			if(confirm(`Please confirm you want to leave squad ${id}`)){
+				index = index;
+				axios({
+					method: 'DELETE',
+					url: '/methods/squads/' + id + '/members/me',
+					headers: { "X-CSRF-Token": csrfToken },
+				})
+				.then( res => {
+					this.error_message = "";
+					delete this.own_squads[id];
+					this.other_squads.push(id);
+				})
+				.catch(err => {
+					this.error_message = "Error while removing squad " + id + ": " + this.getAxiosErrorMessage(err);
+				});
+			}
 		},
 		joinSquad:function() {
 			var id = this.squadToJoin.id;
@@ -105,10 +109,9 @@ const app = createApp( {
 			})
 			.then( res => {
 				this.error_message = "";
-				var squad = this.other_squads[index];
-				squad.status = res.data.Status;
-				squad.membersCount++;
-				this.own_squads.push(squad);
+				var squad = res.data;
+				squad.id = id;
+				this.own_squads[id] = squad;
 				this.other_squads.splice(index, 1);
 			})
 			.catch(err => {

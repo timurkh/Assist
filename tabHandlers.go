@@ -18,6 +18,7 @@ var (
 	squadDetailsTmpl = parseBodyTemplate("squadDetails.html")
 	squadNotesTmpl   = parseBodyTemplate("squadNotes.html")
 	eventsTmpl       = parseBodyTemplate("events.html")
+	participantsTmpl = parseBodyTemplate("eventParticipants.html")
 	aboutTmpl        = parseAboutTemplate()
 )
 
@@ -55,6 +56,14 @@ func (app *App) squadMembersHandler(w http.ResponseWriter, r *http.Request) erro
 func (app *App) eventsHandler(w http.ResponseWriter, r *http.Request) error {
 
 	return eventsTmpl.ExecuteWithSession(app, w, r, Values{})
+}
+
+func (app *App) eventParticipantsHandler(w http.ResponseWriter, r *http.Request) error {
+
+	params := mux.Vars(r)
+	eventId := params["eventId"]
+
+	return participantsTmpl.ExecuteWithSession(app, w, r, Values{"EventID": eventId})
 }
 
 func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {

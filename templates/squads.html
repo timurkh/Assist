@@ -44,7 +44,7 @@
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h5 class="modal-title" id="joinSquadModalLabel">Join Existing Squad</h5>
+						<h5 class="modal-title" id="joinSquadModalLabel">Squads</h5>
 						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
 							<span aria-hidden="true">&times;</span>
 						</button>
@@ -56,7 +56,7 @@
 							</div>
 							<div class="form-group">
 								<select v-model="squadToJoin" class="form-control" size="5">
-									<option  v-for="(squad, index) in other_squads.filter(squad => squad.toLowerCase().includes(squadNamePrefix.toLowerCase()))" :value="{id:squad.id, index:index}">[[squad]]</option>
+									<option  v-for="(squad, index) in other_squads.filter(squad => squad.toLowerCase().includes(squadNamePrefix.toLowerCase()))" :value="{id:squad, index:index}">[[squad]]</option>
 								</select>
 							</div>
 						</form>

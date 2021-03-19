@@ -26,6 +26,7 @@ type FirestoreDB struct {
 	updater           *AsyncUpdater
 	userDataCache     sync.Map
 	memberStatusCache sync.Map
+	eventDataCache    sync.Map
 }
 
 var testPrefix string = ""
@@ -161,8 +162,6 @@ func (db *FirestoreDB) propagateChangedGroupInfo(docRef *firestore.DocumentRef, 
 
 		userId := docMember.Ref.ID
 
-		log.Println("\t\t" + userId)
-
 		doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(id)
 		for i, field := range fields {
 			db.updater.dispatchCommand(doc, field, vals[i])
@@ -170,18 +169,7 @@ func (db *FirestoreDB) propagateChangedGroupInfo(docRef *firestore.DocumentRef, 
 	}
 }
 
-func (db *FirestoreDB) GetFilteredDocuments(ctx context.Context, collection *firestore.CollectionRef, from string, filter *map[string]string) (*firestore.DocumentIterator, error) {
-	query := collection.OrderBy("Timestamp", firestore.Asc)
-	if from != "" {
-		log.Printf("\tstarting from %v\n", from)
-		timeFrom, err := time.Parse(time.RFC3339, from)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to convert from to a time struct: %w", err)
-		}
-
-		query = query.StartAfter(timeFrom)
-	}
-
+func (db *FirestoreDB) AddFilterWhere(query firestore.Query, filter *map[string]string, statusFromStringFunc func(string) int) firestore.Query {
 	if filter != nil {
 		f := *filter
 		if f["Keys"] != "" {
@@ -191,24 +179,47 @@ func (db *FirestoreDB) GetFilteredDocuments(ctx context.Context, collection *fir
 			query = query.Where("Keys", "array-contains-any", strings.Fields(strings.ToLower(f["Keys"])))
 		}
 
-		if f["Status"] != "" {
-			if s := statusFromString(f["Status"]); s != -1 {
-				if db.dev {
-					log.Printf("\tapplying filter by status %v\n", f["Status"])
-				}
-				query = query.Where("Status", "==", s)
-			}
-		}
-
 		if f["Tag"] != "" {
 			if db.dev {
 				log.Printf("\tapplying filter by tag %v\n", f["Tag"])
 			}
 			query = query.Where("Tags", "array-contains-any", strings.Fields(f["Tag"]))
 		}
+
+		if f["Status"] != "" && statusFromStringFunc != nil {
+			if s := statusFromStringFunc(f["Status"]); s != -1 {
+				if db.dev {
+					log.Printf("\tapplying filter by status %v\n", f["Status"])
+				}
+				query = query.Where("Status", "==", s)
+			}
+		}
 	}
 
-	return query.Limit(numRecords).Documents(ctx), nil
+	return query
+}
+
+func (db *FirestoreDB) GetFilteredQuery(collection *firestore.CollectionRef, from *time.Time, filter *map[string]string, statusFromStringFunc func(string) int) *firestore.Query {
+	query := collection.OrderBy("Timestamp", firestore.Asc)
+	if from != nil {
+		query = query.StartAfter(from)
+	}
+
+	query = db.AddFilterWhere(query, filter, statusFromString)
+	query = query.Limit(numRecords)
+
+	return &query
+}
+
+func (db *FirestoreDB) GetFilteredIDsQuery(collection *firestore.CollectionRef, from string, filter *map[string]string) *firestore.Query {
+	query := collection.OrderBy(firestore.DocumentID, firestore.Asc)
+	if from != "" {
+		query = query.StartAfter(from)
+	}
+
+	query = db.AddFilterWhere(query, filter, statusFromString)
+
+	return &query
 }
 
 func (db *FirestoreDB) DeleteGroup(ctx context.Context, groupType string, groupCollection *firestore.CollectionRef, membersCollection string, groupId string) error {

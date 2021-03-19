@@ -1,0 +1,103 @@
+<script> document.getElementById("navbar-events").classList.add("active"); </script>
+
+<script>
+	var eventId = "{{.EventID}}"; 
+</script>
+
+<div id="app">
+	<div v-if="loading">
+		<div class="mt-5" align="center">
+			<div class="spinner-border mt-5" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+	</div>
+	<div v-if="!loading" v-cloak>
+		<!-- Modal Windows -->
+		<add-participant-dialog window-id="addParticipantModal" :candidates="candidates" @submit-form="addParticipant($event)" @filter-change="onCandidateFilterChange" @load-more="onCandidateLoadMore"> </add-participant-dialog>
+		<change-status-dialog window-id="participantToChangeStatusModal" :status-count="5" :get-status="this.getEventStatusText" :member="participantToChange" v-on:submit-form="setParticipantStatus($event)"> </change-status-dialog>
+
+		<!-- Main View -->
+		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
+			[[ error_message ]]
+		</div>
+
+		<div class="d-flex flex-wrap">
+			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 mb-1 mx-1">
+				<ol class="breadcrumb mb-0 p-0">
+					<li class="breadcrumb-item d-none d-sm-block">Events</li>
+					<li class="breadcrumb-item active"> [[evnt.squadId]] : [[evnt.text]] ([[getDate(evnt.date)]])</li>
+				</ol>
+			</div>
+			<div class="ml-auto p-0 mr-1 mb-1">
+				<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#addParticipantModal"><i class="fa fa-plus"></i> Add Participant</button>
+			</div>
+		</div>
+
+		<div class="table-responsive-lg m-1 p-0">
+			<table class="table table-borderless m-0">
+				<thead>
+					<tr>
+						<th class="p-0 pr-1" colspan="3">
+							<input id="searchKeys" v-model="filter.keys" class="m-0 mb-1" style="width:100%" placeholder="Search" @change="onFilterChange($event)"></input>
+						</th>
+						<th class="p-0 px-1">
+							<select class="m-0 mb-1 pt-1 form-select" style="width:100%;" v-model="filter.status" @change="onFilterChange($event)">
+								<option selected></option>
+								<option >Applied</option>
+								<option >Going</option>
+								<option >Attended</option>
+								<option >No-Show</option>
+								<option >EventOwner</option>
+							</select>
+						</th>
+						<th class="py-0 px-1">
+							<select id="selectTag" class="m-0 mb-1 pt-1 form-select" style="width:100%;" v-model="filter.tag" @change="onFilterChange($event)">
+								<option value="" selected></option>
+								<option v-for="tag in getTagValues(tags)" :value="tag">[[tag]]</option>
+							</select>
+						</th>
+					</tr>
+					<tr class="table-sm thead-dark text-truncate">
+						<th class="border text-truncate">Member</th>
+						<th class="border text-truncate d-none d-sm-table-cell">Email</th>
+						<th class="border text-truncate d-none d-sm-table-cell">Phone</th>
+						<th class="border text-truncate">Status</th>
+						<th class="border text-truncate">Tags</th>
+						<th class="border text-truncate">Actions</th>
+				</thead>
+				<tbody class="table-sm table-bordered">
+					<tr class="" v-for="(member, index) in eventParticipants"  >
+						<td class="border text-wrap" :title="member.displayName"> 
+							<i v-if="member.replicant" class="fas fa-robot" style="color: Dodgerblue"></i>
+							[[member.displayName]]
+						</td>
+						<td class="border text-break d-none d-sm-table-cell" :title="member.email"> [[member.email]] </td>
+						<td class="border text-break d-none d-sm-table-cell" :title="member.phoneNumber"> [[member.phoneNumber]] </td>
+						<td class="border text-truncate" :title="getEventStatusText(member.status)" > [[getEventStatusText(member.status)]] </td>
+						<td class="border text-wrap"> 
+							<span v-for="(tag, tagIndex) in member.tags" class="badge badge-secondary m-1">[[tag]] <a href="#" v-on:click="deleteMemberTag(member, tag, tagIndex)"><i class="fas fa-times-circle" style="color:white;"></i></a></span>
+						</td>
+						<td class="border text-wrap" align="center"> 
+									<a title="Remove Member" data-toggle="tooltip" v-on:click="removeParticipant(member, index)" href="#"><i class="fas fa-sign-out-alt fa-lg p-1"></i></a>
+									<a title="Change member status" data-toggle="tooltip" v-on:click="changeStatus(member, index)" href="#"><i class="fas fa-chevron-circle-up fa-lg p-1"></i></i></a>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div v-if="getting_more" class="mt-5" align="center">
+			<div class="spinner-border" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+		<div v-else class="m-3" align="center">
+			<button v-if="moreRecordsAvailable" type="button" class="btn btn-secondary btn-lg" v-on:click="getMore()">See More</button>
+		</div>
+	</div>
+</div>
+
+<script src="/static/components/members.js"></script>
+<script src="/static/components/eventParticipants.js"></script>
+<script src="/static/eventParticipants.js"></script>

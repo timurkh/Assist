@@ -23,6 +23,15 @@ const (
 	EventOwner
 )
 
+var ParticipantStatusTypes = []ParticipantStatusType{
+	NotGoing,
+	Applied,
+	Going,
+	Attended,
+	NoShow,
+	EventOwner,
+}
+
 func (s ParticipantStatusType) String() string {
 	texts := []string{
 		"Not going",
@@ -34,6 +43,15 @@ func (s ParticipantStatusType) String() string {
 	}
 
 	return texts[s]
+}
+
+func eventStatusFromString(s string) int {
+	for _, t := range ParticipantStatusTypes {
+		if t.String() == s {
+			return int(t)
+		}
+	}
+	return -1
 }
 
 type EventInfo struct {
@@ -90,18 +108,24 @@ func (db *FirestoreDB) GetEvent(ctx context.Context, ID string) (*EventInfo, err
 
 	log.Println("Getting details for event " + ID)
 
-	doc, err := db.Events.Doc(ID).Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get event "+ID+": %w", err)
-	}
+	v, found := db.eventDataCache.Load(ID)
+	if found {
+		return v.(*EventInfo), nil
+	} else {
+		doc, err := db.Events.Doc(ID).Get(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get event "+ID+": %w", err)
+		}
 
-	s := &EventInfo{}
-	err = doc.DataTo(s)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get event "+ID+": %w", err)
-	}
+		s := &EventInfo{}
+		err = doc.DataTo(s)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get event "+ID+": %w", err)
+		}
 
-	return s, nil
+		db.eventDataCache.Store(ID, s)
+		return s, nil
+	}
 }
 
 func (db *FirestoreDB) GetUserEventsMap(ctx context.Context, userId string) (map[string]*EventInfo, error) {
@@ -286,16 +310,13 @@ func (db *FirestoreDB) propagateChangedEventInfo(eventId string, fields ...strin
 	db.propagateChangedGroupInfo(db.Events.Doc(eventId), MEMBERS, eventId, fields...)
 }
 
-func (db *FirestoreDB) GetParticipants(ctx context.Context, eventId string, from string, filter *map[string]string) ([]*ParticipantRecord, error) {
+func (db *FirestoreDB) GetParticipants(ctx context.Context, eventId string, from *time.Time, filter *map[string]string) ([]*ParticipantRecord, error) {
 
-	log.Printf("Getting participants of the event %v\n", eventId)
+	log.Printf("Getting participants of the event %v (from %v, filter %v)\n", eventId, from, filter)
 
 	participants := make([]*ParticipantRecord, 0)
 
-	iter, err := db.GetFilteredDocuments(ctx, db.Events.Doc(eventId).Collection(MEMBERS), from, filter)
-	if err != nil {
-		return nil, err
-	}
+	iter := db.GetFilteredQuery(db.Events.Doc(eventId).Collection(MEMBERS), from, filter, eventStatusFromString).Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -419,5 +440,91 @@ func (db *FirestoreDB) DeleteParticipantRecordFromEvent(ctx context.Context, eve
 }
 
 func (db *FirestoreDB) DeleteEvent(ctx context.Context, eventId string) error {
+	db.eventDataCache.Delete(eventId)
 	return db.DeleteGroup(ctx, "event", db.Events, USER_EVENTS, eventId)
+}
+
+func (db *FirestoreDB) processIdsTail(candidateIds []string, numCandidates int, idCandidate string, iterCandidates *firestore.DocumentIterator) []string {
+
+	for len(candidateIds) < numCandidates {
+		candidateIds = append(candidateIds, idCandidate)
+		docCandidate, err := iterCandidates.Next()
+		if err != nil {
+			break
+		}
+		idCandidate = docCandidate.Ref.ID
+	}
+
+	return candidateIds
+}
+
+func (db *FirestoreDB) GetCandidates(ctx context.Context, squadId string, eventId string, from string, filter *map[string]string) ([]*SquadUserInfoRecord, error) {
+
+	log.Printf("Getting candidates to participate in the event %v (filter %v)\n", eventId, filter)
+
+	candidateIds := make([]string, 0, numRecords)
+
+	iterCandidates := db.GetFilteredIDsQuery(db.Squads.Doc(squadId).Collection(MEMBERS), from, filter).Select().Documents(ctx)
+	defer iterCandidates.Stop()
+
+	iterParticipants := db.GetFilteredIDsQuery(db.Events.Doc(eventId).Collection(MEMBERS), from, filter).Select().Documents(ctx)
+	defer iterParticipants.Stop()
+
+	// walk through both lists
+	// i intentionally do not check for iter.Next() errors, because otherwise go code is too cumbersome
+	idCandidate := "-"
+	idParticipant := "-"
+	for len(candidateIds) < numRecords {
+		if idCandidate == idParticipant { // move both iterators forward
+			docCandidate, err := iterCandidates.Next()
+			if err != nil {
+				break
+			}
+			idCandidate = docCandidate.Ref.ID
+
+			docParticipant, err := iterParticipants.Next()
+			if err != nil { // no participants, thus fill candidateIds array and exit cycle
+				candidateIds = db.processIdsTail(candidateIds, numRecords, idCandidate, iterCandidates)
+				break
+			}
+			idParticipant = docParticipant.Ref.ID
+			continue
+		} else if idCandidate < idParticipant { // save current id and move candidate pointer forward
+			candidateIds = append(candidateIds, idCandidate)
+			docCandidate, err := iterCandidates.Next()
+			if err != nil {
+				break
+			}
+			idCandidate = docCandidate.Ref.ID
+		} else { // participant smaller than candidate, this should not normally happen if data is consistent
+
+			docParticipant, err := iterParticipants.Next() //anyway, movel left pointer
+			if err != nil {                                // no participants, thus fill candidateIds array and exit cycle
+				candidateIds = db.processIdsTail(candidateIds, numRecords, idCandidate, iterCandidates)
+				break
+			}
+			idParticipant = docParticipant.Ref.ID
+		}
+	}
+
+	// get candidates info
+	candidates := make([]*SquadUserInfoRecord, len(candidateIds))
+
+	for i := 0; i < len(candidateIds); i++ {
+		doc, err := db.Squads.Doc(squadId).Collection(MEMBERS).Doc(candidateIds[i]).Get(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get event participants: %w", err)
+		}
+		s := &SquadUserInfo{}
+		err = doc.DataTo(s)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get event participants: %w", err)
+		}
+		candidates[i] = &SquadUserInfoRecord{
+			ID:            doc.Ref.ID,
+			SquadUserInfo: *s,
+		}
+	}
+
+	return candidates, nil
 }

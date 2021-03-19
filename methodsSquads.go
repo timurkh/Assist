@@ -77,10 +77,17 @@ func (app *App) methodCreateSquad(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	squadId := squad.Name
-	ownerId := app.sd.getCurrentUserID(r)
+	userId, authLevel := app.checkAuthorization(r, "me", "", myself)
+	if authLevel == 0 {
+		// operation is not authorized, return error
+		err := fmt.Errorf("Current user is not authorized to create squads", userId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
 
 	ctx := r.Context()
-	err = app.db.CreateSquad(ctx, squadId, ownerId)
+	err = app.db.CreateSquad(ctx, squadId, userId)
 	if err != nil {
 		st, ok := status.FromError(err)
 		err = fmt.Errorf("Failed to create squad %v: %w", squadId, err)
@@ -232,7 +239,7 @@ func (app *App) methodGetSquad(w http.ResponseWriter, r *http.Request) error {
 
 	go func() {
 		filter := map[string]string{"Status": "Admin"}
-		ret.Admins, errs[1] = app.db.GetSquadMembers(r.Context(), squadId, "", &filter)
+		ret.Admins, errs[1] = app.db.GetSquadMembers(r.Context(), squadId, nil, &filter)
 		wg.Done()
 	}()
 
@@ -258,13 +265,23 @@ func (app *App) methodGetSquad(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) error {
+func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) (err error) {
 	params := mux.Vars(r)
 	ctx := r.Context()
 
 	squadId := params["id"]
 	v := r.URL.Query()
 	from := v.Get("from")
+	var timeFrom time.Time
+	if from != "" {
+		timeFrom, err = time.Parse(time.RFC3339, from)
+		if err != nil {
+			err = fmt.Errorf("Failed to convert from to a time struct: %w", err)
+			log.Println(err.Error())
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return err
+		}
+	}
 
 	filter := map[string]string{
 		"Keys":   v.Get("keys"),
@@ -281,7 +298,7 @@ func (app *App) methodGetSquadMembers(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	squadMembers, err := app.db.GetSquadMembers(ctx, squadId, from, &filter)
+	squadMembers, err := app.db.GetSquadMembers(ctx, squadId, &timeFrom, &filter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -320,7 +337,7 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 
-	err := app.db.AddMemberToSquad(ctx, userId, squadId, memberStatus)
+	squadInfo, err := app.db.AddMemberToSquad(ctx, userId, squadId, memberStatus)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -328,7 +345,7 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(struct{ Status assist_db.MemberStatusType }{memberStatus})
+	err = json.NewEncoder(w).Encode(squadInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

@@ -115,16 +115,19 @@ func TestRun(t *testing.T) {
 
 	t.Run("Add test users to one squad", func(t *testing.T) {
 		for i := 0; i < 5; i++ {
-			err := db.AddMemberToSquad(ctx, fmt.Sprint("TEST_USER_", i), "TEST_SQUAD_0", Member)
+			squad, err := db.AddMemberToSquad(ctx, fmt.Sprint("TEST_USER_", i), "TEST_SQUAD_0", Member)
 			if err != nil {
 				t.Fatalf("Failed to add user to squad: %v", err)
+			}
+			if squad.Status != Member || squad.MembersCount != i+2 {
+				t.Errorf("AddMemberToSquad returned wrong squad info: %+v", squad)
 			}
 		}
 	})
 
 	t.Run("Add pending approver users to same squad", func(t *testing.T) {
 		for i := 0; i < 2; i++ {
-			err := db.AddMemberToSquad(ctx, fmt.Sprint("PENDING_APPROVE_USER_", i), "TEST_SQUAD_0", PendingApprove)
+			_, err := db.AddMemberToSquad(ctx, fmt.Sprint("PENDING_APPROVE_USER_", i), "TEST_SQUAD_0", PendingApprove)
 			if err != nil {
 				t.Fatalf("Failed to add user to squad: %v", err)
 			}

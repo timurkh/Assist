@@ -88,18 +88,20 @@ const app = createApp( {
 			});
 		},
 		deleteMemberTag:function(member, tag, tagIndex) {
-			axios({
-				method: 'DELETE',
-				url: `/methods/squads/${squadId}/members/${member.id}/tags/${tag}`,
-				headers: { "X-CSRF-Token": csrfToken },
-			})
-			.then( res => {
-				this.error_message = "";
-				member.tags = res.data.tags;
-			})
-			.catch(err => {
-				this.error_message = "Error while updating member tags: " + this.getAxiosErrorMessage(err);
-			});
+			if(confirm(`Please confirm you really want to delete tag ${tag} from user ${member.displayName}`)) {
+				axios({
+					method: 'DELETE',
+					url: `/methods/squads/${squadId}/members/${member.id}/tags/${tag}`,
+					headers: { "X-CSRF-Token": csrfToken },
+				})
+				.then( res => {
+					this.error_message = "";
+					member.tags = res.data.tags;
+				})
+				.catch(err => {
+					this.error_message = "Error while updating member tags: " + this.getAxiosErrorMessage(err);
+				});
+			}
 		},
 		setMemberStatus:function(status) {
 			axios({
@@ -116,20 +118,22 @@ const app = createApp( {
 				this.error_message = "Error while changing member status: " + this.getAxiosErrorMessage(err);
 			});
 		},
-		removeMember:function(userId, index) {
-			index = index;
-			axios({
-				method: 'DELETE',
-				url: `/methods/squads/${squadId}/members/${userId}`,
-				headers: { "X-CSRF-Token": csrfToken },
-			})
-			.then( res => {
-				this.error_message = "";
-				this.squad_members.splice(index, 1);
-			})
-			.catch(err => {
-				this.error_message = `Error while removing user ${userId} from squad:` + this.getAxiosErrorMessage(err);
-			});
+		removeMember:function(member, index) {
+			if(confirm(`Please confirm you really want to delete user ${member.displayName} from squad ${squadId}`)) {
+				index = index;
+				axios({
+					method: 'DELETE',
+					url: `/methods/squads/${squadId}/members/${member.id}`,
+					headers: { "X-CSRF-Token": csrfToken },
+				})
+				.then( res => {
+					this.error_message = "";
+					this.squad_members.splice(index, 1);
+				})
+				.catch(err => {
+					this.error_message = `Error while removing user ${member.id} from squad:` + this.getAxiosErrorMessage(err);
+				});
+			}
 		},
 		addMember:function(replicant) {
 			axios({
@@ -198,8 +202,10 @@ const app = createApp( {
 		deleteNote:function(note) {
 			let member = this.squad_members[note.member_index];
 			let notes = member.notes;
-			delete notes[note.title];
-			this.saveNotes(note.member_id, notes);
+			if(confirm(`Please confirm you really want to delete note ${note.title} from user ${member.displayName}`)) {
+				delete notes[note.title];
+				this.saveNotes(note.member_id, notes);
+			}
 		},
 		getMore:function() {
 			this.getting_more = true;

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
@@ -47,10 +48,10 @@ func (s MemberStatusType) String() string {
 	return "Unknown Status"
 }
 
-func statusFromString(s string) MemberStatusType {
+func statusFromString(s string) int {
 	for _, t := range MemberStatusTypes {
 		if t.String() == s {
-			return t
+			return int(t)
 		}
 	}
 	return -1
@@ -107,7 +108,7 @@ func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, ownerId 
 		return err
 	}
 
-	err = db.AddMemberToSquad(ctx, ownerId, squadId, Owner)
+	_, err = db.AddMemberToSquad(ctx, ownerId, squadId, Owner)
 	if err != nil {
 		return err
 	}
@@ -121,16 +122,27 @@ func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]string, 
 		log.Println("Getting squads for user " + userId)
 	}
 
-	userSquadsMap, err := db.GetUserSquadsMap(ctx, userId, "", false)
-	if err != nil {
-		return nil, err
+	userSquads := make(map[string]bool, 0)
+	iterUserSquads := db.Users.Doc(userId).Collection(USER_SQUADS).Select().Documents(ctx)
+
+	defer iterUserSquads.Stop()
+	for {
+		doc, err := iterUserSquads.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get user squads: %w", err)
+		}
+
+		userSquads[doc.Ref.ID] = true
 	}
 
 	otherSquads := make([]string, 0)
-	iter := db.Squads.Select().Documents(ctx)
-	defer iter.Stop()
+	iterOtherSquads := db.Squads.Select().Documents(ctx)
+	defer iterOtherSquads.Stop()
 	for {
-		doc, err := iter.Next()
+		doc, err := iterOtherSquads.Next()
 		if err == iterator.Done {
 			break
 		}
@@ -142,7 +154,7 @@ func (db *FirestoreDB) GetSquads(ctx context.Context, userId string) ([]string, 
 			continue
 		}
 
-		if _, ok := userSquadsMap[doc.Ref.ID]; !ok {
+		if _, ok := userSquads[doc.Ref.ID]; !ok {
 
 			otherSquads = append(otherSquads, doc.Ref.ID)
 		}
@@ -245,7 +257,7 @@ func (db *FirestoreDB) GetUserSquadsMap(ctx context.Context, userID string, stat
 	return squads_map, nil
 }
 
-func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from string, filter *map[string]string) ([]*SquadUserInfoRecord, error) {
+func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from *time.Time, filter *map[string]string) ([]*SquadUserInfoRecord, error) {
 
 	if db.dev {
 		log.Printf("Getting members of the squad %v\n", squadId)
@@ -253,10 +265,7 @@ func (db *FirestoreDB) GetSquadMembers(ctx context.Context, squadId string, from
 
 	squadMembers := make([]*SquadUserInfoRecord, 0)
 
-	iter, err := db.GetFilteredDocuments(ctx, db.Squads.Doc(squadId).Collection(MEMBERS), from, filter)
-	if err != nil {
-		return nil, err
-	}
+	iter := db.GetFilteredQuery(db.Squads.Doc(squadId).Collection(MEMBERS), from, filter, statusFromString).Documents(ctx)
 	defer iter.Stop()
 	for {
 		doc, err := iter.Next()
@@ -529,14 +538,14 @@ func (db *FirestoreDB) CreateReplicant(ctx context.Context, replicantInfo *UserI
 	return newReplicantDoc.ID, nil
 }
 
-func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squadId string, memberStatus MemberStatusType) error {
+func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squadId string, memberStatus MemberStatusType) (*MemberSquadInfo, error) {
 	if db.dev {
 		log.Println("Adding user " + userId + " to squad " + squadId)
 	}
 
 	userInfo, err := db.GetUser(ctx, userId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	squadUserInfo := &SquadUserInfo{
@@ -546,12 +555,12 @@ func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squa
 
 	err = db.AddMemberRecordToSquad(ctx, squadId, userId, squadUserInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	squadInfo, err := db.GetSquad(ctx, squadId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	memberSquadInfo := &MemberSquadInfo{
@@ -561,10 +570,10 @@ func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squa
 
 	err = db.AddSquadRecordToMember(ctx, userId, squadId, memberSquadInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return memberSquadInfo, nil
 }
 
 func (db *FirestoreDB) DeleteMemberFromSquad(ctx context.Context, userId string, squadId string) error {

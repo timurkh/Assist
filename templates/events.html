@@ -50,7 +50,7 @@
 					</div>
 					<div class="col-sm-5 pl-3">
 						<p v-if="e.timeFrom" class="mb-0">[[e.timeFrom]] - [[e.timeTo]]</p>
-						<p class="text-dark font-weight-bold mb-0">Squad: [[e.squadId]]</p>
+						<p class="text-dark font-weight-bold mb-0">[[e.squadId]]</p>
 						<p class="text-dark mb-0">[[e.text]]</p>
 					</div>
 					<div class="col-sm-3 pl-3">
@@ -59,12 +59,12 @@
 						<span v-else-if="e.status==1" class="badge badge-warning">Applied, waiting confirmation</span>
 						<span v-else class="badge badge-secondary">I do not go</span>
 						<div class="m-0" v-for="i in 4">
-							<span v-if=" e[getEventStatusText(i)] > 0 ">
+							<span v-if="getParticipantsByStatus(e, i) > 0 ">
 								<a v-if="userIsAdmin || (squads[e.squadId] != null && squads[e.squadId].status > 1)" title="Check attendies" href="#" @click.stop.prevent="showAttendies(e, i)">
-									[[e[getEventStatusText(i)] ]] [[getEventStatusText(i)]]
+									[[getParticipantsByStatus(e, i)]] [[getEventStatusText(i).toLowerCase()]]
 								</a>
 								<span v-else>
-									[[e[getEventStatusText(i)] ]] [[getEventStatusText(i)]]
+									[[getParticipantsByStatus(e, i)]] [[getEventStatusText(i).toLowerCase()]]
 								</span>
 							</span>
 						</div>

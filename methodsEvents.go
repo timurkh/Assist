@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	gorilla_context "github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -105,28 +106,89 @@ func (app *App) methodGetEvents(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func (app *App) methodGetParticipants(w http.ResponseWriter, r *http.Request) error {
+func (app *App) methodGetEventDetails(w http.ResponseWriter, r *http.Request) error {
+	params := mux.Vars(r)
+	ctx := r.Context()
+
+	eventId := params["eventId"]
+
+	eventInfo, err := app.db.GetEvent(r.Context(), eventId)
+	if err != nil {
+		err = fmt.Errorf("Failed to get event %v: %w", eventId, err)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	_, authLevel := app.checkAuthorization(r, "me", eventInfo.SquadId, squadAdmin|squadOwner)
+	if authLevel == 0 {
+		err = fmt.Errorf("Current user is not authenticated to get event " + eventId + " details")
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
+	tags, err := app.db.GetTags(ctx, eventInfo.SquadId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(struct {
+		Tags  interface{} `json:"tags"`
+		Event interface{} `json:"event"`
+	}{tags, eventInfo})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	return err
+}
+
+func (app *App) methodGetParticipants(w http.ResponseWriter, r *http.Request) (err error) {
 	params := mux.Vars(r)
 	ctx := r.Context()
 
 	eventId := params["eventId"]
 	v := r.URL.Query()
 	from := v.Get("from")
+	var timeFrom time.Time
+	if from != "" {
+		timeFrom, err = time.Parse(time.RFC3339, from)
+		if err != nil {
+			err = fmt.Errorf("Failed to convert from to a time struct: %w", err)
+			log.Println(err.Error())
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return err
+		}
+	}
 
 	filter := map[string]string{
 		"Keys":   v.Get("keys"),
 		"Status": v.Get("status"),
+		"Tag":    v.Get("tag"),
 	}
 
-	_, authLevel := app.checkAuthorizationForEvent(r, "", eventId, squadAdmin|squadOwner)
+	eventInfo, err := app.db.GetEvent(r.Context(), eventId)
+	if err != nil {
+		err = fmt.Errorf("Failed to get event %v: %w", eventId, err)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	_, authLevel := app.checkAuthorization(r, "me", eventInfo.SquadId, squadAdmin|squadOwner)
 	if authLevel == 0 {
-		err := fmt.Errorf("Current user is not authenticated to get event " + eventId + " participants")
+		err = fmt.Errorf("Current user is not authenticated to get event " + eventId + " participants")
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return err
 	}
 
-	participants, err := app.db.GetParticipants(ctx, eventId, from, &filter)
+	participants, err := app.db.GetParticipants(ctx, eventId, &timeFrom, &filter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -289,4 +351,52 @@ func (app *App) methodDeleteEvent(w http.ResponseWriter, r *http.Request) error 
 	w.WriteHeader(http.StatusOK)
 
 	return nil
+}
+
+func (app *App) methodGetCandidates(w http.ResponseWriter, r *http.Request) (err error) {
+	params := mux.Vars(r)
+	ctx := r.Context()
+
+	eventId := params["eventId"]
+	v := r.URL.Query()
+
+	from := v.Get("from")
+	filter := map[string]string{
+		"Keys":   v.Get("keys"),
+		"Status": v.Get("status"),
+		"Tag":    v.Get("tag"),
+	}
+
+	eventInfo, err := app.db.GetEvent(r.Context(), eventId)
+	if err != nil {
+		err = fmt.Errorf("Failed to get event %v: %w", eventId, err)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+
+	}
+
+	_, authLevel := app.checkAuthorization(r, "me", eventInfo.SquadId, squadAdmin|squadOwner)
+	if authLevel == 0 {
+		err = fmt.Errorf("Current user is not authenticated to get event " + eventId + " participants")
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
+	participants, err := app.db.GetCandidates(ctx, eventInfo.SquadId, eventId, from, &filter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(participants)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	return err
 }

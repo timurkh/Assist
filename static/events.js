@@ -58,18 +58,20 @@ const app = createApp( {
 			window.location.href = url;
 		},
 		deleteEvent(e, i) {
-			axios({
-				method: 'DELETE',
-				url: '/methods/events/' + e.id,
-				headers: { "X-CSRF-Token": csrfToken },
-			})
-			.then( res => {
-				this.error_message = "";
-				this.events.splice(i);
-			})
-			.catch(err => {
-				this.error_message = "Error while removing event " + e.id + ": " + this.getAxiosErrorMessage(err);
-			});
+			if(confirm(`Please confirm you really want to delete event ${e.text}, it will be impossible to rollback this operation.`)) {
+				axios({
+					method: 'DELETE',
+					url: '/methods/events/' + e.id,
+					headers: { "X-CSRF-Token": csrfToken },
+				})
+				.then( res => {
+					this.error_message = "";
+					this.events.splice(i);
+				})
+				.catch(err => {
+					this.error_message = "Error while removing event " + e.id + ": " + this.getAxiosErrorMessage(err);
+				});
+			}
 		},
 		registerForEvent(e, i) {
 			axios({
@@ -86,18 +88,23 @@ const app = createApp( {
 			});
 		},
 		declineEvent(e, i) {
-			axios({
-				method: 'DELETE',
-				url: `/methods/events/${e.id}/participants/${currentUserId}`,
-				headers: { "X-CSRF-Token": csrfToken },
-			})
-			.then( res => {
-				this.error_message = "";
-				this.events[i].status = 0;
-			})
-			.catch(err => {
-				this.error_message = `Error while removing user ${currentUserId} from event:` + this.getAxiosErrorMessage(err);
-			});
+			if(confirm(`Please confirm you really want to decline event ${e.text}.`)) {
+				axios({
+					method: 'DELETE',
+					url: `/methods/events/${e.id}/participants/me`,
+					headers: { "X-CSRF-Token": csrfToken },
+				})
+				.then( res => {
+					this.error_message = "";
+					this.events[i].status = 0;
+				})
+				.catch(err => {
+					this.error_message = `Error while removing user ${currentUserId} from event: ` + this.getAxiosErrorMessage(err);
+				});
+			}
+		},
+		getParticipantsByStatus(e, i) {
+			return e[this.getEventStatusText(i).toLowerCase()];
 		},
 	},
 	mixins: [globalMixin],

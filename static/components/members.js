@@ -52,6 +52,8 @@ const ChangeStatusDialog = {
 	props: {
 		windowId: String, 
 		member: Object, 
+		getStatus: Function,
+		statusCount: Number,
 	},
 	emits: ["submit-form"],
 	methods: {
@@ -61,7 +63,7 @@ const ChangeStatusDialog = {
 	},
 	mixins: [globalMixin],
     template:  `
-		<div class="modal fade" id="changeMemberStatusModal" tabindex="-1" role="dialog">
+		<div class="modal fade" :id="windowId" tabindex="-1" role="dialog">
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
 					<div class="modal-header">
@@ -73,8 +75,8 @@ const ChangeStatusDialog = {
 					<div class="modal-body">
 						<form>
 							<div class="form-group">
-								<select v-model="member.status" class="form-control" size="3">
-									<option  v-for="i in 3" :value="i-1">[[getStatusText(i-1)]]</option>
+								<select v-model="member.status" class="form-control" :size="statusCount">
+									<option  v-for="i in statusCount" :value="i-1">[[getStatus(i-1)]]</option>
 								</select>
 							</div>
 						</form>

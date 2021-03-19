@@ -98,19 +98,21 @@ const app = createApp( {
 			});
 		},
 		deleteObject:function(obj, id, index) {
-			index = index;
-			axios({
-				method: 'DELETE',
-				url: `/methods/squads/${squadId}/${obj}s/${id}`,
-				headers: { "X-CSRF-Token": csrfToken },
-			})
-			.then( res => {
-				this.error_message = "";
-				this[`${obj}s`].splice(index, 1);
-			})
-			.catch(err => {
-				this.error_message = `Error while removing ${obj} ${id} from squad: ` + this.getAxiosErrorMessage(err);
-			});
+			if(confirm(`Please confirm you really want to delete ${obj} from squad ${id}`)) {
+				index = index;
+				axios({
+					method: 'DELETE',
+					url: `/methods/squads/${squadId}/${obj}s/${id}`,
+					headers: { "X-CSRF-Token": csrfToken },
+				})
+				.then( res => {
+					this.error_message = "";
+					this[`${obj}s`].splice(index, 1);
+				})
+				.catch(err => {
+					this.error_message = `Error while removing ${obj} ${id} from squad: ` + this.getAxiosErrorMessage(err);
+				});
+			}
 		},
 		getNoteTitle:function(note) {
 			return "[" + (new Date(note.timestamp)).toLocaleDateString() + "] " + note.title;

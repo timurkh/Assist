@@ -28,13 +28,6 @@ const app = createApp( {
 		})
 	},
 	methods: {
-		getDate(date) {
-			return date.toLocaleString('ru', {
-				    day:   '2-digit',
-				    month: '2-digit',
-				    year:  '2-digit'
-				  });
-		},
 		getSquadsCount : function() {
 			if(this.squads != null)
 				return this.squads.reduce((a,c) => a+c);

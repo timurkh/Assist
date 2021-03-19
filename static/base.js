@@ -6,19 +6,26 @@ const globalMixin = {
 		}
 	},
 	methods: {
+		getDate(date) {
+			return date.toLocaleString('ru', {
+				    day:   '2-digit',
+				    month: '2-digit',
+				    year:  '2-digit'
+				  });
+		},
 		getEventStatusText : function(status) {
 
 			switch(status) {
 				case 0:
-					return "not going";
+					return "Not going";
 				case 1:
-					return "applied";
+					return "Applied";
 				case 2:
-					return "going";
+					return "Going";
 				case 3:
-					return "attended";
+					return "Attended";
 				case 4:
-					return "no-show";
+					return "No-show";
 			};
 		},
 		getStatusText : function(status) {
