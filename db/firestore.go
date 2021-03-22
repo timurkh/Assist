@@ -136,39 +136,6 @@ func (db *FirestoreDB) DeleteCollectionRecurse(ctx context.Context, collection *
 	return nil
 }
 
-func (db *FirestoreDB) propagateChangedGroupInfo(docRef *firestore.DocumentRef, userCollection string, id string, fields ...string) {
-	ctx := context.Background()
-	doc, err := docRef.Get(ctx)
-	if err != nil {
-		log.Printf("Failed to get object %v: %v", id, err)
-	}
-
-	vals := make([]interface{}, len(fields))
-	for i, field := range fields {
-		vals[i] = doc.Data()[field]
-	}
-
-	iter := docRef.Collection(MEMBERS).Where("Replicant", "!=", true).Documents(ctx)
-	defer iter.Stop()
-	for {
-		docMember, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Printf("Error while getting group %v member: %v", id, err.Error())
-			break
-		}
-
-		userId := docMember.Ref.ID
-
-		doc := db.Users.Doc(userId).Collection(userCollection).Doc(id)
-		for i, field := range fields {
-			db.updater.dispatchCommand(doc, field, vals[i])
-		}
-	}
-}
-
 func (db *FirestoreDB) AddFilterWhere(query firestore.Query, filter *map[string]string, statusFromStringFunc func(string) int) firestore.Query {
 	if filter != nil {
 		f := *filter
@@ -224,7 +191,9 @@ func (db *FirestoreDB) GetFilteredIDsQuery(collection *firestore.CollectionRef, 
 
 func (db *FirestoreDB) DeleteGroup(ctx context.Context, groupType string, groupCollection *firestore.CollectionRef, membersCollection string, groupId string) error {
 
-	log.Println("Deleting " + groupType + " " + groupId)
+	if db.dev {
+		log.Println("Deleting " + groupType + " " + groupId)
+	}
 
 	docGroup := groupCollection.Doc(groupId)
 
@@ -243,7 +212,9 @@ func (db *FirestoreDB) DeleteGroup(ctx context.Context, groupType string, groupC
 			}
 
 			userId := docUser.Ref.ID
-			log.Printf("Deleting %v %v from user %v", groupType, groupId, userId)
+			if db.dev {
+				log.Printf("Deleting %v %v from user %v", groupType, groupId, userId)
+			}
 
 			db.Users.Doc(userId).Collection(membersCollection).Doc(groupId).Delete(ctx)
 		}

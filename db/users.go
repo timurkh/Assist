@@ -111,38 +111,14 @@ func (db *FirestoreDB) GetUserByName(ctx context.Context, userName string) (user
 	return users, nil
 }
 
-func (db *FirestoreDB) AddSquadRecordToMember(ctx context.Context, userId string, squadId string, squadInfo *MemberSquadInfo) error {
-
-	doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(squadId)
-
-	_, err := doc.Set(ctx, squadInfo)
-	if err != nil {
-		return fmt.Errorf("Failed to add squad to user "+userId+": %w", err)
-	}
-
-	return nil
-}
-
 func (db *FirestoreDB) CreateUser(ctx context.Context, userId string, userInfo *UserInfo, status MemberStatusType) error {
 
 	var sui = SquadUserInfo{
 		Status: status}
 	sui.UserInfo = *userInfo
-	err := db.AddMemberRecordToSquad(ctx, ALL_USERS_SQUAD, userId, &sui)
+	err := db.addMemberRecordToSquad(ctx, ALL_USERS_SQUAD, userId, &sui)
 	if err != nil {
 		return fmt.Errorf("Failed to add user "+userId+": %w", err)
-	}
-
-	return nil
-}
-
-func (db *FirestoreDB) DeleteSquadRecordFromMember(ctx context.Context, userId string, squadId string) error {
-
-	doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(squadId)
-
-	_, err := doc.Delete(ctx)
-	if err != nil {
-		return fmt.Errorf("Failed to delete squad from user "+userId+": %w", err)
 	}
 
 	return nil

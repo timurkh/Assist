@@ -17,7 +17,9 @@ type Tag struct {
 
 func (db *FirestoreDB) CreateTag(ctx context.Context, squadId string, tag *Tag) (err error) {
 
-	log.Printf("Creating tag '%+v' in squad '%v'", tag, squadId)
+	if db.dev {
+		log.Printf("Creating tag '%+v' in squad '%v'", tag, squadId)
+	}
 
 	_, err = db.Squads.Doc(squadId).Collection("tags").Doc(tag.Name).Set(ctx, tag.Values)
 	return err
@@ -98,7 +100,9 @@ func (db *FirestoreDB) SetSquadMemberTag(ctx context.Context, userId string, squ
 		tagNew = tagName + "/" + tagValue
 	}
 
-	log.Println("Setting tag " + tagName + " to user " + userId + " from squad " + squadId)
+	if db.dev {
+		log.Println("Setting tag " + tagName + " to user " + userId + " from squad " + squadId)
+	}
 
 	tags, err := db.GetSquadMemberTags(ctx, userId, squadId)
 	if err != nil {

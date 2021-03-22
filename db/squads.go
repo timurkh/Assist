@@ -330,11 +330,49 @@ func (db *FirestoreDB) GetSquad(ctx context.Context, ID string) (*SquadInfo, err
 	return s, nil
 }
 
-func (db *FirestoreDB) propagateChangedSquadInfo(squadId string, fields ...string) {
-	db.propagateChangedGroupInfo(db.Squads.Doc(squadId), USER_SQUADS, squadId, fields...)
+func (db *FirestoreDB) propagateChangedSquadCounters(squadId string, fields ...string) {
+	ctx := context.Background()
+	docRef := db.Squads.Doc(squadId)
+	doc, err := docRef.Get(ctx)
+	if err != nil {
+		log.Printf("Failed to get squad %v: %v", squadId, err)
+	}
+
+	vals := make([]interface{}, len(fields))
+	for i, field := range fields {
+		vals[i] = doc.Data()[field]
+	}
+
+	iter := docRef.Collection(MEMBERS).Where("Replicant", "!=", true).Documents(ctx)
+	defer iter.Stop()
+	for {
+		docMember, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("Error while getting squad %v member: %v", squadId, err.Error())
+			break
+		}
+
+		userId := docMember.Ref.ID
+
+		doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(squadId)
+		for i, field := range fields {
+			db.updater.dispatchCommand(doc, field, vals[i])
+		}
+	}
 }
 
-func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId string, userId string, userInfo *SquadUserInfo) error {
+func (db *FirestoreDB) getCounter(status MemberStatusType) string {
+	path := "MembersCount"
+	if status == PendingApprove {
+		path = "PendingApproveCount"
+	}
+	return path
+}
+
+func (db *FirestoreDB) addMemberRecordToSquad(ctx context.Context, squadId string, userId string, userInfo *SquadUserInfo) error {
 
 	if db.dev {
 		log.Println("Adding member " + userId + " to squad " + squadId)
@@ -345,11 +383,6 @@ func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId strin
 	docMember := docSquad.Collection(MEMBERS).Doc(userId)
 	batch.Set(docMember, userInfo)
 
-	path := "MembersCount"
-	if userInfo.Status == PendingApprove {
-		path = "PendingApproveCount"
-	}
-
 	batch.Set(docMember, map[string]interface{}{
 		"Timestamp": firestore.ServerTimestamp,
 	}, firestore.MergeAll)
@@ -357,7 +390,7 @@ func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId strin
 		{Path: "Keys", Value: userInfo.Keys()},
 	})
 	batch.Update(docSquad, []firestore.Update{
-		{Path: path, Value: firestore.Increment(1)},
+		{Path: db.getCounter(userInfo.Status), Value: firestore.Increment(1)},
 	})
 
 	_, err := batch.Commit(ctx)
@@ -365,22 +398,14 @@ func (db *FirestoreDB) AddMemberRecordToSquad(ctx context.Context, squadId strin
 		return fmt.Errorf("Failed to add user "+userId+" to squad "+squadId+": %w", err)
 	}
 
-	if squadId != ALL_USERS_SQUAD {
-		go db.propagateChangedSquadInfo(squadId, path)
-	}
-
 	return nil
 }
 
-func (db *FirestoreDB) DeleteMemberRecordFromSquad(ctx context.Context, squadId string, userId string) error {
+func (db *FirestoreDB) deleteMemberRecordFromSquad(ctx context.Context, squadId string, userId string) error {
 
 	status, err := db.GetSquadMemberStatus(ctx, userId, squadId)
 	if err != nil {
 		return err
-	}
-	path := "MembersCount"
-	if status == PendingApprove {
-		path = "PendingApproveCount"
 	}
 
 	batch := db.Client.Batch()
@@ -388,7 +413,7 @@ func (db *FirestoreDB) DeleteMemberRecordFromSquad(ctx context.Context, squadId 
 	docMember := docSquad.Collection(MEMBERS).Doc(userId)
 	batch.Delete(docMember)
 	batch.Update(docSquad, []firestore.Update{
-		{Path: path, Value: firestore.Increment(-1)},
+		{Path: db.getCounter(status), Value: firestore.Increment(-1)},
 	})
 
 	_, err = batch.Commit(ctx)
@@ -396,7 +421,7 @@ func (db *FirestoreDB) DeleteMemberRecordFromSquad(ctx context.Context, squadId 
 		return fmt.Errorf("Failed to delete user %v from squad %v: %w", userId, squadId, err)
 	}
 
-	go db.propagateChangedSquadInfo(squadId, path)
+	go db.propagateChangedSquadCounters(squadId, db.getCounter(status))
 
 	return nil
 }
@@ -503,7 +528,7 @@ func (db *FirestoreDB) SetSquadMemberStatus(ctx context.Context, userId string, 
 	if squadId == ALL_USERS_SQUAD {
 		db.userDataCache.Delete(userId)
 	} else if changedCount != 0 {
-		go db.propagateChangedSquadInfo(squadId, "MembersCount", "PendingApproveCount")
+		go db.propagateChangedSquadCounters(squadId, "MembersCount", "PendingApproveCount")
 	}
 
 	db.memberStatusCache.Delete(squadId + "/" + userId)
@@ -544,10 +569,14 @@ func (db *FirestoreDB) CreateReplicant(ctx context.Context, replicantInfo *UserI
 
 	newReplicantDoc := db.Squads.Doc(squadId).Collection(MEMBERS).NewDoc()
 
-	err = db.AddMemberRecordToSquad(ctx, squadId, newReplicantDoc.ID, squadReplicantInfo)
+	err = db.addMemberRecordToSquad(ctx, squadId, newReplicantDoc.ID, squadReplicantInfo)
 	if err != nil {
 		log.Printf("Failed to add replicant record to squad: %v", err)
 		return "", err
+	}
+
+	if squadId != ALL_USERS_SQUAD {
+		go db.propagateChangedSquadCounters(squadId, db.getCounter(Member))
 	}
 
 	return newReplicantDoc.ID, nil
@@ -568,7 +597,7 @@ func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squa
 		Status:   memberStatus,
 	}
 
-	err = db.AddMemberRecordToSquad(ctx, squadId, userId, squadUserInfo)
+	err = db.addMemberRecordToSquad(ctx, squadId, userId, squadUserInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -583,12 +612,28 @@ func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squa
 		Status:    memberStatus,
 	}
 
-	err = db.AddSquadRecordToMember(ctx, userId, squadId, memberSquadInfo)
+	err = db.addSquadRecordToMember(ctx, userId, squadId, memberSquadInfo)
 	if err != nil {
 		return nil, err
 	}
 
+	if squadId != ALL_USERS_SQUAD {
+		go db.propagateChangedSquadCounters(squadId, db.getCounter(memberStatus))
+	}
+
 	return memberSquadInfo, nil
+}
+
+func (db *FirestoreDB) addSquadRecordToMember(ctx context.Context, userId string, squadId string, squadInfo *MemberSquadInfo) error {
+
+	doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(squadId)
+
+	_, err := doc.Set(ctx, squadInfo)
+	if err != nil {
+		return fmt.Errorf("Failed to add squad to user "+userId+": %w", err)
+	}
+
+	return nil
 }
 
 func (db *FirestoreDB) DeleteMemberFromSquad(ctx context.Context, userId string, squadId string) error {
@@ -596,14 +641,26 @@ func (db *FirestoreDB) DeleteMemberFromSquad(ctx context.Context, userId string,
 		log.Println("Removing user " + userId + " from squad " + squadId)
 	}
 
-	err := db.DeleteSquadRecordFromMember(ctx, userId, squadId)
+	err := db.deleteMemberRecordFromSquad(ctx, squadId, userId)
+	if err != nil {
+		return err
+	}
+	err = db.deleteSquadRecordFromMember(ctx, userId, squadId)
 	if err != nil {
 		return err
 	}
 
-	err = db.DeleteMemberRecordFromSquad(ctx, squadId, userId)
+	return nil
+}
+
+func (db *FirestoreDB) deleteSquadRecordFromMember(ctx context.Context, userId string, squadId string) error {
+
+	doc := db.Users.Doc(userId).Collection(USER_SQUADS).Doc(squadId)
+
+	_, err := doc.Delete(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to delete squad from user "+userId+": %w", err)
 	}
+
 	return nil
 }

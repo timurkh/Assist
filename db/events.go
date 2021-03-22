@@ -91,7 +91,9 @@ type ParticipantRecord struct {
 func (db *FirestoreDB) CreateEvent(ctx context.Context, event *EventInfo) (id string, err error) {
 
 	if event.Text != "" && event.Date != nil && event.SquadId != "" {
-		log.Printf("Creating event '%+v'", event)
+		if db.dev {
+			log.Printf("Creating event '%+v'", event)
+		}
 
 		doc, _, err := db.Events.Add(ctx, event)
 
@@ -110,7 +112,9 @@ func (db *FirestoreDB) CreateEvent(ctx context.Context, event *EventInfo) (id st
 
 func (db *FirestoreDB) GetEvent(ctx context.Context, ID string) (*EventInfo, error) {
 
-	log.Println("Getting details for event " + ID)
+	if db.dev {
+		log.Println("Getting details for event " + ID)
+	}
 
 	v, found := db.eventDataCache.Load(ID)
 	if found {
@@ -235,7 +239,9 @@ func (db *FirestoreDB) GetEvents(ctx context.Context, squads []string, userId st
 }
 
 func (db *FirestoreDB) RegisterParticipants(ctx context.Context, userIds []string, eventId string, eventInfo *EventInfo, status ParticipantStatusType) error {
-	log.Println("Registering users " + strings.Join(userIds, ", ") + " for event " + eventId)
+	if db.dev {
+		log.Println("Registering users " + strings.Join(userIds, ", ") + " for event " + eventId)
+	}
 
 	errs := make([]error, len(userIds))
 	var wg sync.WaitGroup
@@ -304,7 +310,10 @@ func (db *FirestoreDB) RegisterParticipants(ctx context.Context, userIds []strin
 
 func (db *FirestoreDB) AddParticipantRecordToEvent(ctx context.Context, eventId string, userId string, userInfo *ParticipantInfo) error {
 
-	log.Println("Adding participant " + userId + " to event " + eventId)
+	if db.dev {
+		log.Println("Adding participant " + userId + " to event " + eventId)
+	}
+
 	batch := db.Client.Batch()
 
 	docEvent := db.Events.Doc(eventId)
@@ -343,13 +352,11 @@ func (db *FirestoreDB) AddEventRecordToParticipant(ctx context.Context, userId s
 	return nil
 }
 
-func (db *FirestoreDB) propagateChangedEventInfo(eventId string, fields ...string) {
-	db.propagateChangedGroupInfo(db.Events.Doc(eventId), USER_EVENTS, eventId, fields...)
-}
-
 func (db *FirestoreDB) GetParticipants(ctx context.Context, eventId string, from *time.Time, filter *map[string]string) ([]*ParticipantRecord, error) {
 
-	log.Printf("Getting participants of the event %v (from %v, filter %v)\n", eventId, from, filter)
+	if db.dev {
+		log.Printf("Getting participants of the event %v (from %v, filter %v)\n", eventId, from, filter)
+	}
 
 	participants := make([]*ParticipantRecord, 0)
 
@@ -419,27 +426,27 @@ func (db *FirestoreDB) SetParticipantStatus(ctx context.Context, userId string, 
 		return fmt.Errorf("Failed to change user "+userId+" status: %w", err)
 	}
 
-	go db.propagateChangedEventInfo(eventId, oldStatus.String(), status.String())
-
 	return nil
 }
 
 func (db *FirestoreDB) DeleteParticipant(ctx context.Context, userId string, eventId string) error {
-	log.Println("Removing user " + userId + " from event " + eventId)
+	if db.dev {
+		log.Println("Removing user " + userId + " from event " + eventId)
+	}
 
-	err := db.DeleteEventRecordFromParticipant(ctx, userId, eventId)
+	err := db.deleteEventRecordFromParticipant(ctx, userId, eventId)
 	if err != nil {
 		return err
 	}
 
-	err = db.DeleteParticipantRecordFromEvent(ctx, eventId, userId)
+	err = db.deleteParticipantRecordFromEvent(ctx, eventId, userId)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (db *FirestoreDB) DeleteEventRecordFromParticipant(ctx context.Context, userId string, eventId string) error {
+func (db *FirestoreDB) deleteEventRecordFromParticipant(ctx context.Context, userId string, eventId string) error {
 
 	doc := db.Users.Doc(userId).Collection(USER_EVENTS).Doc(eventId)
 
@@ -451,7 +458,7 @@ func (db *FirestoreDB) DeleteEventRecordFromParticipant(ctx context.Context, use
 	return nil
 }
 
-func (db *FirestoreDB) DeleteParticipantRecordFromEvent(ctx context.Context, eventId string, userId string) error {
+func (db *FirestoreDB) deleteParticipantRecordFromEvent(ctx context.Context, eventId string, userId string) error {
 
 	status, err := db.GetParticipantStatus(ctx, userId, eventId)
 	if err != nil {
@@ -495,7 +502,9 @@ func (db *FirestoreDB) processIdsTail(candidateIds []string, numCandidates int, 
 
 func (db *FirestoreDB) GetCandidates(ctx context.Context, squadId string, eventId string, from string, filter *map[string]string) ([]*SquadUserInfoRecord, error) {
 
-	log.Printf("Getting candidates to participate in the event %v (filter %v)\n", eventId, filter)
+	if db.dev {
+		log.Printf("Getting candidates to participate in the event %v (filter %v)\n", eventId, filter)
+	}
 
 	candidateIds := make([]string, 0, numRecords)
 
