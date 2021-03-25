@@ -105,7 +105,7 @@ const app = createApp( {
 		},
 		getMore:function() {
 			this.getting_more = true;
-			let lastMember = this.eventParticipants[this.squad_members.length-1];
+			let lastMember = this.eventParticipants[this.eventParticipants.length-1];
 			axios({
 				method: 'GET',
 				url: `/methods/events/${eventId}/participants?from=${lastMember.timestamp}`,
@@ -113,7 +113,7 @@ const app = createApp( {
 			})
 			.then(res => {
 				this.moreRecordsAvailable = res.data.length == 10;
-				this.eventParticipants =  [...this.squad_members, ...res.data]; 
+				this.eventParticipants =  [...this.eventParticipants, ...res.data]; 
 				this.getting_more = false;
 			})
 			.catch(err => {
