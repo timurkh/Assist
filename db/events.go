@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -69,6 +70,11 @@ type EventInfo struct {
 type EventRecord struct {
 	ID string `json:"id"`
 	EventInfo
+}
+
+type EventCountersRecord struct {
+	ID string `json:"id"`
+	EventInfo
 	Going    int `json:"going"`
 	Applied  int `json:"applied"`
 	Attended int `json:"attended"`
@@ -95,6 +101,29 @@ func (db *FirestoreDB) CreateEvent(ctx context.Context, event *EventInfo) (id st
 			log.Printf("Creating event '%+v'", event)
 		}
 
+		var date time.Time
+
+		// let's ensure all dates are unique
+		year, month, day := event.Date.Date()
+		startOfTheDay := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+		endOfTheDay := time.Date(year, month, day, 24, 0, 0, 0, time.UTC)
+		lastDocIter := db.Events.OrderBy("Date", firestore.Desc).Where("Date", ">=", startOfTheDay).Where("Date", "<", endOfTheDay).Limit(1).Documents(ctx)
+		defer lastDocIter.Stop()
+		lastDoc, err := lastDocIter.Next()
+		if err != nil {
+			if err != iterator.Done {
+				return "", err
+			}
+			date = time.Date(year, month, day, 7, 0, rand.Intn(60), 0, time.UTC)
+		} else {
+			ei := EventInfo{}
+			lastDoc.DataTo(&ei)
+			date = ei.Date.Add(time.Duration(rand.Intn(60)) * time.Second)
+		}
+
+		event.Date = &date
+
+		log.Printf("%+v\n", event)
 		doc, _, err := db.Events.Add(ctx, event)
 
 		if err != nil {
@@ -102,7 +131,7 @@ func (db *FirestoreDB) CreateEvent(ctx context.Context, event *EventInfo) (id st
 		}
 
 		event.Status = EventOwner
-		db.AddEventRecordToParticipant(ctx, event.OwnerId, doc.ID, event)
+		db.addEventRecordToParticipant(ctx, event.OwnerId, doc.ID, event)
 
 		return doc.ID, nil
 	}
@@ -136,11 +165,17 @@ func (db *FirestoreDB) GetEvent(ctx context.Context, ID string) (*EventInfo, err
 	}
 }
 
+func getToday() *time.Time {
+	year, month, day := time.Now().UTC().Date()
+	date := time.Date(year, month, day, 5, 0, 0, 0, time.UTC)
+	return &date
+}
+
 func (db *FirestoreDB) GetUserEventsMap(ctx context.Context, userId string) (map[string]*EventInfo, error) {
 	events := make(map[string]*EventInfo, 0)
 
 	var iter *firestore.DocumentIterator
-	iter = db.Users.Doc(userId).Collection(USER_EVENTS).Documents(ctx)
+	iter = db.Users.Doc(userId).Collection(USER_EVENTS).Where("Date", ">", getToday()).Documents(ctx)
 
 	defer iter.Stop()
 	for {
@@ -169,7 +204,7 @@ func (db *FirestoreDB) GetUserEvents(ctx context.Context, userId string, limit i
 	events := make([]*EventInfo, 0)
 
 	var iter *firestore.DocumentIterator
-	iter = db.Users.Doc(userId).Collection(USER_EVENTS).OrderBy("Date", firestore.Asc).Limit(limit).Documents(ctx)
+	iter = db.Users.Doc(userId).Collection(USER_EVENTS).Where("Date", ">=", getToday()).OrderBy("Date", firestore.Asc).Limit(limit).Documents(ctx)
 
 	defer iter.Stop()
 	for {
@@ -194,7 +229,7 @@ func (db *FirestoreDB) GetUserEvents(ctx context.Context, userId string, limit i
 	return events, nil
 }
 
-func (db *FirestoreDB) GetEvents(ctx context.Context, squads []string, userId string) (events []*EventRecord, err error) {
+func (db *FirestoreDB) GetEvents(ctx context.Context, squads []string, userId string) (events []*EventCountersRecord, err error) {
 
 	var myEvents map[string]*EventInfo
 	if userId != "" {
@@ -204,8 +239,53 @@ func (db *FirestoreDB) GetEvents(ctx context.Context, squads []string, userId st
 		}
 	}
 
+	events = make([]*EventCountersRecord, 0)
+	iter := db.Events.Where("SquadId", "in", squads).Where("Date", ">=", getToday()).OrderBy("Date", firestore.Asc).Documents(ctx)
+
+	defer iter.Stop()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get events: %w", err)
+		}
+
+		e := &EventCountersRecord{}
+		err = doc.DataTo(e)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get events: %w", err)
+		}
+
+		e.ID = doc.Ref.ID
+
+		if myEvents != nil {
+			if myEvent, ok := myEvents[e.ID]; ok {
+				e.Status = myEvent.Status
+			}
+		}
+
+		events = append(events, e)
+	}
+
+	return events, nil
+}
+
+func (db *FirestoreDB) GetArchivedEvents(ctx context.Context, userId string, from *time.Time, filter *map[string]string) (events []*EventRecord, err error) {
+
+	if db.dev {
+		log.Printf("Getting archived events for user %v (from %+v, filter %+v)\n", userId, from, filter)
+	}
 	events = make([]*EventRecord, 0)
-	iter := db.Events.Where("SquadId", "in", squads).OrderBy("Date", firestore.Asc).Documents(ctx)
+	query := db.Users.Doc(userId).Collection(USER_EVENTS).Where("Date", "<", getToday()).OrderBy("Date", firestore.Desc)
+	if from != nil {
+		query = query.Where("Date", "<", from)
+	}
+	query = db.AddFilterWhere(query, filter, eventStatusFromString)
+
+	iter := query.Limit(numRecords).Documents(ctx)
 
 	defer iter.Stop()
 	for {
@@ -225,12 +305,6 @@ func (db *FirestoreDB) GetEvents(ctx context.Context, squads []string, userId st
 		}
 
 		e.ID = doc.Ref.ID
-
-		if myEvents != nil {
-			if myEvent, ok := myEvents[e.ID]; ok {
-				e.Status = myEvent.Status
-			}
-		}
 
 		events = append(events, e)
 	}
@@ -275,16 +349,18 @@ func (db *FirestoreDB) RegisterParticipants(ctx context.Context, userIds []strin
 					Status:    status,
 				}
 
-				errs[i] = db.AddParticipantRecordToEvent(ctx, eventId, userId, participant)
+				errs[i] = db.addParticipantRecordToEvent(ctx, eventId, userId, participant)
 				if errs[i] != nil {
 					return
 				}
 
-				eventInfo.Status = status
+				if !userInfo.Replicant {
+					eventInfo.Status = status
 
-				errs[i] = db.AddEventRecordToParticipant(ctx, userId, eventId, eventInfo)
-				if errs[i] != nil {
-					return
+					errs[i] = db.addEventRecordToParticipant(ctx, userId, eventId, eventInfo)
+					if errs[i] != nil {
+						return
+					}
 				}
 			} else {
 				errs[i] = fmt.Errorf("User %v is already registered for event %v with status %v", userId, eventId, st.String())
@@ -308,7 +384,7 @@ func (db *FirestoreDB) RegisterParticipants(ctx context.Context, userIds []strin
 	return combinedError
 }
 
-func (db *FirestoreDB) AddParticipantRecordToEvent(ctx context.Context, eventId string, userId string, userInfo *ParticipantInfo) error {
+func (db *FirestoreDB) addParticipantRecordToEvent(ctx context.Context, eventId string, userId string, userInfo *ParticipantInfo) error {
 
 	if db.dev {
 		log.Println("Adding participant " + userId + " to event " + eventId)
@@ -340,7 +416,7 @@ func (db *FirestoreDB) AddParticipantRecordToEvent(ctx context.Context, eventId 
 	return nil
 }
 
-func (db *FirestoreDB) AddEventRecordToParticipant(ctx context.Context, userId string, eventId string, eventInfo *EventInfo) error {
+func (db *FirestoreDB) addEventRecordToParticipant(ctx context.Context, userId string, eventId string, eventInfo *EventInfo) error {
 
 	doc := db.Users.Doc(userId).Collection(USER_EVENTS).Doc(eventId)
 

@@ -767,10 +767,11 @@ func TestEvents(t *testing.T) {
 				t.Fatalf("Failed to remove replicant from event : %v", err)
 			}
 		}()
-
 		wg.Wait()
+
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			filter := map[string]string{"Tag": "tag/v0"}
 			candidates, err := db.GetCandidates(ctx, "TEST_SQUAD_1", eventIds[1], "", &filter)
 			if err != nil {
@@ -779,8 +780,8 @@ func TestEvents(t *testing.T) {
 			if len(candidates) != 1 {
 				t.Fatalf("Wrong number of candidates, expected 1 (TEST_USER_0), recieved %v", len(candidates))
 			}
-			wg.Done()
 		}()
+
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -793,5 +794,19 @@ func TestEvents(t *testing.T) {
 				t.Fatalf("Wrong numbers for applied & going to event %v, expected 1, 1 but recieved %v, %v", events[1].Text, events[1].Applied, events[1].Going)
 			}
 		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			events, err := db.GetUserEvents(ctx, "TEST_USER_2", 3)
+			if err != nil {
+				t.Fatalf("Failed to get event info : %v", err)
+			}
+
+			if len(events) != 2 {
+				t.Fatalf("Wrong numbers for events for TEST_USER_2, expected 1, but recieved %v", len(events))
+			}
+		}()
+		wg.Wait()
 	})
 }

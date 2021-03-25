@@ -66,7 +66,7 @@ func (app *App) methodCreateEvent(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-func (app *App) methodGetEvents(w http.ResponseWriter, r *http.Request) error {
+func (app *App) methodGetEvents(w http.ResponseWriter, r *http.Request) (err error) {
 	params := mux.Vars(r)
 	ctx := r.Context()
 
@@ -74,34 +74,54 @@ func (app *App) methodGetEvents(w http.ResponseWriter, r *http.Request) error {
 
 	userId, authLevel := app.checkAuthorization(r, userId, "", myself)
 	if authLevel == 0 {
-		err := fmt.Errorf("Current user is not authenticated to get events for user " + userId)
+		err = fmt.Errorf("Current user is not authenticated to get events for user " + userId)
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return err
 	}
 
-	squads, err := app.db.GetUserSquads(ctx, userId, "")
+	v := r.URL.Query()
+
+	var events interface{}
+	if v.Get("archived") != "" {
+		var timeFrom *time.Time
+		from := v.Get("from")
+		if from != "" {
+			tf, err := time.Parse(time.RFC3339, from)
+			if err != nil {
+				err = fmt.Errorf("Failed to convert from to a time struct: %w", err)
+				log.Println(err.Error())
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return err
+			}
+			timeFrom = &tf
+		}
+
+		filter := map[string]string{
+			"Status": v.Get("status"),
+		}
+		events, err = app.db.GetArchivedEvents(ctx, userId, timeFrom, &filter)
+	} else {
+		squads, err := app.db.GetUserSquads(ctx, userId, "")
+		if err == nil && len(squads) > 0 {
+			events, err = app.db.GetEvents(ctx, squads, userId)
+		}
+	}
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
 	}
 
-	if len(squads) > 0 {
-		events, err := app.db.GetEvents(ctx, squads, userId)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if events != nil {
 		err = json.NewEncoder(w).Encode(events)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return err
 		}
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 	}
 
 	return err
@@ -156,15 +176,16 @@ func (app *App) methodGetParticipants(w http.ResponseWriter, r *http.Request) (e
 	eventId := params["eventId"]
 	v := r.URL.Query()
 	from := v.Get("from")
-	var timeFrom time.Time
+	var timeFrom *time.Time
 	if from != "" {
-		timeFrom, err = time.Parse(time.RFC3339, from)
+		tf, err := time.Parse(time.RFC3339, from)
 		if err != nil {
 			err = fmt.Errorf("Failed to convert from to a time struct: %w", err)
 			log.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return err
 		}
+		timeFrom = &tf
 	}
 
 	filter := map[string]string{
@@ -189,7 +210,7 @@ func (app *App) methodGetParticipants(w http.ResponseWriter, r *http.Request) (e
 		return err
 	}
 
-	participants, err := app.db.GetParticipants(ctx, eventId, &timeFrom, &filter)
+	participants, err := app.db.GetParticipants(ctx, eventId, timeFrom, &filter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err

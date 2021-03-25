@@ -1,5 +1,3 @@
-const { createApp } = Vue
-
 const app = createApp( {
 	delimiters: ['[[', ']]'],
 	data(){

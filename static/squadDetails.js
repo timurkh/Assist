@@ -1,5 +1,3 @@
-const { createApp } = Vue
-
 const app = createApp( {
 	delimiters: ['[[', ']]'],
 	components: {
@@ -10,6 +8,7 @@ const app = createApp( {
 			loading:true,
 			error_message:"",
 			squadId:squadId,
+			squad:{},
 			notes:[],
 			tags:[],
 			newTag: {},

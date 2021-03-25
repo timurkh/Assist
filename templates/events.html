@@ -21,24 +21,25 @@
 		<add-event-dialog :evnt="newEvnt" :squads="squads" window-id="addEventModal" title="Create Event" v-on:submit-form="addEvent($event)"></add-event-dialog> 
 
 		<!-- Main View -->
-		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
-			[[ error_message ]]
-		</div>
 		<div class="d-flex flex-wrap">
-			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 mb-1 mx-1">
-				<ol class="breadcrumb mb-0 p-0">
-					<li class="breadcrumb-item active">My Events</li>
+			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 my-1 mx-1">
+				<ol class="breadcrumb my-0 p-0">
+					<li v-if="showArchived" class="breadcrumb-item active"><a href="#" @click="toggleShowArchived()"> My Events </a> &nbsp;| Archived Events </li>
+					<li v-else class="breadcrumb-item active">My Events | <a href="#" @click="toggleShowArchived()">&nbsp;Archived Events</a> </li>
 				</ol>
 			</div>
 
-			<div v-if="Object.keys(squads).length > 0"  class="ml-auto p-0 mr-1 mb-1">
+			<div v-if="!showArchived && Object.keys(squads).length>0"  class="ml-auto p-0 mr-1 my-1">
 				<button type="button" class="btn btn-info add-new p-1 ml-1" data-toggle="modal" data-target="#addEventModal"><i class="fa fa-plus"></i> Create Event</button>
 			</div>
+		</div>
+		<div v-if="error_message.length > 0" class="alert alert-danger m-1 mt-2 text-wrap text-break" role="alert">
+			[[ error_message ]]
 		</div>
 
 		<div class="mx-3">
 			<div class="m-1">
-				<div v-for="(e, i) in events" class="row border pb-3">
+				<div v-for="(e, i) in getEvents()" class="row border pb-3">
 					<div class="col-sm-2">
 						<div class="d-flex justify-content-center align-items-center">
 							<h1 class="mb-0 mr-2 text-primary font-weight-normal">[[e.date.toLocaleString('en-US', {day : '2-digit'})]]</h1>
@@ -73,10 +74,10 @@
 						<a v-if="userIsAdmin || (squads[e.squadId] != null && squads[e.squadId].status > 1)" title="Check attendies" href="#" @click.stop.prevent="showAttendies(e, 0)">
 							<i class="m-3 fas fa-list-alt fa-lg"></i>
 						</a>
-						<a v-if="userIsAdmin || e.ownerId == currentUserId" title="Delete event" href="#" @click.stop.prevent="deleteEvent(e, i)">
+						<a v-if="!showArchived && (userIsAdmin || e.ownerId == currentUserId)" title="Delete event" href="#" @click.stop.prevent="deleteEvent(e, i)">
 							<i class="m-3 fa fa-trash fa-lg"></i>
 						</a>
-						<span v-if="e.ownerId != currentUserId" class="m-0 p-0">
+						<span v-if="!showArchived && (e.ownerId != currentUserId)" class="m-0 p-0">
 							<a v-if="e.status == 0" title="Count me in!" href="#" @click.stop.prevent="registerForEvent(e, i)">
 								<i class="m-3 fas fa-sign-in-alt fa-lg"></i>
 							</a>
@@ -87,6 +88,15 @@
 					</div>
 				</div>
 			</div>
+		</div>
+
+		<div v-if="getting_more" class="mt-5" align="center">
+			<div class="spinner-border" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+		<div v-else class="m-3" align="center">
+			<button v-if="moreRecordsAvailable" type="button" class="btn btn-secondary btn-lg" v-on:click="getMore()">See More</button>
 		</div>
 	</div>
 </div>

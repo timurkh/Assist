@@ -1,3 +1,5 @@
+const { createApp } = Vue
+
 const globalMixin = {
 	data() {
 		return {
@@ -6,7 +8,7 @@ const globalMixin = {
 		}
 	},
 	methods: {
-		getDate(date) {
+		getDate : function(date) {
 			return date.toLocaleString('ru', {
 				    day:   '2-digit',
 				    month: '2-digit',
@@ -58,26 +60,34 @@ const globalMixin = {
 	},
 };
 
+const navbar = createApp( {
+	delimiters: ['[[', ']]'],
+	created:function() {
+		// Initialize Firebase
+		firebase.initializeApp(firebaseConfig);
+		firebase.analytics();
+	},
+	methods : {
+		postSignOut : function() {
+			// POST to session login endpoint.
+			axios({
+				method: 'POST',
+				url: '/sessionLogout',
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then(function() {
+				// Redirect to profile on success.
+				window.location.assign('/login');
+			}, function(error) {
+				// Refresh page on error.
+				// In all cases, client side state should be lost due to in-memory
+				// persistence.
+				console.log(error);
+			});
+		},
+	},
+	mixins: [globalMixin],
+}).mount("#navbar");
+
 const csrfToken = document.getElementsByName("gorilla.csrf.Token")[0].value;
 
-const postSignOut = function() {
-	// POST to session login endpoint.
-	axios({
-		method: 'POST',
-		url: '/sessionLogout',
-		headers: { "X-CSRF-Token": csrfToken },
-	})
-	.then(function() {
-		// Redirect to profile on success.
-		window.location.assign('/login');
-	}, function(error) {
-		// Refresh page on error.
-		// In all cases, client side state should be lost due to in-memory
-		// persistence.
-		console.log(error);
-	});
-}
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-firebase.analytics();

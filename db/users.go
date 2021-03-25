@@ -127,14 +127,14 @@ func (db *FirestoreDB) CreateUser(ctx context.Context, userId string, userInfo *
 func (db *FirestoreDB) propagateChangedUserInfo(userId string, field string, val interface{}) {
 	ctx := context.Background()
 	docUser := db.Users.Doc(userId)
-	docSnapshot, err := docUser.Get(ctx)
+	doc, err := docUser.Get(ctx)
 	if err != nil {
 		log.Printf("Failed to get user "+userId+": %v", err)
 		return
 	}
 
 	ui := &UserInfo{}
-	docSnapshot.DataTo(ui)
+	doc.DataTo(ui)
 
 	iter := docUser.Collection(USER_SQUADS).Documents(ctx)
 	defer iter.Stop()
@@ -182,6 +182,7 @@ func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecor
 			Email:       userRecord.Email,
 			PhoneNumber: userRecord.PhoneNumber,
 		}
+
 		db.CreateUser(ctx, userId, userInfo, PendingApprove)
 
 		if err != nil {

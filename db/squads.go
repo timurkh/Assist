@@ -437,7 +437,7 @@ func (db *FirestoreDB) FlushSquadSize(ctx context.Context, squadId string) error
 
 	doc := db.Squads.Doc(squadId)
 
-	snapshotsIter := doc.Collection(MEMBERS).Where("Replicant", "==", true).Snapshots(ctx)
+	snapshotsIter := doc.Collection(MEMBERS).Where("Replicant", "==", true).Select().Snapshots(ctx)
 	defer snapshotsIter.Stop()
 	snapshot, err := snapshotsIter.Next()
 

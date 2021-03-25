@@ -116,6 +116,13 @@ func (app *App) userinfoHandler(w http.ResponseWriter, r *http.Request) error {
 			log.Printf("Got error while checking user name uniqueness: %v", err)
 		}
 
+		// auto approve
+		if !currentUserInfo.ContactInfoIssues {
+			app.db.SetSquadMemberStatus(r.Context(), u.UID, assist_db.ALL_USERS_SQUAD, assist_db.Member)
+			currentUserInfo.PendingApprove = false
+			http.Redirect(w, r, "/home", http.StatusFound)
+			return nil
+		}
 	}
 
 	return userinfoTmpl.ExecuteWithSession(app, w, r, Values{
