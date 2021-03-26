@@ -130,8 +130,10 @@ func (db *FirestoreDB) CreateEvent(ctx context.Context, event *EventInfo) (id st
 			return "", err
 		}
 
-		event.Status = EventOwner
-		db.addEventRecordToParticipant(ctx, event.OwnerId, doc.ID, event)
+		go func() {
+			event.Status = EventOwner
+			db.addEventRecordToParticipant(context.Background(), event.OwnerId, doc.ID, event)
+		}()
 
 		return doc.ID, nil
 	}

@@ -154,6 +154,9 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 	rm.Methods("DELETE").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodRemoveParticipant))
 	rm.Methods("GET").Path("/events/{eventId}/candidates").Handler(appHandler(app.methodGetCandidates))
 
+	// notifications
+	rm.Methods("POST").Path("/users/{userId}/notifications").Handler(appHandler(app.methodSubscribeToNotifications))
+
 	rm.Use(app.assertAuthWasChecked)
 }
 

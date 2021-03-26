@@ -63,9 +63,12 @@ type appTemplate struct {
 // Execute writes the template using the provided data.
 func (tmpl *appTemplate) ExecuteWithSession(app *App, w http.ResponseWriter, r *http.Request, values Values) error {
 
-	values["Session"] = app.sd.getCurrentUserData(r)
+	userData := app.sd.getCurrentUserData(r)
+	values["Session"] = userData
 	values["CSRFTag"] = csrf.TemplateField(r)
 	values["Dev"] = app.dev
+	values["NotificationsCount"] = app.ntfs.GetNotificationsCount(userData.UID)
+	values["MessagingToken"] = app.ntfs.GetUserToken(userData.UID)
 
 	if err := tmpl.Execute(w, values); err != nil {
 		log.Panicf("could not write template: %v", err)

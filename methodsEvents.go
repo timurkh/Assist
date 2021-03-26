@@ -3,6 +3,7 @@ package main
 import (
 	"assist/db"
 	assist_db "assist/db"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -51,6 +52,14 @@ func (app *App) methodCreateEvent(w http.ResponseWriter, r *http.Request) error 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
 	}
+
+	go func() {
+		memberIds, err := app.db.GetSquadMemberIds(context.Background(), event.SquadId, []int{int(assist_db.Admin), int(assist_db.Member)})
+		if err != nil {
+			log.Println("Failed to get list of squad " + event.SquadId + " members, will not be able to create notifications")
+		}
+		app.ntfs.createNotification(memberIds, "New event '"+event.Text+"' created")
+	}()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

@@ -3,6 +3,15 @@
 
 <div id="app" class="m-1 p-1">
 
+	{{if .MemStats}}
+	<div>
+		<table class="table-responsive table-sm table-borderless">
+			{{.MemStats}}
+		</table>
+	</div>
+	<hr>
+	{{end}}
+
 	<div id="toc">
 		 [[toc]]
 	</div>

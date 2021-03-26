@@ -2,8 +2,10 @@ package main
 
 import (
 	assist_db "assist/db"
+	"fmt"
 	"log"
 	"net/http"
+	"runtime"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -71,10 +73,26 @@ func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {
 	return homeTmpl.ExecuteWithSession(app, w, r, Values{})
 }
 
+func bToMb(n uint64) uint64 {
+	return n / 1024 / 1024
+}
+
 func (app *App) aboutHandler(w http.ResponseWriter, r *http.Request) error {
 
 	if app.sd.getCurrentUserID(r) != "" {
-		return aboutTmpl.ExecuteWithSession(app, w, r, Values{})
+
+		values := Values{}
+		if app.sd.getCurrentUserData(r).Admin {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			info := fmt.Sprintf("<tr><td>Allocated heap objects (Alloc)</td><td>%v MiB</td></tr>", bToMb(m.Alloc))
+			info += fmt.Sprintf("<tr><td>Total allocated (TotalAlloc)</td><td>%v MiB</td></tr>", bToMb(m.TotalAlloc))
+			info += fmt.Sprintf("<tr><td>Memory obtained from OS (Sys)</td><td>%v MiB</td></tr>", bToMb(m.Sys))
+			info += fmt.Sprintf("<tr><td>Stack memory (StackSys)</td><td>%v</td></tr>", bToMb(m.StackSys))
+			info += fmt.Sprintf("<tr><td>Goroutines num</td><td>%v</td></tr>", runtime.NumGoroutine())
+			values = Values{"MemStats": info}
+		}
+		return aboutTmpl.ExecuteWithSession(app, w, r, values)
 	} else {
 		return aboutTmpl.Execute(w, nil)
 	}

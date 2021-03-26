@@ -61,13 +61,89 @@ const globalMixin = {
 };
 
 const navbar = createApp( {
+	data() {
+		return {
+			notificationsCount: notificationsCount,
+			notificationsEnabled: false,
+			notificationsFailure: false,
+			messaging: {},
+		}
+	},
 	delimiters: ['[[', ']]'],
 	created:function() {
 		// Initialize Firebase
 		firebase.initializeApp(firebaseConfig);
 		firebase.analytics();
+
+		let ne = localStorage.getItem('notificationsEnabled');
+		this.notificationsEnabled = (ne == 'true');
+		
+		this.initMessaging();
 	},
 	methods : {
+		toggleNotifications:function() {
+			localStorage.notificationsEnabled = this.notificationsEnabled;
+			if (this.notificationsEnabled)
+				this.setupNotifications();
+			else
+				this.notificationsFailure = false;
+		},
+		initMessaging:function() {
+			console.log("Initializing, ne = " + this.notificationsEnabled);
+			this.messaging = firebase.messaging();
+
+			// Register service worker
+			navigator.serviceWorker.register('/static/messaging/firebase-messaging-sw.js')
+			.then((registration) => {
+				this.messaging.useServiceWorker(registration);
+				this.catchMessages(this.messaging);	
+
+			});
+		},
+		setupNotifications:function() {
+			console.log("setupNotifications");
+			this.notificationsFailure = true;
+			Notification.requestPermission().then((permission) => {
+				if (permission === 'granted') {
+					// Send token to server
+					console.log("getting token");
+					this.messaging.getToken({vapidKey: 'BI4lx3GzJJfqbuv6COQ64ZIQcV5pBjTEMBAVby6ynjXrZV6D5FH8WEcpfWnm6a8z83brLRMo26QghpbShMygscc'})
+					.then((currentToken) => {
+						console.log("messagingToken = " + currentToken);
+						if (currentToken) {
+							if (messagingToken != currentToken) {
+								console.log('Sending token ' + currentToken + ' to server...');
+								axios({
+									method: 'POST',
+									url: `/methods/users/me/notifications`,
+									data: {
+										token: currentToken,
+									},
+									headers: { "X-CSRF-Token": csrfToken },
+								})
+								.then( res => {
+									this.catchMessages(this.messaging);	
+								});
+							} else {
+								this.catchMessages(this.messaging);					
+							}
+						}
+					})
+					.catch( err => {
+						console.log(err);
+					});
+				}
+			});
+		},
+		catchMessages:function(messaging) {
+			// ok, success!
+			this.notificationsFailure = false;
+			messaging.onMessage((payload) => {
+				console.log('Message received. ', payload);
+				this.notificationsCount = payload.data.count;
+
+			});
+		},
 		postSignOut : function() {
 			// POST to session login endpoint.
 			axios({

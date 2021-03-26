@@ -44,12 +44,18 @@ func initApp(dev bool) (*App, error) {
 	app.sm = su
 	app.sd = su
 
+	app.ntfs, err = InitNotifications(fireapp, dev)
+	if err != nil {
+		log.Fatalf("Failed to init notifications: %v", err)
+	}
+
 	return &app, nil
 }
 
 type App struct {
 	logWriter io.Writer
 	db        *assist_db.FirestoreDB
+	ntfs      *Notifications
 	sd        SessionDataGetter
 	sm        SessionMiddleware
 	dev       bool

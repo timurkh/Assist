@@ -109,7 +109,7 @@
 					<tr class="" v-for="(squad, index) in own_squads">
 
 						<td class="text-wrap">
-							<a v-if="squad.status>=1" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.id]]</a>
+							<a v-if="squad.status>=1 && squad.id!='All Users'" href="#" v-on:click="showSquadDetails(squad.id, index)">[[squad.id]]</a>
 							<div v-else>[[squad.id]]</div>
 						</td>
 						<td class="text-wrap">
@@ -119,7 +119,7 @@
 						<td class="text-truncate">[[squad.pendingApproveCount]]</td>
 						<td class="text-truncate">[[getStatusText(squad.status)]]</td>
 						<td class="text-wrap" align="center">
-							<span v-if="userIsAdmin || squad.status >= 1">
+							<span v-if="(userIsAdmin || squad.status >= 1) && squad.id!='All Users'">
 								<a title="Details" data-toggle="tooltip" v-on:click="showSquadDetails(squad.id, index)" href="#"><i class="fas fa-info-circle fa-lg p-1"></i></a>
 							</span>
 							<span v-if="userIsAdmin || squad.status >= 2">

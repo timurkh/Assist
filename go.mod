@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/firestore v1.4.0
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/algolia/algoliasearch-client-go/v3 v3.16.0 // indirect
+	github.com/allegro/bigcache/v3 v3.0.0
 	github.com/boyter/scc v2.12.0+incompatible // indirect
 	github.com/dbaggerman/cuba v0.3.2 // indirect
 	github.com/google/uuid v1.1.2
@@ -15,6 +16,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/cobra v1.1.3 // indirect

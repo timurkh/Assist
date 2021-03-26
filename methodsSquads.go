@@ -343,6 +343,16 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 
+	if memberStatus == assist_db.PendingApprove {
+		go func() {
+			squadAdmins, err := app.db.GetSquadMemberIds(ctx, squadId, []int{int(assist_db.Admin), int(assist_db.Owner)})
+			if err != nil {
+				log.Println("Failed to get list of squad " + squadId + " admins, will not be able to create notifications")
+			}
+			app.ntfs.createNotification(squadAdmins, "User "+app.sd.getCurrentUserData(r).DisplayName+" wants to join "+squadId)
+		}()
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(squadInfo)

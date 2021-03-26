@@ -27,7 +27,7 @@
 			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 my-1 mx-1">
 				<ol class="breadcrumb my-0 p-0">
 					<li class="breadcrumb-item d-none d-sm-block">My Squads</li>
-					<li class="breadcrumb-item active">"{{.SquadID}}" | &nbsp; <a href="/squads/{{.SquadID}}"> Details</a></li>
+					<li v-if="'{{.SquadID}}'!='All Users'" class="breadcrumb-item active">"{{.SquadID}}" | &nbsp; <a href="/squads/{{.SquadID}}"> Details</a></li>
 				</ol>
 			</div>
 			<div v-if="squadId != `All Users`" class="ml-auto p-0 mr-1 my-1">

@@ -30,6 +30,11 @@
 	<body class="bg-light">
 
 		{{.CSRFTag}}
+		<script> 
+			var messagingToken = "{{.MessagingToken}}";
+			var userId = "{{.Session.UID}}"; 
+			var notificationsCount = {{.NotificationsCount}};
+		</script>
 
 		<nav id="navbar" class="navbar navbar-expand-sm bg-dark navbar-dark">
 			<a class="navbar-brand" href="#">Assist</a>
@@ -53,8 +58,14 @@
 				{{if .Session}}
 					<li> <a id="navbar-userinfo" class="nav-link" href="/userinfo">{{.Session.DisplayName}} ({{.Session.Email}})</a> </li>
 					<li>
+						<div class="custom-control custom-switch m-2">
+							<input type="checkbox" class="custom-control-input" id="switchNotifications" v-model="notificationsEnabled" :disabled="notificationsFailure" @change="toggleNotifications">
+							<label class="text-light custom-control-label" for="switchNotifications">Enable notifications</label>
+						</div>
+					</li>
+					<li v-if="notificationsCount>0">
 						<span class="fa-stack fa-1x m-1">
-							<a class="notifications" data-count="28" href="#" onclick="$('.toast').toast('show')">
+							<a class="notifications" :data-count="notificationsCount" href="#" onclick="$('.toast').toast('show')">
 								<i class="fa fa-circle fa-stack-2x"></i>
 								<i class="fa fa-bell fa-stack-1x fa-inverse"></i>
 							</a>
