@@ -32,8 +32,12 @@
 		{{.CSRFTag}}
 		<script> 
 			var messagingToken = "{{.MessagingToken}}";
+		{{if .Session }}
 			var userId = "{{.Session.UID}}"; 
 			var notificationsCount = {{.NotificationsCount}};
+		{{else}}
+			var notificationsCount = 0;
+		{{end}}
 		</script>
 
 		<nav id="navbar" class="navbar navbar-expand-sm bg-dark navbar-dark">
@@ -60,7 +64,7 @@
 					<li>
 						<div class="custom-control custom-switch m-2">
 							<input type="checkbox" class="custom-control-input" id="switchNotifications" v-model="notificationsEnabled" :disabled="notificationsFailure" @change="toggleNotifications">
-							<label class="text-light custom-control-label" for="switchNotifications">Enable notifications</label>
+							<label class="text-light custom-control-label" for="switchNotifications">Notifications</label>
 						</div>
 					</li>
 					<li v-if="notificationsCount>0">

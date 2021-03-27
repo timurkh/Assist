@@ -83,13 +83,20 @@ const navbar = createApp( {
 	methods : {
 		toggleNotifications:function() {
 			localStorage.notificationsEnabled = this.notificationsEnabled;
-			if (this.notificationsEnabled)
-				this.setupNotifications();
+			if (this.notificationsEnabled) {
+				this.notificationsFailure = true;
+				Notification.requestPermission().then((permission) => {
+					if (permission === 'granted') {
+						this.setupNotifications();
+					} else {
+						console.log("user did not grant permissions to recieve notifications");
+					}
+				});
+			}
 			else
 				this.notificationsFailure = false;
 		},
 		initMessaging:function() {
-			console.log("Initializing, ne = " + this.notificationsEnabled);
 			this.messaging = firebase.messaging();
 
 			// Register service worker
@@ -97,42 +104,37 @@ const navbar = createApp( {
 			.then((registration) => {
 				this.messaging.useServiceWorker(registration);
 				this.catchMessages(this.messaging);	
-
+				if (this.notificationsEnabled)
+					this.setupNotifications();
 			});
 		},
 		setupNotifications:function() {
-			console.log("setupNotifications");
-			this.notificationsFailure = true;
-			Notification.requestPermission().then((permission) => {
-				if (permission === 'granted') {
-					// Send token to server
-					console.log("getting token");
-					this.messaging.getToken({vapidKey: 'BI4lx3GzJJfqbuv6COQ64ZIQcV5pBjTEMBAVby6ynjXrZV6D5FH8WEcpfWnm6a8z83brLRMo26QghpbShMygscc'})
-					.then((currentToken) => {
-						console.log("messagingToken = " + currentToken);
-						if (currentToken) {
-							if (messagingToken != currentToken) {
-								console.log('Sending token ' + currentToken + ' to server...');
-								axios({
-									method: 'POST',
-									url: `/methods/users/me/notifications`,
-									data: {
-										token: currentToken,
-									},
-									headers: { "X-CSRF-Token": csrfToken },
-								})
-								.then( res => {
-									this.catchMessages(this.messaging);	
-								});
-							} else {
-								this.catchMessages(this.messaging);					
-							}
-						}
-					})
-					.catch( err => {
-						console.log(err);
-					});
+			// Send token to server
+			console.log("getting token");
+			this.messaging.getToken({vapidKey: 'BI4lx3GzJJfqbuv6COQ64ZIQcV5pBjTEMBAVby6ynjXrZV6D5FH8WEcpfWnm6a8z83brLRMo26QghpbShMygscc'})
+			.then((currentToken) => {
+				console.log("messagingToken = " + currentToken);
+				if (currentToken) {
+					if (messagingToken != currentToken) {
+						console.log('Sending token ' + currentToken + ' to server...');
+						axios({
+							method: 'POST',
+							url: `/methods/users/me/notifications`,
+							data: {
+								token: currentToken,
+							},
+							headers: { "X-CSRF-Token": csrfToken },
+						})
+						.then( res => {
+							this.catchMessages(this.messaging);	
+						});
+					} else {
+						this.catchMessages(this.messaging);					
+					}
 				}
+			})
+			.catch( err => {
+				console.log(err);
 			});
 		},
 		catchMessages:function(messaging) {
@@ -142,6 +144,7 @@ const navbar = createApp( {
 				console.log('Message received. ', payload);
 				this.notificationsCount = payload.data.count;
 
+				new Notification('There are ' + payload.data.count + ' new notifications', { body: payload.data.text, icon: '/favicon.ico' });
 			});
 		},
 		postSignOut : function() {
