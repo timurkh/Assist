@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/patrickmn/go-cache"
 	"google.golang.org/api/iterator"
 )
 
@@ -147,7 +148,7 @@ func (db *FirestoreDB) GetEvent(ctx context.Context, ID string) (*EventInfo, err
 		log.Println("Getting details for event " + ID)
 	}
 
-	v, found := db.eventDataCache.Load(ID)
+	v, found := db.eventDataCache.Get(ID)
 	if found {
 		return v.(*EventInfo), nil
 	} else {
@@ -162,7 +163,7 @@ func (db *FirestoreDB) GetEvent(ctx context.Context, ID string) (*EventInfo, err
 			return nil, fmt.Errorf("Failed to get event "+ID+": %w", err)
 		}
 
-		db.eventDataCache.Store(ID, s)
+		db.eventDataCache.Set(ID, s, cache.DefaultExpiration)
 		return s, nil
 	}
 }

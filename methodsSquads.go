@@ -221,7 +221,7 @@ func (app *App) methodGetSquad(w http.ResponseWriter, r *http.Request) error {
 	errs := make([]error, 3)
 	var ret struct {
 		*db.SquadInfo
-		OwnerInfo *db.UserInfo              `json:"ownerInfo"`
+		OwnerInfo *db.UserData              `json:"ownerInfo"`
 		Admins    []*db.SquadUserInfoRecord `json:"admins"`
 	}
 
@@ -231,7 +231,7 @@ func (app *App) methodGetSquad(w http.ResponseWriter, r *http.Request) error {
 	go func() {
 		ret.SquadInfo, errs[0] = app.db.GetSquad(r.Context(), squadId)
 		if errs[0] == nil {
-			ret.OwnerInfo, errs[2] = app.db.GetUser(r.Context(), ret.SquadInfo.Owner)
+			ret.OwnerInfo, errs[2] = app.db.GetUserData(r.Context(), ret.SquadInfo.Owner)
 		}
 
 		wg.Done()

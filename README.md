@@ -14,11 +14,13 @@ Squad admins & owner can create notes per squad and per squad member. Squad Note
 ##### Tags
 Admins can create Squad Tags, and assign those tags to members. Tags might have values, values are exclusive (only one tag value can be assigned to same member).
 
-### Technologies, source codes, reliability
+### Technologies, source codes, reliability, costs
 
 This app is written using Go + JS (Vue) + Bootstrap styles and hosted at Google App Engine. Firebase Authentication is used as identity service, Firestore DB is used to store data. Source codes are available [here](https://github.com/timurkh/Assist/).
 
-This system uses Google Application Free tier and might get suspended if monthly quota is exceeded. While quota is quite material, there is always an option to deploy the system to your own subscription. Get in touch with author if you want to do it.
+This system uses Google Application Free tier and might get suspended if monthly quota is exceeded. While quota is quite material (5-10 k pages rendered per day), it is much safer to have the system hosted in your own Google Cloud subscription. Get in touch with author if you want to do it, I will help to deploy.
+
+Also it is possible to reduce Firestore usage, holding more data in memory and thus making fewer read requests (50k requests per day are free as of today).
 
 ### About author and why this application was created
 

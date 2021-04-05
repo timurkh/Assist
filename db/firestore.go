@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
+	"github.com/patrickmn/go-cache"
 	"google.golang.org/api/iterator"
 )
 
@@ -24,9 +25,9 @@ type FirestoreDB struct {
 	Users             *firestore.CollectionRef
 	Events            *firestore.CollectionRef
 	updater           *AsyncUpdater
-	userDataCache     sync.Map
-	memberStatusCache sync.Map
-	eventDataCache    sync.Map
+	userDataCache     *cache.Cache
+	memberStatusCache *cache.Cache
+	eventDataCache    *cache.Cache
 }
 
 var testPrefix string = ""
@@ -66,13 +67,20 @@ func NewFirestoreDB(fireapp *firebase.App, dev bool) (*FirestoreDB, error) {
 		return nil, fmt.Errorf("Could not connect to database: %v", err)
 	}
 
+	uc := cache.New(24*time.Hour, 10*time.Minute)
+	sc := cache.New(24*time.Hour, 10*time.Minute)
+	ec := cache.New(24*time.Hour, 10*time.Minute)
+
 	return &FirestoreDB{
-		dev:     dev,
-		Client:  dbClient,
-		Squads:  dbClient.Collection(testPrefix + "squads"),
-		Users:   dbClient.Collection(testPrefix + "squads").Doc(ALL_USERS_SQUAD).Collection("members"),
-		Events:  dbClient.Collection(testPrefix + "events"),
-		updater: initAsyncUpdater(),
+		dev:               dev,
+		Client:            dbClient,
+		Squads:            dbClient.Collection(testPrefix + "squads"),
+		Users:             dbClient.Collection(testPrefix + "squads").Doc(ALL_USERS_SQUAD).Collection("members"),
+		Events:            dbClient.Collection(testPrefix + "events"),
+		updater:           initAsyncUpdater(),
+		userDataCache:     uc,
+		memberStatusCache: sc,
+		eventDataCache:    ec,
 	}, nil
 }
 

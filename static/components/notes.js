@@ -26,12 +26,12 @@ const AddNoteDialog = {
 					<form>
 						<div class="modal-body">
 							<div class="form-group">
-								<label for="noteTitle">Title</label>
-								<input type="text" id="noteTitle" class="form-control" v-model="note.title">
+								<label> Title </label>
+								<input type="text" class="form-control" v-model="note.title">
 							</div>
 							<div class="form-group">
-								<label for="noteText">Note</label>
-								<textarea id="noteText" class="form-control" v-model="note.text"></textarea>
+								<label> Note </label>
+								<textarea class="form-control" v-model="note.text"></textarea>
 							</div>
 						</div>
 						<div class="modal-footer">

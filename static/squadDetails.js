@@ -14,6 +14,7 @@ const app = createApp( {
 			newTag: {},
 			noteToEdit:{},
 			noteNew:{},
+			newQueue:{},
 		};
 	},
 	created:function() {

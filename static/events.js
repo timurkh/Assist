@@ -14,6 +14,7 @@ const app = createApp( {
 			archivedEvents:null,
 			currentUserId:currentUserId,
 			moreRecordsAvailable:false,
+			moreArchivedRecordsAvailable:false,
 			getting_more:false,
 		}
 	},
@@ -131,7 +132,7 @@ const app = createApp( {
 				axios.get(`/methods/users/me/events`, {params : {archived: true}})
 				.then(res => {
 					this.archivedEvents = res.data.map(x => {x.date = new Date(x.date); return x});
-					this.moreRecordsAvailable = res.data.length == 10;
+					this.moreArchivedRecordsAvailable = res.data.length == 10;
 
 					this.loading = false;
 				})
@@ -147,12 +148,24 @@ const app = createApp( {
 			else
 				return this.events;
 		},
+		getMoreRecordsAvailable() {
+			if(this.showArchived)
+				return this.moreArchivedRecordsAvailable;
+			else
+				return this.moreRecordsAvailable;
+		},
+		setMoreRecordsAvailable(b) {
+			if(this.showArchived)
+				this.moreArchivedRecordsAvailable = b;
+			else
+				this.moreRecordsAvailable = b;
+		},
 		getMore:function() {
 			this.getting_more = true;
 			let lastMember = this.getEvents()[this.getEvents().length-1];
 			axios.get(`/methods/users/me/events`, {params : {archived: true, from : lastMember.date}})
 			.then(res => {
-				this.moreRecordsAvailable = res.data.length == 10;
+				this.setMoreRecordsAvailable(res.data.length == 10);
 				if(this.showArchived)
 					this.archivedEvents =  [...this.archivedEvents, ...res.data.map(x => {x.date = new Date(x.date); return x})];
 				else 

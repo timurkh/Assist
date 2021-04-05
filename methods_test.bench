@@ -1,19 +1,25 @@
 === RUN   TestInit
 === RUN   TestInit/Init_test_app_
---- PASS: TestInit (0.53s)
-    --- PASS: TestInit/Init_test_app_ (0.53s)
+--- PASS: TestInit (0.46s)
+    --- PASS: TestInit/Init_test_app_ (0.45s)
 goos: linux
 goarch: amd64
 pkg: assist
 BenchmarkMethodGetHome
-BenchmarkMethodGetHome-4                                  	      13	  78743931 ns/op
+BenchmarkMethodGetHome-4                                  	      14	  78339764 ns/op
 BenchmarkGetHome_DBCounters_SquadsCount
-BenchmarkGetHome_DBCounters_SquadsCount-4                 	      15	  71907547 ns/op
+BenchmarkGetHome_DBCounters_SquadsCount-4                 	      16	  67704606 ns/op
 BenchmarkGetHome_DBCounters_SquadsWithPendingRequests
-BenchmarkGetHome_DBCounters_SquadsWithPendingRequests-4   	      15	  76147247 ns/op
+BenchmarkGetHome_DBCounters_SquadsWithPendingRequests-4   	      15	  71113773 ns/op
+BenchmarkGetHome_DBCounters_UserEvents
+BenchmarkGetHome_DBCounters_UserEvents-4                  	      18	  64436539 ns/op
 BenchmarkMethodGetMembers
-BenchmarkMethodGetMembers-4                               	      14	  79541564 ns/op
+BenchmarkMethodGetMembers-4                               	      15	  75693067 ns/op
 BenchmarkMethodGetSquad
-BenchmarkMethodGetSquad-4                                 	       8	 133667262 ns/op
+BenchmarkMethodGetSquad-4                                 	      15	  67284473 ns/op
+BenchmarkGetHome_DBGetSquad
+BenchmarkGetHome_DBGetSquad-4                             	      19	  63461574 ns/op
+BenchmarkGetHome_DBSquadAdminMembers
+BenchmarkGetHome_DBSquadAdminMembers-4                    	      18	  65789794 ns/op
 PASS
-ok  	assist	10.614s
+ok  	assist	16.639s

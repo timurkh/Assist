@@ -49,23 +49,6 @@ const app = createApp( {
 	},
 	methods: {
 
-		getTagValues : function(tags) {
-			let tagValues = [];
-			let i=0;
-			while(tags.length>i) {
-				let tag = tags[i];
-				values = Object.entries(tag.values);
-				if (values.length > 1) {
-					for (const [key, value] of values) {
-						tagValues.push(tag.name + "/" + key);
-					}
-				} else {
-					tagValues.push(tag.name);
-				}
-				i++;
-			}
-			return tagValues;
-		},
 		changeStatus:function(member, index) {
 			this.participantToChange = member;
 			this.participantToChange.index = index;

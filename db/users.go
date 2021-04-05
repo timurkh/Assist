@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"firebase.google.com/go/auth"
+	"github.com/patrickmn/go-cache"
 	"google.golang.org/api/iterator"
 )
 
@@ -19,11 +20,10 @@ type UserInfo struct {
 }
 
 type UserData struct {
-	UID         string
-	DisplayName string
-	Email       string
-	Status      MemberStatusType
-	Admin       bool
+	UID string
+	UserInfo
+	Status MemberStatusType
+	Admin  bool
 }
 
 type UserInfoRecord struct {
@@ -58,7 +58,7 @@ func (ui *UserInfo) Keys() []string {
 	return ret
 }
 
-func (db *FirestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo, err error) {
+func (db *FirestoreDB) GetUserInfo(ctx context.Context, userId string) (u *UserInfo, err error) {
 	doc, err := db.Users.Doc(userId).Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get user "+userId+": %w", err)
@@ -72,7 +72,7 @@ func (db *FirestoreDB) GetUser(ctx context.Context, userId string) (u *UserInfo,
 
 func (db *FirestoreDB) GetUserData(ctx context.Context, userId string) (sd *UserData, err error) {
 
-	v, found := db.userDataCache.Load(userId)
+	v, found := db.userDataCache.Get(userId)
 	if found {
 		return v.(*UserData), nil
 	} else {
@@ -87,7 +87,7 @@ func (db *FirestoreDB) GetUserData(ctx context.Context, userId string) (sd *User
 		ud.UID = userId
 		ud.Admin = ud.Status == Admin
 
-		db.userDataCache.Store(userId, ud)
+		db.userDataCache.Set(userId, ud, cache.DefaultExpiration)
 		return ud, nil
 	}
 }
@@ -173,11 +173,11 @@ func (db *FirestoreDB) UpdateUser(ctx context.Context, userId string, field stri
 
 func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecord *auth.UserRecord) error {
 	userId := userRecord.UID
-	userInfo, err := db.GetUser(ctx, userId)
+	userData, err := db.GetUserData(ctx, userId)
 	if err != nil {
 		log.Println("Failed to get user " + userId + " from DB, adding new record to users collection")
 
-		userInfo = &UserInfo{
+		userInfo := &UserInfo{
 			DisplayName: userRecord.DisplayName,
 			Email:       userRecord.Email,
 			PhoneNumber: userRecord.PhoneNumber,
@@ -189,10 +189,10 @@ func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecor
 			return fmt.Errorf("Failed to add user to database: %w", err)
 		}
 	} else {
-		if len(userRecord.Email) > 0 && userInfo.Email != userRecord.Email {
+		if len(userRecord.Email) > 0 && userData.Email != userRecord.Email {
 			db.UpdateUser(ctx, userId, "Email", userRecord.Email)
 		}
-		if len(userRecord.PhoneNumber) > 0 && userInfo.PhoneNumber != userRecord.PhoneNumber {
+		if len(userRecord.PhoneNumber) > 0 && userData.PhoneNumber != userRecord.PhoneNumber {
 			db.UpdateUser(ctx, userId, "PhoneNumber", userRecord.PhoneNumber)
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/patrickmn/go-cache"
 	"google.golang.org/api/iterator"
 )
 
@@ -487,7 +488,7 @@ func (db *FirestoreDB) FlushSquadSize(ctx context.Context, squadId string) error
 func (db *FirestoreDB) GetSquadMemberStatus(ctx context.Context, userId string, squadId string) (MemberStatusType, error) {
 
 	cacheKey := squadId + "/" + userId
-	v, found := db.memberStatusCache.Load(cacheKey)
+	v, found := db.memberStatusCache.Get(cacheKey)
 	if found {
 		return v.(MemberStatusType), nil
 	} else {
@@ -498,7 +499,7 @@ func (db *FirestoreDB) GetSquadMemberStatus(ctx context.Context, userId string, 
 		status, ok := doc.Data()["Status"]
 		if ok {
 			t := MemberStatusType(status.(int64))
-			db.memberStatusCache.Store(cacheKey, t)
+			db.memberStatusCache.Set(cacheKey, t, cache.DefaultExpiration)
 			return t, nil
 		} else {
 			return 0, fmt.Errorf("Failed to get squad " + squadId + " status")
@@ -607,7 +608,7 @@ func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squa
 		log.Println("Adding user " + userId + " to squad " + squadId)
 	}
 
-	userInfo, err := db.GetUser(ctx, userId)
+	userInfo, err := db.GetUserInfo(ctx, userId)
 	if err != nil {
 		return nil, err
 	}

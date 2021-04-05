@@ -15,6 +15,45 @@
 		<note-dialog :note="noteNew" window-id="addNoteModal" title="Add Note" v-on:submit-form="addNote($event)"></note-dialog>
 		<note-dialog :note="noteToEdit" window-id="editNoteModal" title="Edit Note" v-on:submit-form="saveNote($event)"></note-dialog>
 
+		<div class="modal fade" id="addRequestsQueueModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Add Requests Queue</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<form>
+							<div class="form-group">
+								<label for="newQueue">Name</label>
+								<input type="text" id="newQueue" class="form-control" v-model="newQueue.name">
+							</div>
+							<div class="form-group">
+								<label for="newQueueApprovers">Approvers</label>
+								<select id="newQueueApprovers" class="m-0 mb-1 pt-1 form-select" style="width:100%;" v-model="newQueue.approvers">
+									<option value="" selected></option>
+									<option v-for="tag in getTagValues(tags)" :value="tag">[[tag]]</option>
+								</select>
+								<small id="tagValuesHelp" class="form-text text-muted">If left empty, queue does not require approve</small>
+							</div>
+							<div class="form-group">
+								<label for="newQueueHandlers">Handlers</label>
+								<select id="newQueueHandlers" class="m-0 mb-1 pt-1 form-select" style="width:100%;" v-model="newQueue.handlers">
+									<option value="" selected></option>
+									<option v-for="tag in getTagValues(tags)" :value="tag">[[tag]]</option>
+								</select>
+								<small id="tagValuesHelp" class="form-text text-muted">Squad admins always can approver & handle requests</small>
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-primary" v-on:click="addTag()" data-dismiss="modal">Add</button>
+					</div>
+				</div>
+			</div>
+		</div>
 		<div class="modal fade" id="addTagModal" tabindex="-1" role="dialog">
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
@@ -63,22 +102,30 @@
 			<div class="ml-auto p-0 mr-1 my-1">
 				<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#addNoteModal"><i class="fa fa-plus"></i> Add Note</button>
 				<button type="button" class="btn btn-info add-new ml-1 p-1" data-toggle="modal" data-target="#addTagModal"><i class="fa fa-plus"></i> Add Tag</button>
+				<button type="button" class="btn btn-info add-new ml-1 p-1" data-toggle="modal" data-target="#addRequestsQueueModal"><i class="fa fa-plus"></i> Add Requests Queue</button>
 			</div>
 		</div>
 
 
 		<!-- Details -->
 		<div class="mb-3 border-gray p-0">
-			<div class="border m-1 p-3 bg-white rounded box-shadow" id="Details">
-				<h5 class="border-bottom border-gray pb-2 mb-0">Details</h6>
-				<h6 class="mt-2 mb-0"> Members: </h6>
+			<div class="border m-1 bg-white rounded box-shadow" id="Details">
+				<h5 class="border-bottom border-gray p-2 mx-2 mt-2 mb-0">Details</h6>
 
-				[[ squad.membersCount]] <span v-if="squad.pendingApproveCount > 0">([[squad.pendingApproveCount]] pending)</span>
-				
-				<h6 class="mt-2 mb-0" > Owner: </h6> 
-					[[squad.ownerInfo.displayName]]
-				<h6 class="mt-2 mb-0"> Admins: </h6> 
-				[[squad.admins.map(x => x.displayName).join(", ")]]
+				<div class="d-flex flex-wrap m-1 p-0">
+					<div class="border bg-light p-3 m-2">
+						<h6> Members: </h6>
+						[[ squad.membersCount]] <span v-if="squad.pendingApproveCount > 0">([[squad.pendingApproveCount]] pending)</span>
+					</div>
+					<div class="border bg-light p-3 m-2">
+						<h6> Owner: </h6> 
+						[[squad.ownerInfo.displayName]]
+					</div>
+					<div class="border bg-light p-3 m-2">
+						<h6> Admins: </h6> 
+						[[squad.admins.map(x => x.displayName).join(", ")]]
+					</div>
+				</div>
 			</div>
 		</div>
 

@@ -56,7 +56,24 @@ const globalMixin = {
 				return false;
 			let valuesCount = Object.entries(tag.values).length;
 			return valuesCount > 1 || (valuesCount == 1 && tag.values._ == null);
-		}
+		},
+		getTagValues : function(tags) {
+			let tagValues = [];
+			let i=0;
+			while(tags.length>i) {
+				let tag = tags[i];
+				values = Object.entries(tag.values);
+				if (values.length > 1) {
+					for (const [key, value] of values) {
+						tagValues.push(tag.name + "/" + key);
+					}
+				} else {
+					tagValues.push(tag.name);
+				}
+				i++;
+			}
+			return tagValues;
+		},
 	},
 };
 

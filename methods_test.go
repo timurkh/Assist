@@ -79,11 +79,10 @@ func TestInit(t *testing.T) {
 		su := &SessionTestUtil{}
 
 		app := App{
-			os.Stderr,
-			adb,
-			su,
-			nil,   //SessionMiddleware is not required
-			false, // dev mode, set to true if want logs
+			logWriter: os.Stderr,
+			db:        adb,
+			sd:        su,
+			dev:       false, // set to true if want logs
 		}
 
 		app.registerMethodHandlers(router)
@@ -204,6 +203,16 @@ func BenchmarkGetHome_DBCounters_SquadsWithPendingRequests(b *testing.B) {
 	}
 }
 
+func BenchmarkGetHome_DBCounters_UserEvents(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := adb.GetUserEvents(ctx, testUserId, 4)
+		if err != nil {
+			b.Fatalf("Failed to retrieve events: %v", err)
+		}
+
+	}
+}
+
 // Benchmark squad members screen
 func BenchmarkMethodGetMembers(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -227,6 +236,27 @@ func BenchmarkMethodGetSquad(b *testing.B) {
 
 		if rr.Result().StatusCode != 200 {
 			b.Fatalf("Failed to retrieve squad info: %v", rr.Result())
+		}
+
+	}
+}
+
+func BenchmarkGetHome_DBGetSquad(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := adb.GetSquad(ctx, testSquadId)
+		if err != nil {
+			b.Fatalf("Failed to retrieve squad info: %v", err)
+		}
+
+	}
+}
+
+func BenchmarkGetHome_DBSquadAdminMembers(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		filter := map[string]string{"Status": "Admin"}
+		_, err := adb.GetSquadMembers(ctx, testSquadId, nil, &filter)
+		if err != nil {
+			b.Fatalf("Failed to retrieve squad admins: %v", err)
 		}
 
 	}
