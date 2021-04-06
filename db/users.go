@@ -22,8 +22,9 @@ type UserInfo struct {
 type UserData struct {
 	UID string
 	UserInfo
-	Status MemberStatusType
-	Admin  bool
+	Status   MemberStatusType
+	UserTags []string
+	Admin    bool
 }
 
 type UserInfoRecord struct {

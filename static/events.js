@@ -126,7 +126,6 @@ const app = createApp( {
 		},
 		toggleShowArchived : function() {
 			this.showArchived = !this.showArchived;
-			console.log(this.archivedEvents);
 			if(this.archivedEvents == null) {
 				this.loading = true;
 				axios.get(`/methods/users/me/events`, {params : {archived: true}})

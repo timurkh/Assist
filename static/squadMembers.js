@@ -25,6 +25,7 @@ const app = createApp( {
 		let uri = window.location.search.substring(1); 
 		let params = new URLSearchParams(uri);
 		this.filter.status = params.get("status");
+		this.filter.tag = params.get("tag");
 
 		axios.all([
 			axios.get(`/methods/squads/${squadId}/members`, {params : this.filter}),

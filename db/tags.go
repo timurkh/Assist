@@ -130,15 +130,19 @@ func (db *FirestoreDB) SetSquadMemberTag(ctx context.Context, userId string, squ
 	}
 
 	if !tagFound || tagOldValue != tagValue {
-		err = db.SetSquadMemberTags(ctx, userId, squadId, &tags)
 
-		if err != nil {
-			return nil, err
-		}
+		batch := db.Client.Batch()
+		db.SetSquadMemberTags(batch, userId, squadId, &tags)
+		db.SetUserTags(batch, userId, squadId, &tags)
+		db.UpdateTagCounter(batch, squadId, tagName, tagValue, 1)
 
-		db.UpdateTagCounter(ctx, squadId, tagName, tagValue, 1)
 		if tagFound {
-			db.UpdateTagCounter(ctx, squadId, tagName, tagOldValue, -1)
+			db.UpdateTagCounter(batch, squadId, tagName, tagOldValue, -1)
+		}
+		_, err := batch.Commit(ctx)
+		if err != nil {
+			fmt.Errorf("Failed to update tags for  user %v from squad %v to %+v: %w", userId, squadId, tags, err)
+			return nil, err
 		}
 	}
 
@@ -174,44 +178,53 @@ func (db *FirestoreDB) DeleteSquadMemberTag(ctx context.Context, userId string, 
 		}
 	}
 
-	err = db.SetSquadMemberTags(ctx, userId, squadId, &tags)
-
-	if err != nil {
-		return nil, err
-	}
+	batch := db.Client.Batch()
+	db.SetSquadMemberTags(batch, userId, squadId, &tags)
 
 	if tagFound {
-		db.UpdateTagCounter(ctx, squadId, tagName, tagValue, -1)
+		db.UpdateTagCounter(batch, squadId, tagName, tagValue, -1)
+	}
+
+	_, err = batch.Commit(ctx)
+	if err != nil {
+		fmt.Errorf("Failed to update tags for  user %v from squad %v to %+v: %w", userId, squadId, tags, err)
+		return nil, err
 	}
 
 	return tags, nil
 }
 
-func (db *FirestoreDB) SetSquadMemberTags(ctx context.Context, userId string, squadId string, tags *[]interface{}) error {
+func (db *FirestoreDB) SetSquadMemberTags(batch *firestore.WriteBatch, userId string, squadId string, tags *[]interface{}) {
 
-	_, err := db.Squads.Doc(squadId).Collection("members").Doc(userId).Update(ctx, []firestore.Update{
+	batch.Update(db.Squads.Doc(squadId).Collection("members").Doc(userId), []firestore.Update{
 		{Path: "Tags", Value: tags},
 	})
-
-	if err != nil {
-		log.Printf("Failed to update tags for  user %v from squad %v to %+v: %v", userId, squadId, tags, err)
-		return err
-	}
-
-	return nil
 }
 
-func (db *FirestoreDB) UpdateTagCounter(ctx context.Context, squadId string, tag string, value string, inc int) {
+func (db *FirestoreDB) SetUserTags(batch *firestore.WriteBatch, userId string, squadId string, tags *[]interface{}) {
+
+	squadTags := make([]string, len(*tags))
+	for i, v := range *tags {
+		squadTags[i] = squadId + "/" + v.(string)
+	}
+
+	docUser := db.Users.Doc(userId)
+
+	batch.Update(docUser, []firestore.Update{
+		{Path: "UserTags", Value: squadTags},
+	})
+
+	db.userDataCache.Delete(userId)
+}
+
+func (db *FirestoreDB) UpdateTagCounter(batch *firestore.WriteBatch, squadId string, tag string, value string, inc int) {
 
 	if value == "" {
 		value = "_"
 	}
 
-	_, err := db.Squads.Doc(squadId).Collection("tags").Doc(tag).Update(ctx, []firestore.Update{
+	batch.Update(db.Squads.Doc(squadId).Collection("tags").Doc(tag), []firestore.Update{
 		{Path: value, Value: firestore.Increment(inc)},
 	})
 
-	if err != nil {
-		log.Printf("Failed to update tag %v in squad %v counter: %v", tag, squadId, err)
-	}
 }

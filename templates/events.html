@@ -96,7 +96,7 @@
 			</div>
 		</div>
 		<div v-else class="m-3" align="center">
-			<button v-if="moreRecordsAvailable" type="button" class="btn btn-secondary btn-lg" v-on:click="getMore()">See More</button>
+			<button v-if="getMoreRecordsAvailable()" type="button" class="btn btn-secondary btn-lg" v-on:click="getMore()">See More</button>
 		</div>
 	</div>
 </div>

@@ -28,11 +28,11 @@
 						<form>
 							<div class="form-group">
 								<label for="newQueue">Name</label>
-								<input type="text" id="newQueue" class="form-control" v-model="newQueue.name">
+								<input type="text" id="newQueue" class="form-control" v-model="newQueue.id">
 							</div>
 							<div class="form-group">
 								<label for="newQueueApprovers">Approvers</label>
-								<select id="newQueueApprovers" class="m-0 mb-1 pt-1 form-select" style="width:100%;" v-model="newQueue.approvers">
+								<select id="newQueueApprovers" class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="newQueue.approvers">
 									<option value="" selected></option>
 									<option v-for="tag in getTagValues(tags)" :value="tag">[[tag]]</option>
 								</select>
@@ -40,7 +40,7 @@
 							</div>
 							<div class="form-group">
 								<label for="newQueueHandlers">Handlers</label>
-								<select id="newQueueHandlers" class="m-0 mb-1 pt-1 form-select" style="width:100%;" v-model="newQueue.handlers">
+								<select id="newQueueHandlers" class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="newQueue.handlers">
 									<option value="" selected></option>
 									<option v-for="tag in getTagValues(tags)" :value="tag">[[tag]]</option>
 								</select>
@@ -49,7 +49,7 @@
 						</form>
 					</div>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-primary" v-on:click="addTag()" data-dismiss="modal">Add</button>
+						<button type="button" class="btn btn-primary" v-on:click="addQueue()" :disabled="newQueue.id==null || newQueue.id.trim().length==0" data-dismiss="modal">Add</button>
 					</div>
 				</div>
 			</div>
@@ -114,26 +114,66 @@
 
 				<div class="d-flex flex-wrap m-1 p-0">
 					<div class="border bg-light p-3 m-2">
-						<h6> Members: </h6>
+						<h6>Members</h6>
 						[[ squad.membersCount]] <span v-if="squad.pendingApproveCount > 0">([[squad.pendingApproveCount]] pending)</span>
 					</div>
 					<div class="border bg-light p-3 m-2">
-						<h6> Owner: </h6> 
+						<h6>Owner</h6> 
 						[[squad.ownerInfo.displayName]]
 					</div>
 					<div class="border bg-light p-3 m-2">
-						<h6> Admins: </h6> 
+						<h6>Admins</h6> 
 						[[squad.admins.map(x => x.displayName).join(", ")]]
+					</div>
+					<div class="border bg-light p-3 m-2">
+						<h6>Tags</h6> 
+						[[tags.length]]
+					</div>
+					<div class="border bg-light p-3 m-2">
+						<h6>Notes</h6> 
+						[[notes.length]]
+					</div>
+					<div class="border bg-light p-3 m-2">
+						<h6>Requests</h6> 
+						[[queues.length]] queue<span v-if="queues.length>1">s</span>,
+						[[getWaitingApproveRequestsCount()]] requests waiting approve,
+						[[getProcessingRequestsCount()]] being processed
 					</div>
 				</div>
 			</div>
 		</div>
 
+		<!-- Request Queues -->
+		<div class="mb-3 border-gray p-0" v-if="tags.length>0">
+			<div class="border m-1 p-3 bg-white rounded box-shadow" id="Queues">
+				<h5 class="border-bottom border-gray pb-2 mb-0">Requests Queues</h6>
+				<table class="table table-sm mb-0" v-if="tags.length>0">
+					<thead> 
+						<th>Name</th>
+						<th>Approvers</th>
+						<th>Handlers</th>
+						<th>Waiting Approve</th>
+						<th>Being Handled</th>
+						<th></th>
+					</thead>
+					<tbody>
+						<tr v-for="(queue, i) in queues" class="border-bottom border-grey">
+							<td>[[queue.id]]</td>
+							<td class="text-break"><a href="#" @click.stop.prevent="showTag(queue.approvers)">[[queue.approvers]]</a></td>
+							<td class="text-break"><a href="#" @click.stop.prevent="showTag(queue.handlers)">[[queue.handlers]]</a> </td>
+							<td>[[queue.requestsWaitingApprove]]</td>
+							<td>[[queue.requestsProcessing]]</td>
+							<td align="right"><small><a href="#" v-on:click.stop.prevent="deleteObject('queue', queue.id, i)">Delete</a></small></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
 		<!-- Tags -->
 		<div class="mb-3 border-gray p-0" v-if="tags.length>0">
 			<div class="border m-1 p-3 bg-white rounded box-shadow" id="Tags">
 				<h5 class="border-bottom border-gray pb-2 mb-0">Tags</h6>
-				<table class="table mb-0" v-if="tags.length>0">
+				<table class="table table-sm mb-0" v-if="tags.length>0">
 					<thead> 
 						<th>Name</th>
 						<th>Values</th>
@@ -143,9 +183,9 @@
 					<tbody>
 						<tr v-for="(tag, i) in tags" class="border-bottom border-grey">
 							<td v-if="getTagHasValues(tag)">[[tag.name]]</td>
-							<td v-else scope="row"><a href="#" @click.stop.prevent="">[[tag.name]]</a></td>
+							<td v-else scope="row"><a href="#" @click.stop.prevent="showTag(tag.name)">[[tag.name]]</a></td>
 							<td>
-								<div v-for="(c, v) in tag.values"><a href="#" v-if="v != '_'" @click.stop.prevent="">[[v]]</a></div>
+								<div v-for="(c, v) in tag.values"><a href="#" v-if="v != '_'" @click.stop.prevent="showTag(`${tag.name}/${v}`)">[[v]]</a></div>
 							</td>
 							<td align="right">
 								<span v-if="!getTagHasValues(tag)">[[ tag.values['_'] ]]</span>

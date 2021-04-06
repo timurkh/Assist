@@ -15,6 +15,7 @@ const app = createApp( {
 			noteToEdit:{},
 			noteNew:{},
 			newQueue:{},
+			queues:[],
 		};
 	},
 	created:function() {
@@ -22,11 +23,13 @@ const app = createApp( {
 			axios.get(`/methods/squads/${squadId}`),
 			axios.get(`/methods/squads/${squadId}/notes`),
 			axios.get(`/methods/squads/${squadId}/tags`),
+			axios.get(`/methods/squads/${squadId}/queues`),
 		])
-		.then(axios.spread((squad,notes, tags) => {
+		.then(axios.spread((squad,notes, tags, queues) => {
 			this.squad = squad.data;
 			this.notes = notes.data;
 			this.tags = tags.data;
+			this.queues = queues.data;
 			this.loading = false;
 		}))
 		.catch(errors => {
@@ -35,6 +38,29 @@ const app = createApp( {
 		});
 	},
 	methods: {
+		getWaitingApproveRequestsCount:function() {
+			return this.queues.reduce((a, c)  => a + c.requestsWaitingApprove, 0);
+		},
+		getProcessingRequestsCount:function() {
+			return this.queues.reduce((a, c)  => a + c.requestsProcessing, 0);
+		},
+		addQueue:function() {
+			this.newQueue.id = this.newQueue.id.trim();
+
+			axios({
+				method: 'POST',
+				url: `/methods/squads/${squadId}/queues`,
+				data: this.newQueue,
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then( res => {
+				this.error_message = "";
+				this.requestQueues.push(Object.assign({}, this.newQueueu));
+			})
+			.catch(err => {
+				this.error_message = "Error while adding queue: " + this.getAxiosErrorMessage(err);
+			});
+		},
 		addTag:function() {
 
 			if(this.newTag.name == "") {
@@ -137,6 +163,9 @@ const app = createApp( {
 				this.error_message = "Error while saving note: " + this.getAxiosErrorMessage(err);
 			});
 		},
+		showTag:function(tag) {
+			window.location.href = "/squads/" + encodeURI(squadId) + "/members?tag=" + encodeURI(tag);
+		}
 	},
 	computed: {
 		newTagValues : {

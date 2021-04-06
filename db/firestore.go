@@ -24,6 +24,7 @@ type FirestoreDB struct {
 	Squads            *firestore.CollectionRef
 	Users             *firestore.CollectionRef
 	Events            *firestore.CollectionRef
+	RequestQueues     *firestore.CollectionRef
 	updater           *AsyncUpdater
 	userDataCache     *cache.Cache
 	memberStatusCache *cache.Cache
@@ -77,6 +78,7 @@ func NewFirestoreDB(fireapp *firebase.App, dev bool) (*FirestoreDB, error) {
 		Squads:            dbClient.Collection(testPrefix + "squads"),
 		Users:             dbClient.Collection(testPrefix + "squads").Doc(ALL_USERS_SQUAD).Collection("members"),
 		Events:            dbClient.Collection(testPrefix + "events"),
+		RequestQueues:     dbClient.Collection(testPrefix + "queues"),
 		updater:           initAsyncUpdater(),
 		userDataCache:     uc,
 		memberStatusCache: sc,

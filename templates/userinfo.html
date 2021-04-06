@@ -105,9 +105,7 @@
 					<div class="form-group ml-2 mr-2 mb-2 mt-2" >
 						<label for="role">Role</label>
 						<div class="input-group" >
-							<input class="form-control" name="role" id="role" value="" disabled>
-							{{ .CurrentUserInfo.Role }}
-							</input>
+							<input class="form-control" id="role" value="{{.CurrentUserInfo.Role}}" disabled/>
 						</div>
 					</div>
 					{{end}}

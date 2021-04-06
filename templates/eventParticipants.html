@@ -39,10 +39,10 @@
 				<thead>
 					<tr>
 						<th class="p-0 pr-1" colspan="3">
-							<input id="searchKeys" v-model="filter.keys" class="m-0 mb-1" style="width:100%" placeholder="Search" @change="onFilterChange($event)"></input>
+							<input id="searchKeys" v-model="filter.keys" class="form-control m-0 mb-1" style="width:100%" placeholder="Search" @change="onFilterChange($event)"></input>
 						</th>
 						<th class="p-0 px-1">
-							<select class="m-0 mb-1 pt-1 form-select" style="width:100%;" v-model="filter.status" @change="onFilterChange($event)">
+							<select class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="filter.status" @change="onFilterChange($event)">
 								<option selected></option>
 								<option >Applied</option>
 								<option >Going</option>
@@ -52,7 +52,7 @@
 							</select>
 						</th>
 						<th class="py-0 px-1">
-							<select id="selectTag" class="m-0 mb-1 pt-1 form-select" style="width:100%;" v-model="filter.tag" @change="onFilterChange($event)">
+							<select id="selectTag" class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="filter.tag" @change="onFilterChange($event)">
 								<option value="" selected></option>
 								<option v-for="tag in getTagValues(tags)" :value="tag">[[tag]]</option>
 							</select>

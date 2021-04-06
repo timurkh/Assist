@@ -22,111 +22,161 @@
 			[[ error_message ]]
 		</div>
 		<div class="table table-body mx-0 px-0">
-				<div class="row px-0 mx-0">
-					<div class="col-xl-4 col-sm-6 px-1 my-1">
-						<div class="card text-white h-100">
-							<div :class="getSquadsClass()">
-								<div class="row">
-									<div class="col-4">
-										<div >
-											<i class="fa fa-users fa-4x"></i>
-										</div>
-										<h6 class="text-uppercase">My Squads</h6>
+			<div class="row mx-0 justify-content-md-center">
+
+				<div class="col-sm-6 m-0 p-1">
+					<div class="card text-white h-100">
+						<div :class="getSquadsClass()">
+							<div class="row">
+								<div class="col-4">
+									<div >
+										<i class="fa fa-users fa-4x"></i>
 									</div>
-									<div class="col-8 px-0">
-										<h6 class="text-uppercase" align="center">Total [[getSquadsCount()]]:</h6>
-										<table class="table text-white table-borderless mx-0">
-											<tr v-for="(count, index) in squads" class="py-0 my-0">
-												<td class="py-0">
-													[[getStatusText(index)]]
-												</td>
-												<td class="text-center align-middle py-0">
-													-
-												</td>
-												<td class="align-middle py-0">	
-													[[count]]
-												</td>
-											</tr>
-										</table>
-									</div>
+									<h6 class="text-uppercase">My Squads ([[getSquadsCount()]])</h6>
+								</div>
+								<div class="col-8 px-0">
+									<table class="table text-white table-borderless mx-0">
+										<tr v-for="(count, index) in squads" class="py-0 my-0">
+											<td class="py-0">
+												[[getStatusText(index)]]
+											</td>
+											<td class="text-center align-middle py-0">
+												-
+											</td>
+											<td class="align-middle py-0">	
+												[[count]]
+											</td>
+										</tr>
+									</table>
 								</div>
 							</div>
 						</div>
 					</div>
-					<div class="col-xl-4 col-sm-6 px-1 px-xl-3 my-1">
-						<div class="card text-white h-100">
-							<div :class="getTodoClass()">
-								<div class="row">
-									<div class="col-4">
-										<div>
-											<i class="fas fa-tasks fa-4x"></i>
-										</div>
-										<h6 class="text-uppercase">TODO</h6>
-									</div>
-									<div class="col-8 px-0">
-										<h6 class="text-uppercase" align="center">Squads with Approval requests:</h6>
-										<table class="table text-white table-borderless mx-0">
+				</div> 
 
-
-											<tr v-if="pendingApprove != null" v-for="(squad, index) in pendingApprove.slice(0,3)" class="py-0 my-0">
-												<td class="py-0">
-													<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.squad]]</a>
-												</td>
-												<td class="text-center align-middle py-0">
-													-
-												</td>
-												<td class="align-middle py-0">	
-													<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.count]]</a>
-												</td>
-											</tr>
-											<tr v-if="pendingApprove != null && pendingApprove.length > 3" class="py-0 my-0">
-												<td class="text-center align-middle py-0">
-													...
-												</td>
-											</tr>
-										</table>
+				<div class="col-sm-6 m-0 p-1">
+					<div class="card text-white h-100">
+						<div :class="getMyRequestsClass()">
+							<div class="row">
+								<div class="col-4">
+									<div>
+										<i class="fas fa-user-clock fa-4x"></i>
 									</div>
+									<h6 class="text-uppercase">My Requests</h6>
 								</div>
-							</div>
-						</div>
-					</div>
-					<div class="col-xl-4 col-sm-6 px-1 my-1">
-						<div class="card text-white h-100">
-							<div :class="getEventsClass()">
-								<div class="row">
-									<div class="col-4">
-										<div>
-											<i class="fa fa-list fa-4x"></i>
-										</div>
-										<h6 class="text-uppercase">Events</h6>
-									</div>
-									<div class="col-8 px-0">
-										<h6 class="text-uppercase" align="center">Upcoming Events:</h6>
-										<table class="table text-white table-borderless mx-0">
-											<tr v-if="events != null" v-for="(event, index) in events.slice(0,3)" class="py-0 my-0">
-												<td class="py-0">
-													<a href="/events" class="text-reset">[[getDate(event.date)]] [[event.text]]</a>
-												</td>
-												<td class="text-center align-middle py-0">
-													-
-												</td>
-												<td class="align-middle py-0">	
-													<a href="/events" class="text-reset">[[getEventStatusText(event.status)]]</a>
-												</td>
-											</tr>
-											<tr v-if="events != null && events.length > 3" class="py-0 my-0">
-												<td class="text-center align-middle py-0">
-													...
-												</td>
-											</tr>
-										</table>
-									</div>
+								<div class="col-8 px-0">
+									<table class="table text-white table-borderless mx-0">
+									</table>
 								</div>
 							</div>
 						</div>
 					</div>
 				</div>
+
+				<div class="col-sm-6 m-0 p-1">
+					<div class="card text-white h-100">
+						<div :class="getEventsClass()">
+							<div class="row">
+								<div class="col-4">
+									<div>
+										<i class="fa fa-list fa-4x"></i>
+									</div>
+									<h6 class="text-uppercase">Upcoming Events</h6>
+								</div>
+								<div class="col-8 px-0">
+									<table class="table text-white table-borderless mx-0">
+										<tr v-if="events != null" v-for="(event, index) in events.slice(0,3)" class="py-0 my-0">
+											<td class="py-0">
+												<a href="/events" class="text-reset">[[getDate(event.date)]] [[event.text]]</a>
+											</td>
+											<td class="text-center align-middle py-0">
+												-
+											</td>
+											<td class="align-middle py-0">	
+												<a href="/events" class="text-reset">[[getEventStatusText(event.status)]]</a>
+											</td>
+										</tr>
+										<tr v-if="events != null && events.length > 3" class="py-0 my-0">
+											<td class="text-center align-middle py-0">
+												...
+											</td>
+										</tr>
+									</table>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-sm-6 m-0 p-1">
+					<div class="card text-white h-100">
+						<div :class="getTodoClass()">
+							<div class="row">
+								<div class="col-4">
+									<div>
+										<i class="fa fa-tasks fa-4x"></i>
+									</div>
+									<h6 class="text-uppercase">Requests to me ([[getTodoCount()]])</h6>
+								</div>
+								<div class="col-8 px-0">
+									<table class="table text-white table-borderless mx-0">
+										<tr v-if="pendingApprove != null" v-for="(squad, index) in pendingApprove.slice(0,3)" class="py-0 my-0">
+											<td class="py-0">
+												<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.squad]]</a>
+											</td>
+											<td class="text-center align-middle m-0 p-0">
+												-
+											</td>
+											<td class="align-middle py-0">	
+												<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.count]] members pending approve</a>
+											</td>
+										</tr>
+										<tr v-if="pendingApprove != null && pendingApprove.length > 3" class="py-0 my-0">
+											<td class="text-center align-middle py-0">
+												...
+											</td>
+										</tr>
+										<tr v-if="queuesToApprove != null" v-for="(queue, index) in queuesToApprove.slice(0,3)" class="py-0 my-0">
+											<td class="py-0">
+												[[queue.id]]
+											</td>
+											<td class="text-center align-middle m-0 p-0">
+												-
+											</td>
+											<td class="align-middle py-0">	
+												[[queue.requestsWaitingApprove]] requests waiting approve
+											</td>
+										</tr>
+										<tr v-if="pendingApprove != null && pendingApprove.length > 3" class="py-0 my-0">
+											<td class="text-center align-middle py-0">
+												...
+											</td>
+										</tr>
+										<tr v-if="queuesToHandle != null" v-for="(queue, index) in queuesToHandle.slice(0,3)" class="py-0 my-0">
+											<td class="py-0">
+												[[queue.id]]
+											</td>
+											<td class="text-center align-middle m-0 p-0">
+												-
+											</td>
+											<td class="align-middle py-0">	
+												[[queue.requestsWaitingApprove]] requests being processed
+											</td>
+										</tr>
+										<tr v-if="pendingApprove != null && pendingApprove.length > 3" class="py-0 my-0">
+											<td class="text-center align-middle py-0">
+												...
+											</td>
+										</tr>
+									</table>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
 			</div>
+		</div>
 	</div>
 </div>
 

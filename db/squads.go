@@ -17,15 +17,13 @@ const USER_SQUADS = "member_squads"
 type MemberStatusType int
 
 const (
-	Banned MemberStatusType = iota - 1
-	PendingApprove
+	PendingApprove MemberStatusType = iota
 	Member
 	Admin
 	Owner
 )
 
 var MemberStatusTypes = []MemberStatusType{
-	Banned,
 	PendingApprove,
 	Member,
 	Admin,
@@ -34,8 +32,6 @@ var MemberStatusTypes = []MemberStatusType{
 
 func (s MemberStatusType) String() string {
 	switch s {
-	case Banned:
-		return "Banned"
 	case PendingApprove:
 		return "Pending Approve"
 	case Member:

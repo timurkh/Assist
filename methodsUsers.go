@@ -83,26 +83,35 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	userId = app.sd.getCurrentUserID(r)
 	sd := app.sd.getCurrentUserData(r)
 
-	errs := make([]error, 3)
-	var squads, pendingApprove, events interface{}
+	var errs [4]error
+	var squads, pendingApprove, events, queuesToApprove, queuesToHandle interface{}
 	var wg sync.WaitGroup
-	wg.Add(3)
 
 	// squads
+	wg.Add(1)
 	go func() {
 		squads, errs[0] = app.db.GetSquadsCount(ctx, userId)
 		wg.Done()
 	}()
 
 	// actions
+	wg.Add(1)
 	go func() {
 		pendingApprove, errs[1] = app.db.GetSquadsWithPendingRequests(ctx, userId, sd.Admin)
 		wg.Done()
 	}()
 
 	// events
+	wg.Add(1)
 	go func() {
 		events, errs[2] = app.db.GetUserEvents(ctx, userId, 4)
+		wg.Done()
+	}()
+
+	// requests
+	wg.Add(1)
+	go func() {
+		queuesToApprove, queuesToHandle, errs[3] = app.db.GetUserRequestQueues(ctx, sd.UserTags)
 		wg.Done()
 	}()
 
@@ -120,10 +129,12 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 
 	err := json.NewEncoder(w).Encode(
 		struct {
-			Squads         interface{} `json:"squads"`
-			PendingApprove interface{} `json:"pendingApprove"`
-			Events         interface{} `json:"events"`
-		}{squads, pendingApprove, events})
+			Squads          interface{} `json:"squads"`
+			PendingApprove  interface{} `json:"pendingApprove"`
+			Events          interface{} `json:"events"`
+			QueuesToApprove interface{} `json:"queuesToApprove"`
+			QueuesToHandle  interface{} `json:"queuesToHandle"`
+		}{squads, pendingApprove, events, queuesToApprove, queuesToHandle})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

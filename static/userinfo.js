@@ -207,7 +207,8 @@ firebase.auth().onAuthStateChanged(user => {
 		// init user info settings
 		var inputs = document.getElementById('userInfo').getElementsByTagName('input');
 		for (var i=0; i<inputs.length; ++i) {
-			inputs[i].value = escapeHTML(user[inputs[i].id]);
+			if(inputs[i].id != "role")
+				inputs[i].value = escapeHTML(user[inputs[i].id]);
 		}
 
 		// init auth providers
