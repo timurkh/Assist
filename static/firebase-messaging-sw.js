@@ -1,20 +1,52 @@
-importScripts("https://www.gstatic.com/firebasejs/8.3.1/firebase-app.js");
-importScripts("https://www.gstatic.com/firebasejs/8.3.1/firebase-messaging.js");
+importScripts("https://www.gstatic.com/firebasejs/8.3.2/firebase-app.js");
+importScripts("https://www.gstatic.com/firebasejs/8.3.2/firebase-messaging.js");
 importScripts("/static/firebase.js");
 
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  // Customize notification here
-  const notificationTitle = 'Background Message Title';
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/static/favicon.ico',
-	click_action: 'http://locahost:8080/home',
-  };
+	const notificationOptions = {
+		body: payload.data.text,
+		icon: '/static/favicon.ico',
+		data: payload.data,
+	};
 
-  self.registration.showNotification(payload.notification.title,
-    notificationOptions);
+	console.log("Background message recieved: ", payload);
+
+	// send message to open browser tabs
+	clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+    }).then(function(clientList) {
+        for (var i = 0; i < clientList.length; i++) {
+            var client = clientList[i];
+            if ('postMessage' in client) {
+				client.postMessage(payload.data);
+			}
+		}
+	});
+	
+	// create notification
+	self.registration.showNotification(payload.data.title,
+		notificationOptions);
+});
+
+self.addEventListener('notificationclick', function(event) {
+    event.notification.close();
+
+	// set focus on browser tab if exists, otherwise open new tab
+    event.waitUntil(clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+    }).then(function(clientList) {
+        for (var i = 0; i < clientList.length; i++) {
+            var client = clientList[i];
+            if ('focus' in client) {
+                return client.focus();
+            }
+        }
+
+        return clients.openWindow("/");
+    }));
 });

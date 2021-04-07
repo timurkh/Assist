@@ -142,6 +142,7 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 
 	return err
 }
+
 func (app *App) methodSubscribeToNotifications(w http.ResponseWriter, r *http.Request) error {
 	params := mux.Vars(r)
 
@@ -166,6 +167,75 @@ func (app *App) methodSubscribeToNotifications(w http.ResponseWriter, r *http.Re
 	}
 
 	app.ntfs.SetUserToken(userId, token.Token)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return nil
+}
+
+func (app *App) methodUnsubscribeFromNotifications(w http.ResponseWriter, r *http.Request) error {
+	params := mux.Vars(r)
+
+	userId := params["userId"]
+	userId, ok := app.checkAuthorizationUser(r, userId)
+	if !ok {
+		// operation is not authorized, return error
+		err := fmt.Errorf("Current user is not authorized to unsubscribe user %v from notifications", userId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
+	app.ntfs.DeleteUserToken(userId)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return nil
+}
+
+func (app *App) methodGetNotifications(w http.ResponseWriter, r *http.Request) error {
+	params := mux.Vars(r)
+
+	userId := params["userId"]
+	userId, ok := app.checkAuthorizationUser(r, userId)
+	if !ok {
+		// operation is not authorized, return error
+		err := fmt.Errorf("Current user is not authorized to subscribe to user %v notifications", userId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
+	notifications := app.ntfs.GetNotifications(userId)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	err := json.NewEncoder(w).Encode(notifications)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	return nil
+}
+
+func (app *App) methodMarkNotificationsDelivered(w http.ResponseWriter, r *http.Request) error {
+	params := mux.Vars(r)
+
+	userId := params["userId"]
+	userId, ok := app.checkAuthorizationUser(r, userId)
+	if !ok {
+		// operation is not authorized, return error
+		err := fmt.Errorf("Current user is not authorized to subscribe to user %v notifications", userId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
+	app.ntfs.MarkNotificationsDelivered(userId)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

@@ -349,7 +349,7 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 			if err != nil {
 				log.Println("Failed to get list of squad " + squadId + " admins, will not be able to create notifications")
 			}
-			app.ntfs.createNotification(squadAdmins, "User "+app.sd.getCurrentUserData(r).DisplayName+" wants to join "+squadId)
+			app.ntfs.createNotification(squadAdmins, "Approve New Member", "User "+app.sd.getCurrentUserData(r).DisplayName+" wants to join "+squadId)
 		}()
 	}
 

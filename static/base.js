@@ -77,12 +77,42 @@ const globalMixin = {
 	},
 };
 
+const notifications = createApp( {
+	data() {
+		return {
+			notifications: [],
+		}
+	},
+	delimiters: ['[[', ']]'],
+	created:function() {
+		// Load notifications
+		axios({
+			method: 'GET',
+			url: `/methods/users/me/notifications`,
+		})
+		.then( res => {
+			this.notifications = res.data;
+		});
+	},
+	methods: {
+		formatTime : function(time) {
+			var t = new Date(time);
+			return t.toLocaleString(undefined);
+		},
+		addNotification : function(n) {
+			if(this.notifications != null)
+				this.notifications.push(n);
+			else
+				this.notifications = [n];
+		},
+	},
+}).mount("#notifications");
+
 const navbar = createApp( {
 	data() {
 		return {
 			notificationsCount: notificationsCount,
 			notificationsEnabled: false,
-			notificationsFailure: false,
 			messaging: {},
 		}
 	},
@@ -92,16 +122,37 @@ const navbar = createApp( {
 		firebase.initializeApp(firebaseConfig);
 		firebase.analytics();
 
-		let ne = localStorage.getItem('notificationsEnabled');
-		this.notificationsEnabled = (ne == 'true');
-		
-		this.initMessaging();
+		// Register service worker
+		navigator.serviceWorker.register('/static/firebase-messaging-sw.js')
+		.then((registration) => {
+			console.log("Service worker registered");
+			this.messaging = firebase.messaging();
+			this.messaging.useServiceWorker(registration);
+			this.catchMessages(this.messaging);	
+
+			let ne = localStorage.getItem('notificationsEnabled');
+
+			if ( ne == 'true' && Notification.permission === 'granted') {
+				this.setupNotifications();
+			}
+
+			// Listen to messages from the service worker
+			navigator.serviceWorker.addEventListener('message', event => {
+				// do not handle messages sent from firebase
+				if(event.data != null && !event.data.isFirebaseMessaging) {
+					console.log("SW event listener:", event);
+					this.notificationsCount = event.data.count;
+					notifications.addNotification(event.data);
+				}
+			});
+		});
+
 	},
 	methods : {
 		toggleNotifications:function() {
 			localStorage.notificationsEnabled = this.notificationsEnabled;
 			if (this.notificationsEnabled) {
-				this.notificationsFailure = true;
+				this.notificationsEnabled = false;
 				Notification.requestPermission().then((permission) => {
 					if (permission === 'granted') {
 						this.setupNotifications();
@@ -110,30 +161,33 @@ const navbar = createApp( {
 					}
 				});
 			}
-			else
-				this.notificationsFailure = false;
+			else {
+				this.messaging.getToken().then((currentToken) => {
+					this.messaging.deleteToken(currentToken)
+					.catch( err => {
+						console.log('Failed to delete FCM token: ', err);
+					});
+					axios({
+						method: 'DELETE',
+						url: `/methods/users/me/notifications`,
+						headers: { "X-CSRF-Token": csrfToken },
+					})
+					.catch( err => {
+						console.log("Failed to unsubscribe from notifications: ", err);
+					});
+				})
+			}
 		},
 		initMessaging:function() {
-			this.messaging = firebase.messaging();
-
-			// Register service worker
-			navigator.serviceWorker.register('/static/firebase-messaging-sw.js')
-			.then((registration) => {
-				this.messaging.useServiceWorker(registration);
-				this.catchMessages(this.messaging);	
-				if (this.notificationsEnabled)
-					this.setupNotifications();
-			});
 		},
 		setupNotifications:function() {
 			// Send token to server
-			console.log("getting token");
 			this.messaging.getToken({vapidKey: 'BI4lx3GzJJfqbuv6COQ64ZIQcV5pBjTEMBAVby6ynjXrZV6D5FH8WEcpfWnm6a8z83brLRMo26QghpbShMygscc'})
 			.then((currentToken) => {
-				console.log("messagingToken = " + currentToken);
 				if (currentToken) {
+					this.notificationsEnabled = true;
 					if (messagingToken != currentToken) {
-						console.log('Sending token ' + currentToken + ' to server...');
+						console.log('Subscribing to firebase cloud messaging notifications with token ' + currentToken);
 						axios({
 							method: 'POST',
 							url: `/methods/users/me/notifications`,
@@ -146,7 +200,8 @@ const navbar = createApp( {
 							this.catchMessages(this.messaging);	
 						});
 					} else {
-						this.catchMessages(this.messaging);					
+						this.catchMessages(this.messaging);	
+						console.log('Backend is already aware of this client token ' + currentToken);
 					}
 				}
 			})
@@ -156,12 +211,17 @@ const navbar = createApp( {
 		},
 		catchMessages:function(messaging) {
 			// ok, success!
-			this.notificationsFailure = false;
 			messaging.onMessage((payload) => {
-				console.log('Message received. ', payload);
+				console.log('Message received: ', payload);
 				this.notificationsCount = payload.data.count;
-
-				new Notification('There are ' + payload.data.count + ' new notifications', { body: payload.data.text, icon: '/favicon.ico' });
+				notifications.addNotification(payload.data);
+				navigator.serviceWorker.getRegistration('/static/firebase-messaging-sw.js').then((registration) => {
+					const notificationOptions = {
+						body: payload.data.text,
+						icon: '/static/favicon.ico',
+					};
+					registration.showNotification(payload.data.title, notificationOptions);
+				});
 			});
 		},
 		postSignOut : function() {

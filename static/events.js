@@ -35,6 +35,7 @@ const app = createApp( {
 	},
 	methods: {
 		addEvent:function(e) {
+			e = Object.assign({}, e);
 			e.date = new Date(e.date);
 			axios({
 				method: 'POST',
@@ -69,7 +70,7 @@ const app = createApp( {
 				})
 				.then( res => {
 					this.error_message = "";
-					this.events.splice(i);
+					this.events.splice(i, 1);
 				})
 				.catch(err => {
 					this.error_message = "Error while removing event " + e.id + ": " + this.getAxiosErrorMessage(err);

@@ -54,7 +54,7 @@
 						<p class="text-dark font-weight-bold mb-0">[[e.squadId]]</p>
 						<p class="text-dark mb-0">[[e.text]]</p>
 					</div>
-					<div class="col-sm-3 pl-3">
+					<div class="col-sm-3 pl-3 align-self-center">
 						<span v-if="e.ownerId==currentUserId" class="badge badge-primary">I am owner</span>
 						<span v-else-if="e.status==2" class="badge badge-success">I am going</span>
 						<span v-else-if="e.status==1" class="badge badge-warning">Applied, waiting confirmation</span>

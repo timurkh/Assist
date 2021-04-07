@@ -45,7 +45,6 @@ const app = createApp( {
 		},
 		getTodoCount : function () {
 			var count = 0;
-			console.log(this.pendingApprove);
 			if (this.pendingApprove != null && this.pendingApprove.length>0)
 				count = this.pendingApprove.reduce((count,s) => count+s.count, count);
 			if (this.queuesToApprove!=null && this.queuesToApprove.length>0)

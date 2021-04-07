@@ -58,7 +58,7 @@ func (app *App) methodCreateEvent(w http.ResponseWriter, r *http.Request) error 
 		if err != nil {
 			log.Println("Failed to get list of squad " + event.SquadId + " members, will not be able to create notifications")
 		}
-		app.ntfs.createNotification(memberIds, "New event '"+event.Text+"' created")
+		app.ntfs.createNotification(memberIds, "New Event", "New event '"+event.Text+"' created")
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
