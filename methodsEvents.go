@@ -53,8 +53,9 @@ func (app *App) methodCreateEvent(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 
+	// notify squad members about new event
 	go func() {
-		memberIds, err := app.db.GetSquadMemberIds(context.Background(), event.SquadId, []int{int(assist_db.Admin), int(assist_db.Member)})
+		memberIds, err := app.db.GetSquadMemberIds(context.Background(), event.SquadId, []int{int(assist_db.Owner), int(assist_db.Admin), int(assist_db.Member)}, userId)
 		if err != nil {
 			log.Println("Failed to get list of squad " + event.SquadId + " members, will not be able to create notifications")
 		}
@@ -111,7 +112,8 @@ func (app *App) methodGetEvents(w http.ResponseWriter, r *http.Request) (err err
 		}
 		events, err = app.db.GetArchivedEvents(ctx, userId, timeFrom, &filter)
 	} else {
-		squads, err := app.db.GetUserSquads(ctx, userId, "")
+		var squads []string
+		squads, err = app.db.GetUserSquads(ctx, userId, "")
 		if err == nil && len(squads) > 0 {
 			events, err = app.db.GetEvents(ctx, squads, userId)
 		}
@@ -260,7 +262,7 @@ func (app *App) methodRegisterParticipant(w http.ResponseWriter, r *http.Request
 		currentUserId, authLevel = app.checkAuthorization(r, userIds[0], eventInfo.SquadId, myself|squadAdmin|squadOwner)
 		userIds[0] = currentUserId
 	} else {
-		currentUserId, authLevel = app.checkAuthorization(r, userIds[0], eventInfo.SquadId, myself|squadAdmin|squadOwner)
+		currentUserId, authLevel = app.checkAuthorization(r, userIds[0], eventInfo.SquadId, squadAdmin|squadOwner)
 	}
 
 	var status assist_db.ParticipantStatusType
@@ -279,6 +281,18 @@ func (app *App) methodRegisterParticipant(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
+	}
+
+	if status == assist_db.Applied {
+		// notify squad admins that there is new event participant pending approve
+		go func() {
+			memberIds, err := app.db.GetSquadMemberIds(context.Background(), eventInfo.SquadId, []int{int(assist_db.Owner), int(assist_db.Admin)}, "")
+			if err != nil {
+				log.Println("Failed to get list of squad " + eventInfo.SquadId + " admins, will not be able to create notifications")
+			}
+			sd := app.sd.getCurrentUserData(r)
+			app.ntfs.createNotification(memberIds, "New Participant", sd.DisplayName+" applied for event '"+eventInfo.Text+"'")
+		}()
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -447,4 +461,19 @@ func (app *App) methodGetCandidates(w http.ResponseWriter, r *http.Request) (err
 	}
 
 	return err
+}
+
+func (app *App) methodArchiveEvents(w http.ResponseWriter, r *http.Request) (err error) {
+	err = app.db.ArchiveOldEvents(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	gorilla_context.Set(r, "AuthChecked", true)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return nil
 }

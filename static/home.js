@@ -5,10 +5,8 @@ const app = createApp( {
 			loading:true,
 			error_message:"",
 			squads:[],
-			pendingApprove:[],
 			events:[],
-			queuesToApprove:[],
-			queuesToHandle:[],
+			requestsToMe:[],
 		};
 	},
 	created:function() {
@@ -18,12 +16,46 @@ const app = createApp( {
 		})
 		.then(res => {
 			this.squads = res.data.squads;
-			this.pendingApprove = res.data.pendingApprove;
 			this.events = res.data.events.map(x => {x.date = new Date(x.date); return x});
-			this.queuesToApprove = res.data.queuesToApprove;
-			//this.queuesToApprove = res.data.queuesToApprove.filter(queue => queue.requestsWaitingApprove.length > 0);
-			this.queuesToHandle = res.data.queuesToHandle;
-			//this.queuesToHandle = res.data.queuesToHandle.filter(queue => queue.requestsProcessing.length > 0);
+
+			let pendingApprove = res.data.pendingApprove;
+			if(pendingApprove != null & pendingApprove.length > 0){
+				this.requestsToMe.push({
+					name: "Join squads",
+					url: "/squads",
+					count: pendingApprove.length + " candidate" + (pendingApprove.length > 1?"s":""),
+				});
+			}
+			let appliedParticipants = res.data.appliedParticipants;
+			if(appliedParticipants != null & appliedParticipants.length > 0){
+				this.requestsToMe.push({
+					name: "Participate in events",
+					url: "/events",
+					count: appliedParticipants.length + " applied",
+				});
+			}
+			//let queuesToApprove = res.data.queuesToApprove.filter(queue => queue.requestsWaitingApprove.length > 0);
+			let queuesToApprove = res.data.queuesToApprove;
+			if(queuesToApprove != null & queuesToApprove.length > 0){
+
+				this.requestsToMe.push({
+					name: queuesToApprove.length > 1 ? queuesToApprove.length + " queues" :  queuesToApprove[0].id,
+					url: "/requests",
+					count: queuesToApprove.reduce((a,c) => a+c.requestsWaitingApprove, 0) + " requests waiting approve",
+				});
+			}
+
+			//let queuesToHandle = res.data.queuesToHandle.filter(queue => queue.requestsProcessing.length > 0);
+			let queuesToHandle = res.data.queuesToHandle;
+			if(queuesToHandle != null & queuesToHandle.length > 0){
+
+				this.requestsToMe.push({
+					name: queuesToHandle.length > 1 ? queuesToHandle.length + " queues" : queueusToHandle[0].id,
+					url: "/requests",
+					count: queuesToHandle.reduce((a,c) => a+c.requestsProcessing, 0) + " requests to be processed",
+				});
+			}
+			
 			this.loading = false;
 		})
 		.catch(error => {
@@ -34,7 +66,7 @@ const app = createApp( {
 	methods: {
 		getSquadsCount : function() {
 			if(this.squads != null)
-				return this.squads.reduce((a,c) => a+c);
+				return this.squads.reduce((a,c) => a+c, 0);
 		},
 		getSquadsClass : function() {
 			if(this.getSquadsCount() > 0) {
@@ -43,18 +75,8 @@ const app = createApp( {
 				return "card-body bg-secondary";
 			}
 		},
-		getTodoCount : function () {
-			var count = 0;
-			if (this.pendingApprove != null && this.pendingApprove.length>0)
-				count = this.pendingApprove.reduce((count,s) => count+s.count, count);
-			if (this.queuesToApprove!=null && this.queuesToApprove.length>0)
-				count = this.queuesToApprove.reduce((count,q) => count+q.requestsWaitingApprove, count);
-			if (this.queuesToHandle!=null && this.queuesToHandle.length>0)
-				count = this.queuesToHandle.reduce((count,q) => count+q.requestsProcessing, count);
-			return count;
-		},
-		getTodoClass : function() {
-			if(this.getTodoCount() > 0)
+		getRequestsToMeClass : function() {
+			if(this.requestsToMe.length > 0)
 				return "card-body bg-danger";
 			return "card-body bg-secondary";
 		},

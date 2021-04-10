@@ -269,7 +269,7 @@ func (db *FirestoreDB) GetSquadMember(ctx context.Context, squadId string, userI
 	return s, nil
 }
 
-func (db *FirestoreDB) GetSquadMemberIds(ctx context.Context, squadId string, statuses []int) (ids []string, err error) {
+func (db *FirestoreDB) GetSquadMemberIds(ctx context.Context, squadId string, statuses []int, memberToSkip string) (ids []string, err error) {
 	ids = make([]string, 0)
 	iter := db.Squads.Doc(squadId).Collection(MEMBERS).Where("Status", "in", statuses).Select().Documents(ctx)
 
@@ -283,7 +283,9 @@ func (db *FirestoreDB) GetSquadMemberIds(ctx context.Context, squadId string, st
 			return nil, fmt.Errorf("Failed to get squad admins: %w", err)
 		}
 
-		ids = append(ids, doc.Ref.ID)
+		if doc.Ref.ID != memberToSkip {
+			ids = append(ids, doc.Ref.ID)
+		}
 	}
 
 	return ids, nil

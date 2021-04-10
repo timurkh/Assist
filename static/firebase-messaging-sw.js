@@ -5,6 +5,8 @@ importScripts("/static/firebase.js");
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
+console.log("Listening for FCM messages in ServiceWorker");
+
 messaging.onBackgroundMessage(function(payload) {
 	const notificationOptions = {
 		body: payload.data.text,
@@ -12,7 +14,7 @@ messaging.onBackgroundMessage(function(payload) {
 		data: payload.data,
 	};
 
-	console.log("Background message recieved: ", payload);
+	console.log("ServiceWorker recieved message: ", payload);
 
 	// send message to open browser tabs
 	clients.matchAll({

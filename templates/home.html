@@ -81,11 +81,11 @@
 									<div>
 										<i class="fa fa-list fa-4x"></i>
 									</div>
-									<h6 class="text-uppercase">Upcoming Events</h6>
+									<h6 class="text-uppercase">Upcoming Events ([[events.length]])</h6>
 								</div>
 								<div class="col-8 px-0">
 									<table class="table text-white table-borderless mx-0">
-										<tr v-if="events != null" v-for="(event, index) in events.slice(0,3)" class="py-0 my-0">
+										<tr v-if="events != null" v-for="(event, index) in events.slice(0,4)" class="py-0 my-0">
 											<td class="py-0">
 												<a href="/events" class="text-reset">[[getDate(event.date)]] [[event.text]]</a>
 											</td>
@@ -96,7 +96,7 @@
 												<a href="/events" class="text-reset">[[getEventStatusText(event.status)]]</a>
 											</td>
 										</tr>
-										<tr v-if="events != null && events.length > 3" class="py-0 my-0">
+										<tr v-if="events != null && events.length > 4" class="py-0 my-0">
 											<td class="text-center align-middle py-0">
 												...
 											</td>
@@ -110,60 +110,28 @@
 
 				<div class="col-sm-6 m-0 p-1">
 					<div class="card text-white h-100">
-						<div :class="getTodoClass()">
+						<div :class="getRequestsToMeClass()">
 							<div class="row">
 								<div class="col-4">
 									<div>
 										<i class="fa fa-tasks fa-4x"></i>
 									</div>
-									<h6 class="text-uppercase">Requests to me ([[getTodoCount()]])</h6>
+									<h6 class="text-uppercase">Requests to me ([[requestsToMe.length]])</h6>
 								</div>
 								<div class="col-8 px-0">
 									<table class="table text-white table-borderless mx-0">
-										<tr v-if="pendingApprove != null" v-for="(squad, index) in pendingApprove.slice(0,3)" class="py-0 my-0">
+										<tr v-for="(request, index) in requestsToMe.slice(0,4)" class="py-0 my-0">
 											<td class="py-0">
-												<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.squad]]</a>
+												[[request.name]]
 											</td>
 											<td class="text-center align-middle m-0 p-0">
 												-
 											</td>
 											<td class="align-middle py-0">	
-												<a :href="`/squads/${squad.squad}/members?status=Pending+Approve`" class="text-reset">[[squad.count]] members pending approve</a>
+												<a :href="request.url" class="text-reset">[[request.count]]</a>
 											</td>
 										</tr>
-										<tr v-if="pendingApprove != null && pendingApprove.length > 3" class="py-0 my-0">
-											<td class="text-center align-middle py-0">
-												...
-											</td>
-										</tr>
-										<tr v-if="queuesToApprove != null" v-for="(queue, index) in queuesToApprove.slice(0,3)" class="py-0 my-0">
-											<td class="py-0">
-												[[queue.id]]
-											</td>
-											<td class="text-center align-middle m-0 p-0">
-												-
-											</td>
-											<td class="align-middle py-0">	
-												[[queue.requestsWaitingApprove]] requests waiting approve
-											</td>
-										</tr>
-										<tr v-if="pendingApprove != null && pendingApprove.length > 3" class="py-0 my-0">
-											<td class="text-center align-middle py-0">
-												...
-											</td>
-										</tr>
-										<tr v-if="queuesToHandle != null" v-for="(queue, index) in queuesToHandle.slice(0,3)" class="py-0 my-0">
-											<td class="py-0">
-												[[queue.id]]
-											</td>
-											<td class="text-center align-middle m-0 p-0">
-												-
-											</td>
-											<td class="align-middle py-0">	
-												[[queue.requestsWaitingApprove]] requests being processed
-											</td>
-										</tr>
-										<tr v-if="pendingApprove != null && pendingApprove.length > 3" class="py-0 my-0">
+										<tr v-if="requestsToMe != null && requestsToMe.length > 4" class="py-0 my-0">
 											<td class="text-center align-middle py-0">
 												...
 											</td>

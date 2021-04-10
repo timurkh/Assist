@@ -83,8 +83,8 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	userId = app.sd.getCurrentUserID(r)
 	sd := app.sd.getCurrentUserData(r)
 
-	var errs [4]error
-	var squads, pendingApprove, events, queuesToApprove, queuesToHandle interface{}
+	var errs [5]error
+	var squads, pendingApprove, events, appliedParticipants, queuesToApprove, queuesToHandle interface{}
 	var wg sync.WaitGroup
 
 	// squads
@@ -104,14 +104,25 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	// events
 	wg.Add(1)
 	go func() {
-		events, errs[2] = app.db.GetUserEvents(ctx, userId, 4)
+		events, errs[2] = app.db.GetUserEvents(ctx, userId, 0)
+		wg.Done()
+	}()
+
+	// applied participants
+	wg.Add(1)
+	go func() {
+		var squads []string
+		squads, errs[3] = app.db.GetUserSquads(ctx, userId, "admin")
+		if errs[3] == nil && len(squads) > 0 {
+			appliedParticipants, errs[3] = app.db.GetEventsByStatus(ctx, squads, userId, "Applied")
+		}
 		wg.Done()
 	}()
 
 	// requests
 	wg.Add(1)
 	go func() {
-		queuesToApprove, queuesToHandle, errs[3] = app.db.GetUserRequestQueues(ctx, sd.UserTags)
+		queuesToApprove, queuesToHandle, errs[4] = app.db.GetUserRequestQueues(ctx, sd.UserTags)
 		wg.Done()
 	}()
 
@@ -129,12 +140,13 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 
 	err := json.NewEncoder(w).Encode(
 		struct {
-			Squads          interface{} `json:"squads"`
-			PendingApprove  interface{} `json:"pendingApprove"`
-			Events          interface{} `json:"events"`
-			QueuesToApprove interface{} `json:"queuesToApprove"`
-			QueuesToHandle  interface{} `json:"queuesToHandle"`
-		}{squads, pendingApprove, events, queuesToApprove, queuesToHandle})
+			Squads              interface{} `json:"squads"`
+			PendingApprove      interface{} `json:"pendingApprove"`
+			Events              interface{} `json:"events"`
+			AppliedParticipants interface{} `json:"appliedParticipants"`
+			QueuesToApprove     interface{} `json:"queuesToApprove"`
+			QueuesToHandle      interface{} `json:"queuesToHandle"`
+		}{squads, pendingApprove, events, appliedParticipants, queuesToApprove, queuesToHandle})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

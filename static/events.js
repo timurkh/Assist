@@ -25,7 +25,8 @@ const app = createApp( {
 		])
 		.then(axios.spread((squads, events) => {
 			this.squads = squads.data;
-			this.events = events.data.map(x => {x.date = new Date(x.date); return x});
+			if(events.data != null)
+				this.events = events.data.map(x => {x.date = new Date(x.date); return x});
 			this.loading = false;
 		}))
 		.catch(errors => {

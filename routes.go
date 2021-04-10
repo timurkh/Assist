@@ -153,6 +153,7 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 	rm.Methods("PATCH").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodUpdateParticipant))
 	rm.Methods("DELETE").Path("/events/{eventId}/participants/{userId}").Handler(appHandler(app.methodRemoveParticipant))
 	rm.Methods("GET").Path("/events/{eventId}/candidates").Handler(appHandler(app.methodGetCandidates))
+	rm.Methods("GET").Path("/archive").Handler(appHandler(app.methodArchiveEvents))
 
 	// request queues
 	rm.Methods("POST").Path("/squads/{squadId}/queues").Handler(appHandler(app.methodCreateQueue))

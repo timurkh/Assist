@@ -124,6 +124,7 @@ func (su *SessionUtil) isSessionValid(w http.ResponseWriter, r *http.Request) bo
 	case "/sessionLogin":
 	case "/sessionLogout":
 	case "/login":
+	case "/methods/archive":
 	default:
 		// Get the ID token sent by the client
 		cookie, err := r.Cookie("firebaseSession")
