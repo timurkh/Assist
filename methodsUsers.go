@@ -83,8 +83,8 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	userId = app.sd.getCurrentUserID(r)
 	sd := app.sd.getCurrentUserData(r)
 
-	var errs [5]error
-	var squads, pendingApprove, events, appliedParticipants, queuesToApprove, queuesToHandle interface{}
+	var errs [6]error
+	var squads, pendingApprove, events, eventsCount, appliedParticipants, queuesToApprove, queuesToHandle interface{}
 	var wg sync.WaitGroup
 
 	// squads
@@ -104,7 +104,14 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	// events
 	wg.Add(1)
 	go func() {
-		events, errs[2] = app.db.GetUserEvents(ctx, userId, 0)
+		events, errs[2] = app.db.GetUserEvents(ctx, userId, 4)
+		wg.Done()
+	}()
+
+	// events count
+	wg.Add(1)
+	go func() {
+		eventsCount, errs[3] = app.db.GetUserEventsCount(ctx, userId)
 		wg.Done()
 	}()
 
@@ -112,9 +119,9 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	wg.Add(1)
 	go func() {
 		var squads []string
-		squads, errs[3] = app.db.GetUserSquads(ctx, userId, "admin")
-		if errs[3] == nil && len(squads) > 0 {
-			appliedParticipants, errs[3] = app.db.GetEventsByStatus(ctx, squads, userId, "Applied")
+		squads, errs[4] = app.db.GetUserSquads(ctx, userId, "admin")
+		if errs[4] == nil && len(squads) > 0 {
+			appliedParticipants, errs[4] = app.db.GetEventsByStatus(ctx, squads, userId, "Applied")
 		}
 		wg.Done()
 	}()
@@ -122,7 +129,7 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	// requests
 	wg.Add(1)
 	go func() {
-		queuesToApprove, queuesToHandle, errs[4] = app.db.GetUserRequestQueues(ctx, sd.UserTags)
+		queuesToApprove, queuesToHandle, errs[5] = app.db.GetUserRequestQueues(ctx, sd.UserTags)
 		wg.Done()
 	}()
 
@@ -143,10 +150,11 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 			Squads              interface{} `json:"squads"`
 			PendingApprove      interface{} `json:"pendingApprove"`
 			Events              interface{} `json:"events"`
+			EventsCount         interface{} `json:"eventsCount"`
 			AppliedParticipants interface{} `json:"appliedParticipants"`
 			QueuesToApprove     interface{} `json:"queuesToApprove"`
 			QueuesToHandle      interface{} `json:"queuesToHandle"`
-		}{squads, pendingApprove, events, appliedParticipants, queuesToApprove, queuesToHandle})
+		}{squads, pendingApprove, events, eventsCount, appliedParticipants, queuesToApprove, queuesToHandle})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

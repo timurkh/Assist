@@ -26,6 +26,7 @@ var (
 	replicantsCount = 1000
 	maxThreadsCount = 8
 	adb             *assist_db.FirestoreDB
+	su              *SessionTestUtil
 	ctx             = context.Background()
 	router          = mux.NewRouter()
 )
@@ -39,8 +40,9 @@ type SessionTestUtil struct {
 
 func (stu *SessionTestUtil) getCurrentUserData(r *http.Request) *assist_db.UserData {
 	sd := &assist_db.UserData{
-		Admin:  true,
-		Status: assist_db.Admin,
+		Admin:    true,
+		Status:   assist_db.Admin,
+		UserTags: []string{"requester", "approver"},
 	}
 
 	return sd
@@ -183,7 +185,7 @@ func BenchmarkMethodGetHome(b *testing.B) {
 	}
 }
 
-func BenchmarkGetHome_DBCounters_SquadsCount(b *testing.B) {
+func BenchmarkGetHome_Home_SquadsCount(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := adb.GetSquadsCount(ctx, testUserId)
 		if err != nil {
@@ -193,7 +195,7 @@ func BenchmarkGetHome_DBCounters_SquadsCount(b *testing.B) {
 	}
 }
 
-func BenchmarkGetHome_DBCounters_SquadsWithPendingRequests(b *testing.B) {
+func BenchmarkGetHome_Home_SquadsWithPendingRequests(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := adb.GetSquadsWithPendingRequests(ctx, testUserId, false)
 		if err != nil {
@@ -203,11 +205,37 @@ func BenchmarkGetHome_DBCounters_SquadsWithPendingRequests(b *testing.B) {
 	}
 }
 
-func BenchmarkGetHome_DBCounters_UserEvents(b *testing.B) {
+func BenchmarkGetHome_Home_UserEvents(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := adb.GetUserEvents(ctx, testUserId, 4)
 		if err != nil {
 			b.Fatalf("Failed to retrieve events: %v", err)
+		}
+
+	}
+}
+
+func BenchmarkGetHome_Home_AppliedParticipants(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		squads, err := adb.GetUserSquads(ctx, testUserId, "admin")
+		if err == nil && len(squads) > 0 {
+			_, err = adb.GetEventsByStatus(ctx, squads, testUserId, "Applied")
+			if err != nil {
+				b.Fatalf("Failed to retrieve events: %v", err)
+			}
+		}
+		if err != nil {
+			b.Fatalf("Failed to retrieve user squads: %v", err)
+		}
+
+	}
+}
+
+func BenchmarkGetHome_Home_GetUserRequests(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _, err := adb.GetUserRequestQueues(ctx, su.getCurrentUserData(nil).UserTags)
+		if err != nil {
+			b.Fatalf("Failed to get user requests: %v", err)
 		}
 
 	}

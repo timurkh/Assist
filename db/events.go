@@ -203,6 +203,26 @@ func (db *FirestoreDB) GetUserEventsMap(ctx context.Context, squads []string, us
 	return events, nil
 }
 
+func (db *FirestoreDB) GetUserEventsCount(ctx context.Context, userId string) (int, error) {
+	iter := db.Users.Doc(userId).Collection(USER_EVENTS).Where("Archived", "==", false).Select().Documents(ctx)
+
+	defer iter.Stop()
+	count := 0
+	for {
+		_, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, fmt.Errorf("Failed to get amount of user %s events: %w", userId, err)
+		}
+		count++
+
+	}
+
+	return count, nil
+}
+
 func (db *FirestoreDB) GetUserEvents(ctx context.Context, userId string, limit int) ([]*EventInfo, error) {
 	events := make([]*EventInfo, 0)
 
@@ -264,11 +284,6 @@ func (db *FirestoreDB) ArchiveOldEvents(ctx context.Context) error {
 }
 
 func (db *FirestoreDB) GetEvents(ctx context.Context, squads []string, userId string) (events []*EventCountersRecord, err error) {
-	return db.GetEventsByStatus(ctx, squads, userId, "")
-}
-
-func (db *FirestoreDB) GetEventsByStatus(ctx context.Context, squads []string, userId string, status string) (events []*EventCountersRecord, err error) {
-
 	var myEvents map[string]*EventInfo
 	if userId != "" {
 		myEvents, err = db.GetUserEventsMap(ctx, squads, userId)
@@ -284,11 +299,7 @@ func (db *FirestoreDB) GetEventsByStatus(ctx context.Context, squads []string, u
 
 	events = make([]*EventCountersRecord, 0)
 	query := db.Events.Where("SquadId", "in", squads).Where("Archived", "==", false)
-	if status != "" {
-		query = query.Where(status, ">", 0).OrderBy(status, firestore.Desc)
-	} else {
-		query = query.OrderBy("Date", firestore.Asc)
-	}
+	query = query.OrderBy("Date", firestore.Asc)
 	iter := query.Documents(ctx)
 
 	defer iter.Stop()
@@ -320,26 +331,56 @@ func (db *FirestoreDB) GetEventsByStatus(ctx context.Context, squads []string, u
 		events = append(events, e)
 	}
 
-	if status == "" {
-		// Now mark archived events that user has but do not exist in the global list
-		batch := db.Client.Batch()
-		haveSomethingToArchive := false
+	// Now mark archived events that user has but do not exist in the global list
+	batch := db.Client.Batch()
+	haveSomethingToArchive := false
 
-		for k, v := range myEvents {
-			if v.Archived == true {
-				batch.Update(db.Users.Doc(userId).Collection(USER_EVENTS).Doc(k), []firestore.Update{
-					{Path: "Archived", Value: true},
-				})
-				haveSomethingToArchive = true
-			}
+	for k, v := range myEvents {
+		if v.Archived == true {
+			batch.Update(db.Users.Doc(userId).Collection(USER_EVENTS).Doc(k), []firestore.Update{
+				{Path: "Archived", Value: true},
+			})
+			haveSomethingToArchive = true
+		}
+	}
+
+	if haveSomethingToArchive {
+		_, err = batch.Commit(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to mark archived user events: %w", err)
+		}
+	}
+
+	return events, nil
+}
+
+func (db *FirestoreDB) GetEventsByStatus(ctx context.Context, squads []string, userId string, status string) (events []*EventCountersRecord, err error) {
+
+	events = make([]*EventCountersRecord, 0)
+	query := db.Events.Where("SquadId", "in", squads).Where("Archived", "==", false)
+	query = query.Where(status, ">", 0).OrderBy(status, firestore.Desc)
+	iter := query.Documents(ctx)
+
+	defer iter.Stop()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
 		}
 
-		if haveSomethingToArchive {
-			_, err = batch.Commit(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to mark archived user events: %w", err)
-			}
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get events: %w", err)
 		}
+
+		e := &EventCountersRecord{}
+		err = doc.DataTo(e)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get events: %w", err)
+		}
+
+		e.ID = doc.Ref.ID
+
+		events = append(events, e)
 	}
 
 	return events, nil

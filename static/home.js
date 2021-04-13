@@ -17,6 +17,7 @@ const app = createApp( {
 		.then(res => {
 			this.squads = res.data.squads;
 			this.events = res.data.events.map(x => {x.date = new Date(x.date); return x});
+			this.eventsCount = res.data.eventsCount;
 
 			let pendingApprove = res.data.pendingApprove;
 			if(pendingApprove != null & pendingApprove.length > 0){

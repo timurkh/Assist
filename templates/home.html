@@ -81,7 +81,7 @@
 									<div>
 										<i class="fa fa-list fa-4x"></i>
 									</div>
-									<h6 class="text-uppercase">Upcoming Events ([[events.length]])</h6>
+									<h6 class="text-uppercase">Upcoming Events ([[eventsCount]])</h6>
 								</div>
 								<div class="col-8 px-0">
 									<table class="table text-white table-borderless mx-0">
@@ -96,8 +96,8 @@
 												<a href="/events" class="text-reset">[[getEventStatusText(event.status)]]</a>
 											</td>
 										</tr>
-										<tr v-if="events != null && events.length > 4" class="py-0 my-0">
-											<td class="text-center align-middle py-0">
+										<tr v-if="eventsCount > 4" class="py-0 my-0">
+											<td class="text-center align-middle py-0" colspan="3">
 												...
 											</td>
 										</tr>

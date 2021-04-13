@@ -100,7 +100,7 @@ func (ntfs *Notifications) sendMessage(userId string, n Notification, count int)
 		}
 
 		if ntfs.dev {
-			log.Printf("sendMessage(userId=%v, token=%v, title=%v) %v: %+v\n", userId, token, n.Title, response)
+			log.Printf("sendMessage(userId=%v, token=%v, title=%v) %+v\n", userId, token, n.Title, response)
 		}
 	}
 }

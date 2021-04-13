@@ -77,10 +77,11 @@ const globalMixin = {
 	},
 };
 
-const notifications = createApp( {
+const notificationsToast = createApp( {
 	data() {
 		return {
 			notifications: [],
+			toastNotifications: [],
 		}
 	},
 	delimiters: ['[[', ']]'],
@@ -104,6 +105,21 @@ const notifications = createApp( {
 				this.notifications.push(n);
 			else
 				this.notifications = [n];
+		},
+		showNotifications : function() {
+			this.toastNotifications = [...this.notifications];
+			this.$nextTick(() => {
+				$('.toast').toast('show');
+				axios({
+					method: 'PUT',
+					url: '/methods/users/me/notifications',
+					headers: { "X-CSRF-Token": csrfToken},
+				}).then(function () {
+					this.notifications = [];
+				}, function(error) {
+					console.log(error);
+				});
+			});
 		},
 	},
 }).mount("#notifications");
@@ -142,7 +158,7 @@ const navbar = createApp( {
 				if(event.data != null && !event.data.isFirebaseMessaging) {
 					console.log("SW event listener:", event);
 					this.notificationsCount = event.data.count;
-					notifications.addNotification(event.data);
+					notificationsToast.addNotification(event.data);
 				}
 			});
 		});
@@ -214,7 +230,7 @@ const navbar = createApp( {
 			messaging.onMessage((payload) => {
 				console.log('Message received: ', payload);
 				this.notificationsCount = payload.data.count;
-				notifications.addNotification(payload.data);
+				notificationsToast.addNotification(payload.data);
 				navigator.serviceWorker.getRegistration('/static/firebase-messaging-sw.js').then((registration) => {
 					const notificationOptions = {
 						body: payload.data.text,
@@ -223,6 +239,10 @@ const navbar = createApp( {
 					registration.showNotification(payload.data.title, notificationOptions);
 				});
 			});
+		},
+		showNotifications : function() {
+			this.notificationsCount = 0;
+			notificationsToast.showNotifications();
 		},
 		postSignOut : function() {
 			// POST to session login endpoint.
@@ -235,9 +255,6 @@ const navbar = createApp( {
 				// Redirect to profile on success.
 				window.location.assign('/login');
 			}, function(error) {
-				// Refresh page on error.
-				// In all cases, client side state should be lost due to in-memory
-				// persistence.
 				console.log(error);
 			});
 		},
