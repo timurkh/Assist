@@ -204,21 +204,17 @@ func (db *FirestoreDB) UpdateUserInfoFromFirebase(ctx context.Context, userRecor
 }
 
 func (db *FirestoreDB) GetSquadsCount(ctx context.Context, userId string) (interface{}, error) {
-	squads := make([]int, len(MemberStatusTypes))
-	iter := db.Users.Doc(userId).Collection(USER_SQUADS).Documents(ctx)
-	defer iter.Stop()
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		} else if err != nil {
-			log.Printf("Error while quering user squads: %v", err)
-			return nil, err
-		}
-		status := doc.Data()["Status"].(int64)
-		squads[status] = squads[status] + 1
+	squadsCount := make([]int, len(MemberStatusTypes))
+	userSquadsMap, err := db.getUserSquads(ctx, userId)
+	if err != nil {
+		log.Printf("Error while getting user squads: %v", err)
+		return nil, err
 	}
-	return squads, nil
+
+	for _, v := range userSquadsMap {
+		squadsCount[v]++
+	}
+	return squadsCount, nil
 }
 
 func (db *FirestoreDB) GetSquadsWithPendingRequests(ctx context.Context, userId string, admin bool) (interface{}, error) {

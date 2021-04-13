@@ -430,6 +430,8 @@ func (db *FirestoreDB) RegisterParticipants(ctx context.Context, userIds []strin
 		log.Println("Registering users " + strings.Join(userIds, ", ") + " for event " + eventId)
 	}
 
+	eventInfo.Status = status
+
 	errs := make([]error, len(userIds))
 	var wg sync.WaitGroup
 
@@ -437,7 +439,7 @@ func (db *FirestoreDB) RegisterParticipants(ctx context.Context, userIds []strin
 
 		wg.Add(1)
 
-		go func(userId string) {
+		go func(i int, userId string) {
 
 			defer wg.Done()
 
@@ -468,8 +470,6 @@ func (db *FirestoreDB) RegisterParticipants(ctx context.Context, userIds []strin
 				}
 
 				if !userInfo.Replicant {
-					eventInfo.Status = status
-
 					errs[i] = db.addEventRecordToParticipant(ctx, userId, eventId, eventInfo)
 					if errs[i] != nil {
 						return
@@ -479,7 +479,7 @@ func (db *FirestoreDB) RegisterParticipants(ctx context.Context, userIds []strin
 				errs[i] = fmt.Errorf("User %v is already registered for event %v with status %v", userId, eventId, st.String())
 			}
 
-		}(uid)
+		}(i, uid)
 	}
 
 	wg.Wait()
@@ -672,7 +672,7 @@ func (db *FirestoreDB) deleteParticipantRecordFromEvent(ctx context.Context, eve
 
 func (db *FirestoreDB) DeleteEvent(ctx context.Context, eventId string) error {
 	db.eventDataCache.Delete(eventId)
-	return db.DeleteGroup(ctx, "event", db.Events, USER_EVENTS, eventId)
+	return db.deleteGroup(ctx, "event", db.Events, USER_EVENTS, eventId, nil)
 }
 
 func (db *FirestoreDB) processIdsTail(candidateIds []string, numCandidates int, idCandidate string, iterCandidates *firestore.DocumentIterator) []string {

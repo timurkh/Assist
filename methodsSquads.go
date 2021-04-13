@@ -160,7 +160,7 @@ func (app *App) methodGetSquads(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	other_squads, err := app.db.GetSquads(ctx, userId)
+	other_squads, err := app.db.GetOtherSquads(ctx, userId)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

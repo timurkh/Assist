@@ -279,7 +279,7 @@ func TestSquads(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			otherSquads, err := db.GetSquads(ctx, "SUPER_USER")
+			otherSquads, err := db.GetOtherSquads(ctx, "SUPER_USER")
 
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
@@ -293,7 +293,7 @@ func TestSquads(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			otherSquads, err := db.GetSquads(ctx, "TEST_USER_0")
+			otherSquads, err := db.GetOtherSquads(ctx, "TEST_USER_0")
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
@@ -385,7 +385,7 @@ func TestSquads(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			otherSquads, err := db.GetSquads(ctx, "TEST_USER_0")
+			otherSquads, err := db.GetOtherSquads(ctx, "TEST_USER_0")
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
@@ -397,7 +397,7 @@ func TestSquads(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			otherSquads, err := db.GetSquads(ctx, "TEST_USER_1")
+			otherSquads, err := db.GetOtherSquads(ctx, "TEST_USER_1")
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
@@ -526,7 +526,7 @@ func TestSquads(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			otherSquads, err := db.GetSquads(ctx, "SUPER_USER")
+			otherSquads, err := db.GetOtherSquads(ctx, "SUPER_USER")
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
@@ -550,7 +550,7 @@ func TestSquads(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			otherSquads, err := db.GetSquads(ctx, "TEST_USER_1")
+			otherSquads, err := db.GetOtherSquads(ctx, "TEST_USER_1")
 			if err != nil {
 				t.Errorf("Failed to retrieve squads: %v", err)
 			}
@@ -609,7 +609,6 @@ func TestSquads(t *testing.T) {
 
 func TestEvents(t *testing.T) {
 	var eventIds [5]string
-	var err error
 	t.Run("Create events", func(t *testing.T) {
 		squadId := "TEST_SQUAD_1"
 		var wg sync.WaitGroup
@@ -628,6 +627,7 @@ func TestEvents(t *testing.T) {
 					SquadId:  squadId,
 					OwnerId:  fmt.Sprint("TEST_USER_", i),
 				}
+				var err error
 				eventIds[i], err = db.CreateEvent(ctx, eventInfo)
 				if err != nil {
 					t.Fatalf("Failed to create event: %v", err)
@@ -641,6 +641,7 @@ func TestEvents(t *testing.T) {
 
 	var eventInfo *EventInfo
 	t.Run("Register for one of the events", func(t *testing.T) {
+		var err error
 		eventInfo, err = db.GetEvent(ctx, eventIds[1])
 		if err != nil {
 			t.Fatalf("Failed to get event info : %v", err)

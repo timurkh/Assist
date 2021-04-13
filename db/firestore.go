@@ -27,6 +27,7 @@ type FirestoreDB struct {
 	RequestQueues     *firestore.CollectionRef
 	updater           *AsyncUpdater
 	userDataCache     *cache.Cache
+	userSquadsCache   *cache.Cache //userId:map[squadId]memberStatus
 	memberStatusCache *cache.Cache
 	eventDataCache    *cache.Cache
 }
@@ -69,6 +70,7 @@ func NewFirestoreDB(fireapp *firebase.App, dev bool) (*FirestoreDB, error) {
 	}
 
 	uc := cache.New(24*time.Hour, 10*time.Minute)
+	us := cache.New(24*time.Hour, 10*time.Minute)
 	sc := cache.New(24*time.Hour, 10*time.Minute)
 	ec := cache.New(24*time.Hour, 10*time.Minute)
 
@@ -81,6 +83,7 @@ func NewFirestoreDB(fireapp *firebase.App, dev bool) (*FirestoreDB, error) {
 		RequestQueues:     dbClient.Collection(testPrefix + "queues"),
 		updater:           initAsyncUpdater(),
 		userDataCache:     uc,
+		userSquadsCache:   us,
 		memberStatusCache: sc,
 		eventDataCache:    ec,
 	}, nil
@@ -199,7 +202,7 @@ func (db *FirestoreDB) GetFilteredIDsQuery(collection *firestore.CollectionRef, 
 	return &query
 }
 
-func (db *FirestoreDB) DeleteGroup(ctx context.Context, groupType string, groupCollection *firestore.CollectionRef, membersCollection string, groupId string) error {
+func (db *FirestoreDB) deleteGroup(ctx context.Context, groupType string, groupCollection *firestore.CollectionRef, membersCollection string, groupId string, objectGroupCache *cache.Cache) error {
 
 	if db.dev {
 		log.Println("Deleting " + groupType + " " + groupId)
@@ -226,7 +229,13 @@ func (db *FirestoreDB) DeleteGroup(ctx context.Context, groupType string, groupC
 				log.Printf("Deleting %v %v from user %v", groupType, groupId, userId)
 			}
 
+			// delete DB entry
 			db.Users.Doc(userId).Collection(membersCollection).Doc(groupId).Delete(ctx)
+
+			// delete cache entry
+			if objectGroupCache != nil {
+				objectGroupCache.Delete(userId)
+			}
 		}
 	}()
 
