@@ -128,7 +128,7 @@ const navbar = createApp( {
 	data() {
 		return {
 			notificationsCount: notificationsCount,
-			notificationsEnabled: false,
+			notificationsEnabled: localStorage.getItem('notificationsEnabled'),
 			messaging: {},
 		}
 	},
@@ -146,10 +146,12 @@ const navbar = createApp( {
 			this.messaging.useServiceWorker(registration);
 			this.catchMessages(this.messaging);	
 
-			let ne = localStorage.getItem('notificationsEnabled');
-
-			if ( ne == 'true' && Notification.permission === 'granted') {
-				this.setupNotifications();
+			if ( this.notificationsEnabled) {
+				if(Notification.permission === 'granted') {
+					this.setupNotifications();
+				} else {
+					this.notificationsEnabled = false;
+				}
 			}
 
 			// Listen to messages from the service worker
@@ -161,6 +163,10 @@ const navbar = createApp( {
 					notificationsToast.addNotification(event.data);
 				}
 			});
+		})
+		.catch( err => {
+			this.notificationsEnabled = false;
+			console.log(err);
 		});
 
 	},
