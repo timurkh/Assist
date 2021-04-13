@@ -28,11 +28,12 @@ const (
 
 func (app *App) checkAuthorization(r *http.Request, userId string, squadId string, requiredLevel AuthenticatedLevel) (_ string, level AuthenticatedLevel) {
 
+	currentUserId := app.sd.getCurrentUserID(r)
+
 	if app.dev {
-		defer TimeTrack("checkAuthorization "+r.URL.Path, time.Now())
+		defer TimeTrack("checkAuthorization "+r.URL.Path+" for user "+currentUserId, time.Now())
 	}
 
-	currentUserId := app.sd.getCurrentUserID(r)
 	sd := app.sd.getCurrentUserData(r)
 
 	if sd.Status == db.Admin {

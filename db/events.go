@@ -178,7 +178,7 @@ func getToday() *time.Time {
 func (db *FirestoreDB) GetUserEventsMap(ctx context.Context, squads []string, userId string) (map[string]*EventInfo, error) {
 	events := make(map[string]*EventInfo, 0)
 
-	iter := db.Users.Doc(userId).Collection(USER_EVENTS).Where("Archived", "!=", true).Where("SquadId", "in", squads).Documents(ctx)
+	iter := db.Users.Doc(userId).Collection(USER_EVENTS).Where("Archived", "==", false).Where("SquadId", "in", squads).Documents(ctx)
 
 	defer iter.Stop()
 	for {
@@ -259,7 +259,7 @@ func (db *FirestoreDB) ArchiveOldEvents(ctx context.Context) error {
 
 	batch := db.Client.Batch()
 
-	iter := db.Events.Where("Archived", "!=", true).Where("Date", "<", getToday()).Select().Documents(ctx)
+	iter := db.Events.Where("Archived", "==", false).Where("Date", "<", getToday()).Select().Documents(ctx)
 
 	defer iter.Stop()
 	for {
@@ -272,6 +272,7 @@ func (db *FirestoreDB) ArchiveOldEvents(ctx context.Context) error {
 			return fmt.Errorf("Failed to get events: %w", err)
 		}
 
+		log.Printf("Marking event %v as archived\b", doc.Ref.ID)
 		batch.Update(doc.Ref, []firestore.Update{
 			{Path: "Archived", Value: true},
 		})
