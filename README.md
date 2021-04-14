@@ -2,17 +2,21 @@
 
 This app is a kind of 'minimal CRM for personal usage'. While developing it, I've taken scenarios from my shooting club as a model: we have several hundreds members and events with pre registration. GMail groups + FB + Excel mix was sufficient to handle all scenarios for years, but not too convinient.
 
-##### Users
+#### Users
 One can log into the portal using either email/password, FB identity, Google identity or phone (SMS authorization). After first login, email validation is required to proceed. Having email validated, user gets access to the system. It is possible to enable several auth providers for the same account (i.e. use both phone and FB authorization).
 
-##### Squads
-User can create squads. Squad is visible for every user of the system. Other users can join your squad, or you can add so-called "replicants" to it yourself. If user attempted to join the squad, his status is "Pending Approve". Squad owner can change user status either to Member or Admin. Members recieve notifications, can join events, but are not able to communicate squad or get list of all members. Admin has access to all squad members, also admin can change status of other members (but not admin ones or owner).
+#### Squads
+User can create squads. Squad should have unique name which is visible for every user of the system. Other users can join your squad, or you can add so-called *replicants*(user records not bound to particular identity and thus not able to log into the system) to it yourself. If user attempted to join the squad, his status is *Pending Approve*. Squad owner can change user status either to *Member* or *Admin*. Members recieve notifications, can join events, create requests, but are not able to get list of all members, create notes or request queues. Admin has access to all squad members, also admin can change status of other members (but not admin ones or owner) and define ollowing entities at the *Squad Details* screen:
+###### Notes
+Squad admins & owner can create notes per squad and per squad member. *Squad Notes* are intended to store & share information with all members (non-admins can see notes after they are published). On the contrary, Member Notes are visible only to squad admins. Member does not have access to notes assigned to him in the squad, unless he is squad admin.
+###### Tags
+Admins can create *Squad Tags*, and assign those tags to members. *Tags* might have values, values are exclusive (only one tag value can be assigned to same member). Tags are used to identify request queues approvers and handlers.
 
-##### Notes
-Squad admins & owner can create notes per squad and per squad member. Squad Notes are intended to store & share information with the whole squad and are visible to all squad members. On the contrary, Member Notes are visible only to squad admins. Member does not have access to notes assigned to him in the squad, unless he is squad admin.
+###### Request Queues
+Squad admins can create *Request Queues*, select tag that identifies users that can approve requests (if left empty, request queue will not have approve stage) and another tag that idenitifes users that should handle them (if left empty, admins are expected to close requests). Approvers and handlers will get browser notifications about new requests (of course if they have permitted them in browser settings).
 
-##### Tags
-Admins can create Squad Tags, and assign those tags to members. Tags might have values, values are exclusive (only one tag value can be assigned to same member).
+###### Events
+Squad admins can create events.
 
 ### Technologies, source codes, reliability, costs
 

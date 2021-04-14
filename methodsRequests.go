@@ -48,6 +48,34 @@ func (app *App) methodCreateQueue(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
+func (app *App) methodDeleteQueue(w http.ResponseWriter, r *http.Request) error {
+	params := mux.Vars(r)
+	ctx := r.Context()
+
+	squadId := params["squadId"]
+	queueId := params["queueId"]
+
+	_, authLevel := app.checkAuthorization(r, "", squadId, squadAdmin|squadOwner)
+
+	if authLevel == 0 {
+		err := fmt.Errorf("Current user is not authorized to delete queues in squad " + squadId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
+	err := app.db.DeleteRequestsQueue(ctx, queueId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return nil
+}
+
 func (app *App) methodGetSquadQueues(w http.ResponseWriter, r *http.Request) error {
 	params := mux.Vars(r)
 	ctx := r.Context()
@@ -101,7 +129,19 @@ func (app *App) methodGetUserQueues(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	queuesToApprove, queuesToHandle, err := app.db.GetUserRequestQueues(ctx, userData.UserTags)
+	squadsAll, err := app.db.GetUserSquads(ctx, userId, "")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	squadsAdmin, err := app.db.GetUserSquads(ctx, userId, "admin")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	userQueues, userRequests, queuesToApprove, requestsToApprove, queuesToHandle, requestsToHandle, err := app.db.GetUserRequests(ctx, userData.UserTags, squadsAll, squadsAdmin)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -110,9 +150,14 @@ func (app *App) methodGetUserQueues(w http.ResponseWriter, r *http.Request) erro
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(struct {
-		QueuesToApprove interface{} `json:"queuesToApprove"`
-		QueuesToHandle  interface{} `json:"queuesToHandle"`
-	}{queuesToApprove, queuesToHandle})
+		UserQueueus       interface{} `json:"userQueues"`
+		UserRequests      interface{} `json:"userRequests"`
+		QueuesToApprove   interface{} `json:"queuesToApprove"`
+		RequestsToApprove interface{} `json:"requestsToApprove"`
+		QueuesToHandle    interface{} `json:"queuesToHandle"`
+		RequestsToHandle  interface{} `json:"requestsToHandle"`
+	}{userQueues, userRequests, queuesToApprove, requestsToApprove, queuesToHandle, requestsToHandle})
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

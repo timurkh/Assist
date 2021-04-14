@@ -1,0 +1,112 @@
+<script> document.getElementById("navbar-requests").classList.add("active"); </script>
+
+<div id="app">
+	<div v-if="loading">
+		<div class="mt-5" align="center">
+			<div class="spinner-border mt-5" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+	</div>
+	<div v-if="!loading" v-cloak>
+
+		<!-- Main View -->
+		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
+			[[ error_message ]]
+		</div>
+
+		<div class="d-flex flex-wrap">
+			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 pb-2 my-1 mx-1">
+				<ol class="breadcrumb my-0 p-0">
+					<li v-if="mode=='handle'" class="breadcrumb-item active"><a class="mr-1" href="#" @click="setMode('user')"> My Requests </a> | <a class="mx-1" href="#" @click="setMode('approve')"> Requests to Approve </a>| Requests to Handle</li>
+					<li v-if="mode=='approve'" class="breadcrumb-item active"><a class="mr-1" href="#" @click="setMode('user')"> My Requests </a> | Requests to Approve | <a class="mx-1" href="#" @click="setMode('handle')"> Requests to Handle </a> </li>
+					<li v-if="mode=='user'" class="breadcrumb-item active"> My Requests | <a class="mx-1" href="#" @click="setMode('approve')"> Requests to Approve </a> | <a class="mx-1" href="#" @click="setMode('handle')"> Requests to Handle </a> </li>
+				</ol>
+			</div>
+			<div v-if="mode=='user' && !userGotNoQueues()" class="ml-auto p-0 mr-1 my-1">
+				<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#createRequestModal"><i class="fa fa-plus"></i> Create Request</button>
+			</div>
+		</div>
+
+		<div v-if="userGotNoQueues()" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
+			<span v-if="mode=='approve'">
+				You do not have any requests queues to approve.	
+			</span>
+			<span v-if="mode=='handle'">
+				You do not have any requests queues to handle.	
+			</span>
+			<span v-if="mode=='user'">
+				There are no request queues in any of your squads.
+			</span>
+		</div>
+
+		<div v-else class="table-responsive-lg m-1 p-0">
+			<table class="table table-borderless m-0">
+				<thead>
+					<tr>
+						<th class="p-0 pr-1">
+							<select id="selectQueue" class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="filter.queue" @change="onFilterChange($event)">
+								<option value="" selected></option>
+								<option v-for="queue in getQueues()" :value="queue">[[queue]]</option>
+							</select>
+						</th>
+						<th v-if="mode != 'user'" class="p-0 px-1">
+							<input v-model="filter.memberDisplayName" @change="onFilterChange($event)" class="form-control m-0 mb-1" style="width:100%" placeholder="Member"/>
+						</th>
+						<th class="p-0 px-1">
+							<select class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="filter.status" @change="onFilterChange($event)">
+								<option selected></option>
+								<option >Pending Handle</option>
+								<option >Member</option>
+								<option >Admin</option>
+								<option >Owner</option>
+							</select>
+						</th>
+						<th class="p-0 pl-1">
+							<input v-model="filter.text" @change="onFilterChange($event)" class="form-control m-0 mb-1" style="width:100%" placeholder="Search in notes"/>
+						</th>
+					</tr>
+					<tr class="table-sm thead-dark text-truncate">
+						<th class="border text-truncate">Queue</th>
+						<th v-if="mode!='user'" class="border text-truncate">Member</th>
+						<th class="border text-truncate d-none d-sm-table-cell">Status</th>
+						<th class="border text-truncate d-none d-sm-table-cell">Request Details</th>
+						<th class="border text-truncate">Actions</th>
+				</thead>
+				<tbody class="table-sm table-bordered">
+					<tr class="" v-for="(request, index) in requests"  >
+						<td class="border text-wrap" :title="request.queueId"> [[request.queueId]] </td>
+						<td v-if="mode!='user'" class="border text-wrap" :title="request.queueId"> [[request.memberDisplayName]] </td>
+						<td class="border text-break d-none d-sm-table-cell" :title="getRequestStatusText(request.Status)"> [[getRequestStatusText(request.Status)]] </td>
+						<td class="border text-break d-none d-sm-table-cell" :title="request.details"> [[request.details]] </td>
+						<td class="border text-wrap" align="center"> 
+								<span v-if="member.status != 3">
+									<a title="Remove Member" data-toggle="tooltip" v-on:click.stop.prevent="removeMember(member, index)" href="#"><i class="fas fa-sign-out-alt fa-lg p-1"></i></a>
+								</span>
+								<span v-if="member.status != 3">
+									<a title="Change member status" data-toggle="tooltip" v-on:click.stop.prevent="changeStatus(member, index)" href="#"><i class="fas fa-chevron-circle-up fa-lg p-1"></i></i></a>
+								</span>
+								<span>
+								<a title="Add Tag" data-toggle="tooltip" v-on:click.stop.prevent="tagMember(member, index)" href="#"><i class="fas fa-tag fa-lg p-1"></i></a>
+								</span>
+								<span>
+								<a title="Add Note" data-toggle="tooltip" v-on:click.stop.prevent="addNote(member, index)" href="#"><i class="fas fa-edit fa-lg p-1"></i></a>
+								</span>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<div v-if="getting_more" class="mt-5" align="center">
+			<div class="spinner-border" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+		<div v-else class="m-3" align="center">
+			<button v-if="moreRequestsAvailable" type="button" class="btn btn-secondary btn-lg" v-on:click="getMore()">See More</button>
+		</div>
+	</div>
+</div>
+
+<script src="/static/requests.js"></script>

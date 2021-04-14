@@ -46,6 +46,8 @@ const app = createApp( {
 		},
 		addQueue:function() {
 			this.newQueue.id = this.newQueue.id.trim();
+			this.newQueue.requestsWaitingApprove = 0;
+			this.newQueue.requestsProcessing = 0;
 
 			axios({
 				method: 'POST',
@@ -55,7 +57,7 @@ const app = createApp( {
 			})
 			.then( res => {
 				this.error_message = "";
-				this.requestQueues.push(Object.assign({}, this.newQueueu));
+				this.queues.push(Object.assign({}, this.newQueue));
 			})
 			.catch(err => {
 				this.error_message = "Error while adding queue: " + this.getAxiosErrorMessage(err);

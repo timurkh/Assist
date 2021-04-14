@@ -21,10 +21,11 @@ const app = createApp( {
 
 			let pendingApprove = res.data.pendingApprove;
 			if(pendingApprove != null & pendingApprove.length > 0){
+				let pendingApproveCount = pendingApprove.reduce((a,c) => (a+c.count), 0);
 				this.requestsToMe.push({
 					name: "Join squads",
 					url: "/squads",
-					count: pendingApprove.length + " candidate" + (pendingApprove.length > 1?"s":""),
+					count: pendingApproveCount + " candidate" + (pendingApproveCount > 1?"s":""),
 				});
 			}
 			let appliedParticipants = res.data.appliedParticipants;
@@ -35,27 +36,8 @@ const app = createApp( {
 					count: appliedParticipants.length + " applied",
 				});
 			}
-			//let queuesToApprove = res.data.queuesToApprove.filter(queue => queue.requestsWaitingApprove.length > 0);
-			let queuesToApprove = res.data.queuesToApprove;
-			if(queuesToApprove != null & queuesToApprove.length > 0){
-
-				this.requestsToMe.push({
-					name: queuesToApprove.length > 1 ? queuesToApprove.length + " queues" :  queuesToApprove[0].id,
-					url: "/requests",
-					count: queuesToApprove.reduce((a,c) => a+c.requestsWaitingApprove, 0) + " requests waiting approve",
-				});
-			}
-
-			//let queuesToHandle = res.data.queuesToHandle.filter(queue => queue.requestsProcessing.length > 0);
-			let queuesToHandle = res.data.queuesToHandle;
-			if(queuesToHandle != null & queuesToHandle.length > 0){
-
-				this.requestsToMe.push({
-					name: queuesToHandle.length > 1 ? queuesToHandle.length + " queues" : queueusToHandle[0].id,
-					url: "/requests",
-					count: queuesToHandle.reduce((a,c) => a+c.requestsProcessing, 0) + " requests to be processed",
-				});
-			}
+			this.addQueue(res.data.queuesToApprove, "waiting approve");
+			this.addQueue(res.data.queuesToHandle, "to be processed");
 			
 			this.loading = false;
 		})
@@ -65,6 +47,17 @@ const app = createApp( {
 		})
 	},
 	methods: {
+		addQueue : function (queues, verb) {
+			let queuesCount = Object.keys(queues).length;
+			if(queuesCount > 0){
+				let requestsCount = Object.values(queues).reduce((a,c) => a+c, 0);
+				this.requestsToMe.push({
+					name: "Requests in " + queuesCount + " queue" + (queuesCount>1?"s":""),
+					url: "/requests",
+					count: requestsCount + " " + verb,
+				});
+			}
+		},
 		getSquadsCount : function() {
 			if(this.squads != null)
 				return this.squads.reduce((a,c) => a+c, 0);

@@ -233,11 +233,16 @@ func BenchmarkGetHome_Home_AppliedParticipants(b *testing.B) {
 
 func BenchmarkGetHome_Home_GetUserRequests(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, _, err := adb.GetUserRequestQueues(ctx, su.getCurrentUserData(nil).UserTags)
-		if err != nil {
-			b.Fatalf("Failed to get user requests: %v", err)
+		squads, err := adb.GetUserSquads(ctx, testUserId, "admin")
+		if err == nil && len(squads) > 0 {
+			_, _, err := adb.GetQueuesToApproveAndHandle(ctx, su.getCurrentUserData(nil).UserTags, squads)
+			if err != nil {
+				b.Fatalf("Failed to get user requests: %v", err)
+			}
 		}
-
+		if err != nil {
+			b.Fatalf("Failed to retrieve user squads: %v", err)
+		}
 	}
 }
 

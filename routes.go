@@ -96,6 +96,7 @@ func (app *App) registerHandlers() {
 	r.Methods("GET").Path("/squads").Handler(appHandler(app.squadsHandler))
 	r.Methods("GET").Path("/events").Handler(appHandler(app.eventsHandler))
 	r.Methods("GET").Path("/events/{eventId}/participants").Handler(appHandler(app.eventParticipantsHandler))
+	r.Methods("GET").Path("/requests").Handler(appHandler(app.requestsHandler))
 	r.Methods("GET").Path("/about").Handler(appHandler(app.aboutHandler))
 
 	r.Handle("/", http.RedirectHandler("/home", http.StatusFound))
@@ -159,6 +160,7 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 	rm.Methods("POST").Path("/squads/{squadId}/queues").Handler(appHandler(app.methodCreateQueue))
 	rm.Methods("GET").Path("/squads/{squadId}/queues").Handler(appHandler(app.methodGetSquadQueues))
 	rm.Methods("GET").Path("/users/{userId}/queues").Handler(appHandler(app.methodGetUserQueues))
+	rm.Methods("DELETE").Path("/squads/{squadId}/queues/{queueId}").Handler(appHandler(app.methodDeleteQueue))
 
 	// notifications
 	rm.Methods("POST").Path("/users/{userId}/notifications").Handler(appHandler(app.methodSubscribeToNotifications))

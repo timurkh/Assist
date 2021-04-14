@@ -63,6 +63,12 @@ func (db *FirestoreDB) CreateRequestsQueue(ctx context.Context, queueId string, 
 	return err
 }
 
+func (db *FirestoreDB) DeleteRequestsQueue(ctx context.Context, queueId string) (err error) {
+	_, err = db.RequestQueues.Doc(queueId).Delete(ctx)
+
+	return err
+}
+
 func (db *FirestoreDB) getQueuesFromQuery(ctx context.Context, query firestore.Query) ([]*QueueRecord, error) {
 	queues := make([]*QueueRecord, 0)
 	iter := query.Documents(ctx)
@@ -100,24 +106,69 @@ func (db *FirestoreDB) GetRequestQueues(ctx context.Context, squadId string) ([]
 
 }
 
-func (db *FirestoreDB) GetUserRequestQueues(ctx context.Context, userTags []string) (queuesToApprove []*QueueRecord, queuesToHandle []*QueueRecord, err error) {
+func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userTags []string, squadsAdmin []string) (map[string]int, map[string]int, error) {
 
-	if db.dev {
-		log.Printf("Getting request queues for user tags %v", userTags)
-	}
+	queuesToApprove := make(map[string]int, 0)
+	queuesToHandle := make(map[string]int, 0)
 
-	var errs [2]error
+	var errs [4]error
 	var wg sync.WaitGroup
 
+	// get ids of queues that this user should approve
 	wg.Add(1)
 	go func() {
-		queuesToApprove, errs[0] = db.getQueuesFromQuery(ctx, db.RequestQueues.Where("ApproversPath", "in", userTags))
+		iter := db.RequestQueues.Where("ApproversPath", "in", userTags).Select().Documents(ctx)
+		defer iter.Stop()
+		for {
+			doc, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				errs[0] = fmt.Errorf("Failed to get queues: %w", err)
+				return
+			}
+			queuesToApprove[doc.Ref.ID] = -1
+		}
 		wg.Done()
 	}()
 
+	// get ids of queues that this user should approve
 	wg.Add(1)
 	go func() {
-		queuesToHandle, errs[1] = db.getQueuesFromQuery(ctx, db.RequestQueues.Where("HandlersPath", "in", userTags))
+		iter := db.RequestQueues.Where("HandlersPath", "in", userTags).Select().Documents(ctx)
+		defer iter.Stop()
+		for {
+			doc, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				errs[1] = fmt.Errorf("Failed to get queues: %w", err)
+				return
+			}
+			queuesToHandle[doc.Ref.ID] = -1
+		}
+		wg.Done()
+	}()
+
+	// get ids of queues from squads that this user is administrating
+	wg.Add(1)
+	go func() {
+		iter := db.RequestQueues.Where("squadId", "in", squadsAdmin).Select().Documents(ctx)
+		defer iter.Stop()
+		for {
+			doc, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				errs[1] = fmt.Errorf("Failed to get queues: %w", err)
+				return
+			}
+			queuesToApprove[doc.Ref.ID] = -1
+			queuesToHandle[doc.Ref.ID] = -1
+		}
 		wg.Done()
 	}()
 
@@ -130,4 +181,51 @@ func (db *FirestoreDB) GetUserRequestQueues(ctx context.Context, userTags []stri
 	}
 
 	return queuesToApprove, queuesToHandle, nil
+}
+
+func (db *FirestoreDB) GetQueuesToApproveAndHandle(ctx context.Context, userTags []string, squadsAdmin []string) (map[string]int, map[string]int, error) {
+
+	if db.dev {
+		log.Printf("Getting request queues for user tags %v", userTags)
+	}
+
+	// get maps with queue ids and -1 as value
+	queuesToApprove, queuesToHandle, err := db.getQueuesToApproveAndHandleIds(ctx, userTags, squadsAdmin)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	//now get amount of requests to approve and to handle
+	for k := range queuesToApprove {
+		doc, err := db.RequestQueues.Doc(k).Get(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		data := doc.Data()
+		queuesToApprove[k] = int(data["RequestsWaitingApprove"].(int64))
+
+		if _, found := queuesToHandle[k]; found {
+			queuesToHandle[k] = int(data["RequestsBeingProcessed"].(int64))
+		}
+	}
+	for k, v := range queuesToHandle {
+
+		if v == -1 {
+			doc, err := db.RequestQueues.Doc(k).Get(ctx)
+			if err != nil {
+				return nil, nil, err
+			}
+			data := doc.Data()
+			queuesToHandle[k] = int(data["RequestsBeingProcessed"].(int64))
+		}
+	}
+
+	return queuesToApprove, queuesToHandle, nil
+}
+
+func (db *FirestoreDB) GetUserRequests(ctx context.Context, userTags []string, squadsAdmin []string, squadsAll []string) (userQueues []string, userRequests []string, queuesToApprove []string, requestsToApprove []string, queuesToHandle []string, requestsToHandle []string, err error) {
+
+	return nil, nil, nil, nil, nil, nil, nil
 }

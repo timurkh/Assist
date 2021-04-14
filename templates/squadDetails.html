@@ -44,7 +44,7 @@
 									<option value="" selected></option>
 									<option v-for="tag in getTagValues(tags)" :value="tag">[[tag]]</option>
 								</select>
-								<small id="tagValuesHelp" class="form-text text-muted">Squad admins always can approver & handle requests</small>
+								<small id="tagValuesHelp" class="form-text text-muted">Squad admins always can approve & handle requests</small>
 							</div>
 						</form>
 					</div>
@@ -88,7 +88,7 @@
 		</div>
 
 		<div class="d-flex flex-wrap">
-			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 my-1 mx-1">
+			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 pb-2 my-1 mx-1">
 				<ol class="breadcrumb my-0 p-0">
 					<li class="breadcrumb-item d-none d-sm-block">My Squads</li>
 					<li class="breadcrumb-item active">"{{.SquadID}}": 

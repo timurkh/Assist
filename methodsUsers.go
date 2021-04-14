@@ -121,15 +121,15 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 		var squads []string
 		squads, errs[4] = app.db.GetUserSquads(ctx, userId, "admin")
 		if errs[4] == nil && len(squads) > 0 {
+			// requests
+			wg.Add(1)
+			go func() {
+				queuesToApprove, queuesToHandle, errs[5] = app.db.GetQueuesToApproveAndHandle(ctx, sd.UserTags, squads)
+				wg.Done()
+			}()
+
 			appliedParticipants, errs[4] = app.db.GetEventsByStatus(ctx, squads, userId, "Applied")
 		}
-		wg.Done()
-	}()
-
-	// requests
-	wg.Add(1)
-	go func() {
-		queuesToApprove, queuesToHandle, errs[5] = app.db.GetUserRequestQueues(ctx, sd.UserTags)
 		wg.Done()
 	}()
 

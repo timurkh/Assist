@@ -20,6 +20,7 @@ var (
 	squadDetailsTmpl = parseBodyTemplate("squadDetails.html")
 	squadNotesTmpl   = parseBodyTemplate("squadNotes.html")
 	eventsTmpl       = parseBodyTemplate("events.html")
+	requestsTmpl     = parseBodyTemplate("requests.html")
 	participantsTmpl = parseBodyTemplate("eventParticipants.html")
 	aboutTmpl        = parseAboutTemplate()
 )
@@ -71,6 +72,11 @@ func (app *App) eventParticipantsHandler(w http.ResponseWriter, r *http.Request)
 func (app *App) homeHandler(w http.ResponseWriter, r *http.Request) error {
 
 	return homeTmpl.ExecuteWithSession(app, w, r, Values{})
+}
+
+func (app *App) requestsHandler(w http.ResponseWriter, r *http.Request) error {
+
+	return requestsTmpl.ExecuteWithSession(app, w, r, Values{})
 }
 
 func bToMb(n uint64) uint64 {
