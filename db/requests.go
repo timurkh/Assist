@@ -111,10 +111,11 @@ func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userT
 	queuesToApprove := make(map[string]int, 0)
 	queuesToHandle := make(map[string]int, 0)
 
-	var errs [4]error
+	var errs [3]error
 	var wg sync.WaitGroup
 
 	// get ids of queues that this user should approve
+	var mxApprove, mxHandle sync.Mutex
 	wg.Add(1)
 	go func() {
 		iter := db.RequestQueues.Where("ApproversPath", "in", userTags).Select().Documents(ctx)
@@ -128,7 +129,9 @@ func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userT
 				errs[0] = fmt.Errorf("Failed to get queues: %w", err)
 				return
 			}
+			mxApprove.Lock()
 			queuesToApprove[doc.Ref.ID] = -1
+			mxApprove.Unlock()
 		}
 		wg.Done()
 	}()
@@ -147,7 +150,34 @@ func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userT
 				errs[1] = fmt.Errorf("Failed to get queues: %w", err)
 				return
 			}
+			mxApprove.Lock()
 			queuesToHandle[doc.Ref.ID] = -1
+			mxApprove.Unlock()
+		}
+		wg.Done()
+	}()
+
+	// get ids of queues from squads that this user is administrating
+	wg.Add(1)
+	go func() {
+		iter := db.RequestQueues.Where("SquadId", "in", squadsAdmin).Select().Documents(ctx)
+		defer iter.Stop()
+		for {
+			doc, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				errs[2] = fmt.Errorf("Failed to get queues: %w", err)
+				return
+			}
+			mxApprove.Lock()
+			queuesToApprove[doc.Ref.ID] = -1
+			mxApprove.Unlock()
+
+			mxHandle.Lock()
+			queuesToHandle[doc.Ref.ID] = -1
+			mxHandle.Unlock()
 		}
 		wg.Done()
 	}()
@@ -158,21 +188,6 @@ func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userT
 		if e != nil {
 			return nil, nil, e
 		}
-	}
-
-	// get ids of queues from squads that this user is administrating
-	iter := db.RequestQueues.Where("SquadId", "in", squadsAdmin).Select().Documents(ctx)
-	defer iter.Stop()
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to get queues: %w", err)
-		}
-		queuesToApprove[doc.Ref.ID] = -1
-		queuesToHandle[doc.Ref.ID] = -1
 	}
 
 	return queuesToApprove, queuesToHandle, nil
