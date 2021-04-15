@@ -3,6 +3,7 @@ package main
 import (
 	"assist/db"
 	assist_db "assist/db"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -346,9 +347,9 @@ func (app *App) methodAddMemberToSquad(w http.ResponseWriter, r *http.Request) e
 
 	if memberStatus == assist_db.PendingApprove {
 		go func() {
-			squadAdmins, err := app.db.GetSquadMemberIds(ctx, squadId, []int{int(assist_db.Admin), int(assist_db.Owner)}, "")
+			squadAdmins, err := app.db.GetSquadMemberIds(context.Background(), squadId, []int{int(assist_db.Admin), int(assist_db.Owner)}, "")
 			if err != nil {
-				log.Println("Failed to get list of squad " + squadId + " admins, will not be able to create notifications")
+				log.Println("Failed to get list of squad "+squadId+" admins, will not be able to create notifications: %v", err)
 			}
 			app.ntfs.createNotification(squadAdmins, "Approve New Member", "User "+app.sd.getCurrentUserData(r).DisplayName+" wants to join "+squadId)
 		}()

@@ -95,6 +95,14 @@ func (db *FirestoreDB) CreateSquad(ctx context.Context, squadId string, ownerId 
 		log.Println("Creating squad " + squadId)
 	}
 
+	userSquads, err := db.getUserSquads(ctx, ownerId)
+	if err != nil {
+		return err
+	}
+
+	if len(userSquads) >= 10 {
+		return fmt.Errorf("User might participate in 10 squads maximum")
+	}
 	_, err = db.Squads.Doc(squadId).Create(ctx, map[string]interface{}{
 		"Owner":               ownerId,
 		"MembersCount":        0,
@@ -628,6 +636,15 @@ func (db *FirestoreDB) CreateReplicant(ctx context.Context, replicantInfo *UserI
 func (db *FirestoreDB) AddMemberToSquad(ctx context.Context, userId string, squadId string, memberStatus MemberStatusType) (*MemberSquadInfo, error) {
 	if db.dev {
 		log.Println("Adding user " + userId + " to squad " + squadId)
+	}
+
+	userSquads, err := db.getUserSquads(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(userSquads) >= 10 {
+		return nil, fmt.Errorf("User might participate in 10 squads maximum")
 	}
 
 	userInfo, err := db.GetUserInfo(ctx, userId)

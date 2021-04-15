@@ -152,32 +152,27 @@ func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userT
 		wg.Done()
 	}()
 
-	// get ids of queues from squads that this user is administrating
-	wg.Add(1)
-	go func() {
-		iter := db.RequestQueues.Where("squadId", "in", squadsAdmin).Select().Documents(ctx)
-		defer iter.Stop()
-		for {
-			doc, err := iter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				errs[1] = fmt.Errorf("Failed to get queues: %w", err)
-				return
-			}
-			queuesToApprove[doc.Ref.ID] = -1
-			queuesToHandle[doc.Ref.ID] = -1
-		}
-		wg.Done()
-	}()
-
 	wg.Wait()
 
 	for _, e := range errs {
 		if e != nil {
 			return nil, nil, e
 		}
+	}
+
+	// get ids of queues from squads that this user is administrating
+	iter := db.RequestQueues.Where("SquadId", "in", squadsAdmin).Select().Documents(ctx)
+	defer iter.Stop()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, nil, fmt.Errorf("Failed to get queues: %w", err)
+		}
+		queuesToApprove[doc.Ref.ID] = -1
+		queuesToHandle[doc.Ref.ID] = -1
 	}
 
 	return queuesToApprove, queuesToHandle, nil
@@ -207,7 +202,7 @@ func (db *FirestoreDB) GetQueuesToApproveAndHandle(ctx context.Context, userTags
 		queuesToApprove[k] = int(data["RequestsWaitingApprove"].(int64))
 
 		if _, found := queuesToHandle[k]; found {
-			queuesToHandle[k] = int(data["RequestsBeingProcessed"].(int64))
+			queuesToHandle[k] = int(data["RequestsProcessing"].(int64))
 		}
 	}
 	for k, v := range queuesToHandle {
@@ -227,5 +222,41 @@ func (db *FirestoreDB) GetQueuesToApproveAndHandle(ctx context.Context, userTags
 
 func (db *FirestoreDB) GetUserRequests(ctx context.Context, userTags []string, squadsAdmin []string, squadsAll []string) (userQueues []string, userRequests []string, queuesToApprove []string, requestsToApprove []string, queuesToHandle []string, requestsToHandle []string, err error) {
 
-	return nil, nil, nil, nil, nil, nil, nil
+	// get maps with queue ids and -1 as value
+	queuesToApproveMap, queuesToHandleMap, err := db.getQueuesToApproveAndHandleIds(ctx, userTags, squadsAdmin)
+
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, err
+	}
+
+	queuesToApprove = make([]string, len(queuesToApproveMap))
+	i := 0
+	for k := range queuesToApproveMap {
+		queuesToApprove[i] = k
+		i++
+	}
+	queuesToHandle = make([]string, len(queuesToHandleMap))
+	i = 0
+	for k := range queuesToHandleMap {
+		queuesToHandle[i] = k
+		i++
+	}
+
+	// get queues from user squads (where she might file requests)
+	userQueues = make([]string, 0)
+	log.Printf("%v\n", squadsAll)
+	iter := db.RequestQueues.Where("SquadId", "in", squadsAll).Select().Documents(ctx)
+	defer iter.Stop()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, nil, nil, nil, nil, nil, fmt.Errorf("Failed to get queues: %w", err)
+		}
+		userQueues = append(userQueues, doc.Ref.ID)
+	}
+
+	return userQueues, nil, queuesToApprove, nil, queuesToHandle, nil, nil
 }

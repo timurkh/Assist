@@ -141,7 +141,7 @@ func (app *App) methodGetUserQueues(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	userQueues, userRequests, queuesToApprove, requestsToApprove, queuesToHandle, requestsToHandle, err := app.db.GetUserRequests(ctx, userData.UserTags, squadsAll, squadsAdmin)
+	userQueues, userRequests, queuesToApprove, requestsToApprove, queuesToHandle, requestsToHandle, err := app.db.GetUserRequests(ctx, userData.UserTags, squadsAdmin, squadsAll)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err

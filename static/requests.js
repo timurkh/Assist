@@ -32,9 +32,9 @@ const app = createApp( {
 			this.queuesToHandle = queues.data.queuesToHandle;
 			this.queuesToApprove = queues.data.queuesToApprove;
 			this.myQueues = queues.data.userQueues;
-			myRequests = queues.data.userRequests;
-			requestsToHandle = queues.data.requestsToHandle;
-			requestsToApprove = queues.data.requestsToApprove;
+			this.myRequests = queues.data.userRequests;
+			this.requestsToHandle = queues.data.requestsToHandle;
+			this.requestsToApprove = queues.data.requestsToApprove;
 
 			this.loading = false;
 		}))
@@ -51,7 +51,7 @@ const app = createApp( {
 				case "approve":
 					return this.queuesToApprove == null || this.queuesToApprove.length == 0;
 				default:
-					return this.myQueues == null || this.queues.length == 0
+					return this.myQueues == null || this.myQueues.length == 0
 			}
 		},
 		getQueues : function() {

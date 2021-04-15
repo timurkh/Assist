@@ -109,6 +109,10 @@ func (db *FirestoreDB) SetSquadMemberTag(ctx context.Context, userId string, squ
 		return nil, err
 	}
 
+	if len(tags) >= 10 {
+		return nil, fmt.Errorf("User might have max 10 tags assigned")
+	}
+
 	tagFound := false
 	tagOldValue := ""
 
