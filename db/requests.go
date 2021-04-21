@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"sync"
 
@@ -12,11 +13,11 @@ import (
 )
 
 type QueueInfo struct {
-	SquadId                string `json:"squadId"`
-	Approvers              string `json:"approvers"`
-	Handlers               string `json:"handlers"`
-	RequestsWaitingApprove int    `json:"requestsWaitingApprove"`
-	RequestsProcessing     int    `json:"requestsProcessing"`
+	SquadId        string `json:"squadId"`
+	Approvers      string `json:"approvers"`
+	Handlers       string `json:"handlers"`
+	WaitingApprove int    `json:"requestsWaitingApprove"`
+	Processing     int    `json:"requestsProcessing"`
 }
 
 type QueueRecord struct {
@@ -24,12 +25,33 @@ type QueueRecord struct {
 	QueueInfo
 }
 
+const REQUESTS = "requests"
+
 type RequestStatusType int
 
 const (
 	WaitingApprove RequestStatusType = iota
 	Processing
+	Completed
+	Declined
 )
+
+func (s RequestStatusType) String() string {
+	texts := []string{
+		"WaitingApprove",
+		"Processing",
+		"Completed",
+		"Declined",
+	}
+
+	return texts[s]
+}
+
+type RequestDetails struct {
+	Details string
+	Status  RequestStatusType
+	Time    *time.Time
+}
 
 func (db *FirestoreDB) CreateRequestsQueue(ctx context.Context, queueId string, qi *QueueInfo) (err error) {
 
@@ -61,6 +83,18 @@ func (db *FirestoreDB) CreateRequestsQueue(ctx context.Context, queueId string, 
 	}
 
 	return err
+}
+
+func (db *FirestoreDB) GetRequestQueue(ctx context.Context, queueId string) (queueInfo *QueueInfo, err error) {
+	doc, err := db.RequestQueues.Doc(queueId).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	q := &QueueInfo{}
+	doc.DataTo(q)
+
+	return q, nil
 }
 
 func (db *FirestoreDB) DeleteRequestsQueue(ctx context.Context, queueId string) (err error) {
@@ -274,4 +308,30 @@ func (db *FirestoreDB) GetUserRequests(ctx context.Context, userTags []string, s
 	}
 
 	return userQueues, nil, queuesToApprove, nil, queuesToHandle, nil, nil
+}
+
+func (db *FirestoreDB) CreateRequest(ctx context.Context, request *RequestDetails, queueId string, userId string) (requestId string, err error) {
+	if db.dev {
+		log.Println("Creating request in queue " + queueId)
+	}
+
+	queueDoc := db.RequestQueues.Doc(queueId)
+	newRequestDoc := queueDoc.Collection(REQUESTS).NewDoc()
+
+	batch := db.Client.Batch()
+
+	batch.Set(newRequestDoc, request)
+	batch.Set(newRequestDoc, map[string]interface{}{
+		"Time": firestore.ServerTimestamp,
+	}, firestore.MergeAll)
+	batch.Update(queueDoc, []firestore.Update{
+		{Path: request.Status.String(), Value: firestore.Increment(1)},
+	})
+
+	_, err = batch.Commit(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return newRequestDoc.ID, nil
 }

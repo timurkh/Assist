@@ -16,6 +16,7 @@ const app = createApp( {
 			requestsToHandle:[],
 			requestsToApprove:[],
 			moreRequestsAvailable: false,
+			newRequest:{},
 		};
 	},
 	computed: {
@@ -87,6 +88,41 @@ const app = createApp( {
 		},
 		onFilterChange:function(e) {
 		},
+		createRequest:function() {
+			console.log("createRequest", this.newRequest);
+			let request = this.newRequest;
+
+			if(request.queueId != null && request.queueId.length > 0) {
+				console.log("axios post");
+				axios({
+					method: 'POST',
+					url: `/methods/queues/${request.queueId}/requests`,
+					data: request,
+					headers: { "X-CSRF-Token": csrfToken },
+				})
+				.then(res => {
+					request.id = res.data.requestId;
+					request.status = res.data.status;
+					this.requests.push(request); 
+					this.newRequest = {};
+				})
+				.catch(err => {
+					this.error_message = "Failed to create request: " + this.getAxiosErrorMessage(err);
+				});
+			}
+		},
+		getRequestStatusText:function(s) {
+			switch(s) {
+				case 0:
+					return "Pending Approve";
+				case 1:
+					return "Being Processed";
+				case 2:
+					return "Completed";
+				case 3:
+					return "Declined";
+			}
+		}
 	},
 	mixins: [globalMixin],
 }).mount("#app");

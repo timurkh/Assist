@@ -141,7 +141,8 @@ const navbar = createApp( {
 		// Register service worker
 		navigator.serviceWorker.register('/static/firebase-messaging-sw.js')
 		.then((registration) => {
-			console.log("Service worker registered");
+			if(devMode)
+				console.log("Service worker registered");
 			this.messaging = firebase.messaging();
 			this.messaging.useServiceWorker(registration);
 			this.catchMessages(this.messaging);	
@@ -158,7 +159,8 @@ const navbar = createApp( {
 			navigator.serviceWorker.addEventListener('message', event => {
 				// do not handle messages sent from firebase
 				if(event.data != null && !event.data.isFirebaseMessaging) {
-					console.log("SW event listener:", event);
+					if(devMode)
+						console.log("SW event listener:", event);
 					this.notificationsCount = event.data.count;
 					notificationsToast.addNotification(event.data);
 				}
@@ -179,7 +181,8 @@ const navbar = createApp( {
 					if (permission === 'granted') {
 						this.setupNotifications();
 					} else {
-						console.log("user did not grant permissions to recieve notifications");
+						if(devMode)
+							console.log("user did not grant permissions to recieve notifications");
 					}
 				});
 			}
@@ -209,7 +212,8 @@ const navbar = createApp( {
 				if (currentToken) {
 					this.notificationsEnabled = true;
 					if (messagingToken != currentToken) {
-						console.log('Subscribing to firebase cloud messaging notifications with token ' + currentToken);
+						if(devMode)
+							console.log('Subscribing to firebase cloud messaging notifications with token ' + currentToken);
 						axios({
 							method: 'POST',
 							url: `/methods/users/me/notifications`,
@@ -223,7 +227,8 @@ const navbar = createApp( {
 						});
 					} else {
 						this.catchMessages(this.messaging);	
-						console.log('Backend is already aware of this client token ' + currentToken);
+						if(devMode)
+							console.log('Backend is already aware of this client token ' + currentToken);
 					}
 				}
 			})

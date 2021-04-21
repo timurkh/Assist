@@ -9,6 +9,38 @@
 		</div>
 	</div>
 	<div v-if="!loading" v-cloak>
+		<!-- Modal Windows -->
+		<div class="modal fade" id="createRequestModal" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Add Request</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<form>
+							<div class="form-group">
+								<label for="newRequestQueue">Queue</label>
+								<select id="newRequestQueue" class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="newRequest.queueId">
+									<option value="" selected></option>
+									<option v-for="queue in myQueues" :value="queue">[[queue]]</option>
+								</select>
+							</div>
+							<div class="form-group">
+								<label for="newRequestDetails">Request</label>
+								<textarea id="newRequestDetails" class="form-control" v-model="newRequest.details"></textarea>
+								<small id="newRequestDetails" class="form-text text-muted">Provide request details</small>
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-primary" v-on:click="createRequest()" :disabled="newRequest.queueId==null || newRequest.details==null || newRequest.details.trim().length==0" data-dismiss="modal">Create</button>
+					</div>
+				</div>
+			</div>
+		</div>
 
 		<!-- Main View -->
 		<div v-if="error_message.length > 0" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
@@ -28,7 +60,7 @@
 			</div>
 		</div>
 
-		<div v-if="userGotNoQueues()" class="alert alert-danger mx-1 my-2 p-1 text-wrap text-break" role="alert">
+		<div v-if="userGotNoQueues()" class="alert alert-secondary mx-1 my-2 p-1 text-wrap text-break" role="alert">
 			<span v-if="mode=='approve'">
 				You do not have any requests queues to approve.	
 			</span>
@@ -56,10 +88,7 @@
 						<th class="p-0 px-1">
 							<select class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="filter.status" @change="onFilterChange($event)">
 								<option selected></option>
-								<option >Pending Handle</option>
-								<option >Member</option>
-								<option >Admin</option>
-								<option >Owner</option>
+								<option v-for="_, i in 4">[[getRequestStatusText(i)]]</option>
 							</select>
 						</th>
 						<th class="p-0 pl-1">
@@ -77,22 +106,15 @@
 					<tr class="" v-for="(request, index) in requests"  >
 						<td class="border text-wrap" :title="request.queueId"> [[request.queueId]] </td>
 						<td v-if="mode!='user'" class="border text-wrap" :title="request.queueId"> [[request.memberDisplayName]] </td>
-						<td class="border text-break d-none d-sm-table-cell" :title="getRequestStatusText(request.Status)"> [[getRequestStatusText(request.Status)]] </td>
+						<td class="border text-break d-none d-sm-table-cell" :title="getRequestStatusText(request.status)"> [[getRequestStatusText(request.status)]] </td>
 						<td class="border text-break d-none d-sm-table-cell" :title="request.details"> [[request.details]] </td>
 						<td class="border text-wrap" align="center"> 
-								<span v-if="member.status != 3">
-									<a title="Remove Member" data-toggle="tooltip" v-on:click.stop.prevent="removeMember(member, index)" href="#"><i class="fas fa-sign-out-alt fa-lg p-1"></i></a>
-								</span>
-								<span v-if="member.status != 3">
-									<a title="Change member status" data-toggle="tooltip" v-on:click.stop.prevent="changeStatus(member, index)" href="#"><i class="fas fa-chevron-circle-up fa-lg p-1"></i></i></a>
-								</span>
-								<span>
+							<span>
 								<a title="Add Tag" data-toggle="tooltip" v-on:click.stop.prevent="tagMember(member, index)" href="#"><i class="fas fa-tag fa-lg p-1"></i></a>
-								</span>
-								<span>
+							</span>
+							<span>
 								<a title="Add Note" data-toggle="tooltip" v-on:click.stop.prevent="addNote(member, index)" href="#"><i class="fas fa-edit fa-lg p-1"></i></a>
-								</span>
-							</div>
+							</span>
 						</td>
 					</tr>
 				</tbody>

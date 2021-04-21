@@ -1,12 +1,12 @@
 ### How this application could be used
 
-This app is a kind of 'minimal CRM for personal usage'. While developing it, I've taken scenarios from my shooting club as a model: we have several hundreds members and events with pre registration. GMail groups + FB + Excel mix was sufficient to handle all scenarios for years, but not too convinient.
+This app is a kind of 'minimal CRM', might be used to automate various scenarios around groups of people. 
 
 #### Users
 One can log into the portal using either email/password, FB identity, Google identity or phone (SMS authorization). After first login, email validation is required to proceed. Having email validated, user gets access to the system. It is possible to enable several auth providers for the same account (i.e. use both phone and FB authorization).
 
 #### Squads
-User can create squads. Squad should have unique name which is visible for every user of the system. Other users can join your squad, or you can add so-called *replicants*(user records not bound to particular identity and thus not able to log into the system) to it yourself. If user attempted to join the squad, his status is *Pending Approve*. Squad owner can change user status either to *Member* or *Admin*. Members recieve notifications, can join events, create requests, but are not able to get list of all members, create notes or request queues. Admin has access to all squad members, also admin can change status of other members (but not admin ones or owner) and define ollowing entities at the *Squad Details* screen:
+User can create squads. Squad should have unique name which is visible for every user of the system. Other users can join your squad, or you can add so-called *replicants* (user records not bound to particular identity and thus not able to log into the system) to it yourself. If user attempted to join the squad, his status is *Pending Approve*. Squad owner can change user status either to *Member* or *Admin*. Members recieve notifications, can join events, create requests, but are not able to get list of all members, create notes or request queues. Admin has access to all squad members, also admin can change status of other members (but not admin ones or owner) and define ollowing entities at the *Squad Details* screen:
 ###### Notes
 Squad admins & owner can create notes per squad and per squad member. *Squad Notes* are intended to store & share information with all members (non-admins can see notes after they are published). On the contrary, Member Notes are visible only to squad admins. Member does not have access to notes assigned to him in the squad, unless he is squad admin.
 ###### Tags
@@ -27,7 +27,5 @@ This system uses Google Application Free tier and might get suspended if monthly
 Also it is possible to reduce Firestore usage, holding more data in memory and thus making fewer read requests (50k requests per day are free as of today).
 
 ### About author and why this application was created
-
-~~Because I can~~ As a part of technology refresh during my career break after serving 5 years as Executive Director in the world's largest provider of information technology products and services, I decided to implement few apps (web & android) automating certain scenarios which I face in my day-to-day life, mostly related to people, places and events.
 
 Author is available [here](https://www.linkedin.com/in/timur-k/), my CV could be downloaded [here](https://storage.googleapis.com/assist-bucket/Resume-Timur-Khakimyanov.pdf). 
