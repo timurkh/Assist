@@ -25,7 +25,7 @@
 								<label for="newRequestQueue">Queue</label>
 								<select id="newRequestQueue" class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="newRequest.queueId">
 									<option value="" selected></option>
-									<option v-for="queue in myQueues" :value="queue">[[queue]]</option>
+									<option v-for="queue in queues['User']" :value="queue">[[queue]]</option>
 								</select>
 							</div>
 							<div class="form-group">
@@ -50,24 +50,24 @@
 		<div class="d-flex flex-wrap">
 			<div class="breadcrumb justify-content-between align-items-center flex-grow-1 p-1 pb-2 my-1 mx-1">
 				<ol class="breadcrumb my-0 p-0">
-					<li v-if="mode=='handle'" class="breadcrumb-item active"><a class="mr-1" href="#" @click="setMode('user')"> My Requests </a> | <a class="mx-1" href="#" @click="setMode('approve')"> Requests to Approve </a>| Requests to Handle</li>
-					<li v-if="mode=='approve'" class="breadcrumb-item active"><a class="mr-1" href="#" @click="setMode('user')"> My Requests </a> | Requests to Approve | <a class="mx-1" href="#" @click="setMode('handle')"> Requests to Handle </a> </li>
-					<li v-if="mode=='user'" class="breadcrumb-item active"> My Requests | <a class="mx-1" href="#" @click="setMode('approve')"> Requests to Approve </a> | <a class="mx-1" href="#" @click="setMode('handle')"> Requests to Handle </a> </li>
+					<li v-if="mode=='Processing'" class="breadcrumb-item active"><a class="mr-1" href="#" @click="setMode('User')"> My Requests </a> | <a class="mx-1" href="#" @click="setMode('WaitingApprove')"> Requests to Approve </a>| Requests to Handle</li>
+					<li v-if="mode=='WaitingApprove'" class="breadcrumb-item active"><a class="mr-1" href="#" @click="setMode('User')"> My Requests </a> | Requests to Approve | <a class="mx-1" href="#" @click="setMode('Processing')"> Requests to Handle </a> </li>
+					<li v-if="mode=='User'" class="breadcrumb-item active"> My Requests | <a class="mx-1" href="#" @click="setMode('WaitingApprove')"> Requests to Approve </a> | <a class="mx-1" href="#" @click="setMode('Processing')"> Requests to Handle </a> </li>
 				</ol>
 			</div>
-			<div v-if="mode=='user' && !userGotNoQueues()" class="ml-auto p-0 mr-1 my-1">
+			<div v-if="mode=='User' && !userGotNoQueues()" class="ml-auto p-0 mr-1 my-1">
 				<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#createRequestModal"><i class="fa fa-plus"></i> Create Request</button>
 			</div>
 		</div>
 
 		<div v-if="userGotNoQueues()" class="alert alert-secondary mx-1 my-2 p-1 text-wrap text-break" role="alert">
-			<span v-if="mode=='approve'">
-				You do not have any requests queues to approve.	
+			<span v-if="mode=='WaitingApprove'">
+				You do not have any requests queues to WaitingApprove.	
 			</span>
-			<span v-if="mode=='handle'">
-				You do not have any requests queues to handle.	
+			<span v-if="mode=='Processing'">
+				You do not have any requests queues to Processing.	
 			</span>
-			<span v-if="mode=='user'">
+			<span v-if="mode=='User'">
 				There are no request queues in any of your squads.
 			</span>
 		</div>
@@ -76,36 +76,36 @@
 			<table class="table table-borderless m-0">
 				<thead>
 					<tr>
-						<th class="p-0 pr-1">
+						<th class="p-0 pr-1" colspan="2">
 							<select id="selectQueue" class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="filter.queue" @change="onFilterChange($event)">
 								<option value="" selected></option>
 								<option v-for="queue in getQueues()" :value="queue">[[queue]]</option>
 							</select>
 						</th>
-						<th v-if="mode != 'user'" class="p-0 px-1">
-							<input v-model="filter.memberDisplayName" @change="onFilterChange($event)" class="form-control m-0 mb-1" style="width:100%" placeholder="Member"/>
+						<th v-if="mode!='User'" class="p-0 px-1">
+							<input id="searchKeys" v-model="filter.keys" class="form-control m-0 mb-1" style="width:100%" placeholder="User Name" @change="onFilterChange($event)"></input>
 						</th>
-						<th class="p-0 px-1">
+						<th class="p-0 px-1" colspan="2">
 							<select class="m-0 mb-1 pt-1 form-control" style="width:100%;" v-model="filter.status" @change="onFilterChange($event)">
 								<option selected></option>
-								<option v-for="_, i in 4">[[getRequestStatusText(i)]]</option>
+								<option v-for="k,i in 4" :value="k">[[getRequestStatusText(i)]]</option>
 							</select>
-						</th>
-						<th class="p-0 pl-1">
-							<input v-model="filter.text" @change="onFilterChange($event)" class="form-control m-0 mb-1" style="width:100%" placeholder="Search in notes"/>
 						</th>
 					</tr>
 					<tr class="table-sm thead-dark text-truncate">
 						<th class="border text-truncate">Queue</th>
-						<th v-if="mode!='user'" class="border text-truncate">Member</th>
+						<th class="border text-truncate">Created</th>
+						<th v-if="mode!='User'" class="border text-truncate">Member</th>
 						<th class="border text-truncate d-none d-sm-table-cell">Status</th>
 						<th class="border text-truncate d-none d-sm-table-cell">Request Details</th>
 						<th class="border text-truncate">Actions</th>
+					</tr>
 				</thead>
 				<tbody class="table-sm table-bordered">
-					<tr class="" v-for="(request, index) in requests"  >
+					<tr class="" v-for="(request, index) in getRequests()"  >
 						<td class="border text-wrap" :title="request.queueId"> [[request.queueId]] </td>
-						<td v-if="mode!='user'" class="border text-wrap" :title="request.queueId"> [[request.memberDisplayName]] </td>
+						<td class="border text-wrap" :title="request.queueId"> [[request.time]] ago</td>
+						<td v-if="mode!='User'" class="border text-wrap" :title="request.queueId"> [[request.userName]] </td>
 						<td class="border text-break d-none d-sm-table-cell" :title="getRequestStatusText(request.status)"> [[getRequestStatusText(request.status)]] </td>
 						<td class="border text-break d-none d-sm-table-cell" :title="request.details"> [[request.details]] </td>
 						<td class="border text-wrap" align="center"> 
@@ -126,7 +126,7 @@
 			</div>
 		</div>
 		<div v-else class="m-3" align="center">
-			<button v-if="moreRequestsAvailable" type="button" class="btn btn-secondary btn-lg" v-on:click="getMore()">See More</button>
+			<button v-if="getMoreRequestsAvailable()" type="button" class="btn btn-secondary btn-lg" v-on:click="getMore()">See More</button>
 		</div>
 	</div>
 </div>

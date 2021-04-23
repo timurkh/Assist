@@ -324,7 +324,7 @@ func (db *FirestoreDB) GetSquadMemberIds(ctx context.Context, squadId string, st
 
 func (db *FirestoreDB) GetSquadMemberIdsByTag(ctx context.Context, squadId string, tag string) (ids []string, err error) {
 	ids = make([]string, 0)
-	iter := db.Squads.Doc(squadId).Collection(MEMBERS).Where("Tag", "==", tag).Select().Documents(ctx)
+	iter := db.Squads.Doc(squadId).Collection(MEMBERS).Where("Tags", "array-contains", tag).Select().Documents(ctx)
 
 	defer iter.Stop()
 	for {

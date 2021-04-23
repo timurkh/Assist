@@ -25,6 +25,7 @@ type FirestoreDB struct {
 	Users             *firestore.CollectionRef
 	Events            *firestore.CollectionRef
 	RequestQueues     *firestore.CollectionRef
+	Requests          *firestore.CollectionRef
 	updater           *AsyncUpdater
 	userDataCache     *cache.Cache
 	userSquadsCache   *cache.Cache //userId:map[squadId]memberStatus
@@ -81,6 +82,7 @@ func NewFirestoreDB(fireapp *firebase.App, dev bool) (*FirestoreDB, error) {
 		Users:             dbClient.Collection(testPrefix + "squads").Doc(ALL_USERS_SQUAD).Collection("members"),
 		Events:            dbClient.Collection(testPrefix + "events"),
 		RequestQueues:     dbClient.Collection(testPrefix + "queues"),
+		Requests:          dbClient.Collection(testPrefix + "requests"),
 		updater:           initAsyncUpdater(),
 		userDataCache:     uc,
 		userSquadsCache:   us,
@@ -163,7 +165,7 @@ func (db *FirestoreDB) AddFilterWhere(query firestore.Query, filter *map[string]
 			if db.dev {
 				log.Printf("\tapplying filter by tag %v\n", f["Tag"])
 			}
-			query = query.Where("Tags", "array-contains-any", strings.Fields(f["Tag"]))
+			query = query.Where("Tags", "array-contains", f["Tag"])
 		}
 
 		if f["Status"] != "" && statusFromStringFunc != nil {

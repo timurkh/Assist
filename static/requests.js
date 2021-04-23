@@ -4,18 +4,12 @@ const app = createApp( {
 		return {
 			loading:true,
 			error_message:"",
-			mode:"user",
-			requests:[],
+			mode:"User",
 			getting_more:false,
-			filter:{ },
-			filterToHandle:{ },
-			myQueues:[],
-			queuesToHandle:[],
-			queuesToApprove:[],
-			myRequests:[],
-			requestsToHandle:[],
-			requestsToApprove:[],
-			moreRequestsAvailable: false,
+			queues:{},
+			requests:{},
+			filter:{},
+			moreRequestsAvailable:{},
 			newRequest:{},
 		};
 	},
@@ -29,13 +23,22 @@ const app = createApp( {
 			axios.get(`/methods/users/me/queues`),
 		])
 		.then(axios.spread((queues) => {
-			console.log(queues.data);
-			this.queuesToHandle = queues.data.queuesToHandle;
-			this.queuesToApprove = queues.data.queuesToApprove;
-			this.myQueues = queues.data.userQueues;
-			this.myRequests = queues.data.userRequests;
-			this.requestsToHandle = queues.data.requestsToHandle;
-			this.requestsToApprove = queues.data.requestsToApprove;
+		
+			this.queues["User"] = queues.data.userQueues;
+			this.requests["User"] = queues.data.userRequests;
+
+			this.queues["Processing"] = queues.data.queuesToHandle;
+			this.requests["Processing"] = queues.data.requestsToHanle;
+
+			this.queues["WaitingApprove"] = queues.data.queuesToApprove;
+			this.requests["WaitingApprove"] = queues.data.requestsToApprove;
+
+			for(m of ["User", "Processing", "WaitingApprove"]) {
+				if(this.requests[m] != null) {
+					this.moreRequestsAvailable[m] = this.requests[m].length == 10;
+					this.requests[m] = this.requests[m].map(x => {x.time = this.getDurationFrom(new Date(x.time)); return x;});
+				}
+			}
 
 			this.loading = false;
 		}))
@@ -46,64 +49,54 @@ const app = createApp( {
 	},
 	methods: {
 		userGotNoQueues : function() {
-			switch(this.mode) {
-				case "handle":
-					return this.queuesToHandle == null || this.queuesToHandle.length == 0;
-				case "approve":
-					return this.queuesToApprove == null || this.queuesToApprove.length == 0;
-				default:
-					return this.myQueues == null || this.myQueues.length == 0
-			}
+			return this.queues[this.mode] == null || this.queues[this.mode].length == 0;
 		},
 		getQueues : function() {
-			switch(this.mode) {
-				case "handle":
-					return this.queuesToHandle;
-				case "approve":
-					return this.queuesToApprove;
-				default:
-					return this.myQueues;
-			}
+			return this.queues[this.mode];
+		},
+		getRequests : function() {
+			return this.requests[this.mode];
+		},
+		getMoreRequestsAvailable : function() {
+			return this.moreRequestsAvailable[this.mode];
 		},
 		setMode : function(mode) {
 			this.mode = mode;
 		},
 		getMore:function() {
 			this.getting_more = true;
-			let lastMember = this.squad_members[this.squad_members.length-1];
+			var requests = this.requests[this.mode];
+			var lastMember = requests[requests.length-1];
+			var url = "requests";
 			axios({
 				method: 'GET',
-				url: `/methods/squads/${squadId}/members?from=${lastMember.timestamp}`,
-				params: this.filter,
+				url: `/methods/${url}?from=${lastMember.time}&status=${this.mode}`,
 			})
 			.then(res => {
-				this.moreRecordsAvailable = res.data.length == 10;
-				this.requests =  [...this.requests, ...res.data]; 
+				this.requests[this.mode] =  [...requests, ...res.data]; 
+				this.moreRequestsAvailable = res.data.length == 10;
 				this.getting_more = false;
 			})
 			.catch(err => {
-				this.error_message = "Failed to retrieve squad members and tags: " + this.getAxiosErrorMessage(err);
+				this.error_message = "Failed to retrieve requests: " + this.getAxiosErrorMessage(err);
 				this.getting_more = false;
 			});
 		},
-		onFilterChange:function(e) {
-		},
 		createRequest:function() {
-			console.log("createRequest", this.newRequest);
 			let request = this.newRequest;
 
 			if(request.queueId != null && request.queueId.length > 0) {
-				console.log("axios post");
 				axios({
 					method: 'POST',
-					url: `/methods/queues/${request.queueId}/requests`,
+					url: `/methods/requests`,
 					data: request,
 					headers: { "X-CSRF-Token": csrfToken },
 				})
 				.then(res => {
 					request.id = res.data.requestId;
 					request.status = res.data.status;
-					this.requests.push(request); 
+					request.time = "Just added";
+					this.requests["User"].unshift(request); 
 					this.newRequest = {};
 				})
 				.catch(err => {
@@ -122,7 +115,31 @@ const app = createApp( {
 				case 3:
 					return "Declined";
 			}
-		}
+		},
+		getDurationFrom:function(time) {
+			let now = new Date();
+			let duration = (now.getTime() - time.getTime())/1000;
+
+			let dimensions = ['second', 'minute', 'hour', 'day'];
+			let vals = [];
+			vals.push(duration % 60);
+			duration = (duration / 60) >> 0;
+			if(duration > 1) {
+				vals.push(duration % 60);
+				duration = (duration / 60) >> 0;
+				if(duration > 0) {
+					vals.push(duration % 24);
+					duration = (duration / 24) >> 0;
+					if(duration>0)
+						vals.push(duration);
+				}
+			}
+			let last = vals.length - 1;
+			let text = vals[last] + " " + dimensions[last];
+			text += vals[last] > 1 ? "s" : "";
+
+			return text;
+		},
 	},
 	mixins: [globalMixin],
 }).mount("#app");

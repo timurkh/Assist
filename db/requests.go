@@ -16,8 +16,8 @@ type QueueInfo struct {
 	SquadId        string `json:"squadId"`
 	Approvers      string `json:"approvers"`
 	Handlers       string `json:"handlers"`
-	WaitingApprove int    `json:"requestsWaitingApprove"`
-	Processing     int    `json:"requestsProcessing"`
+	WaitingApprove int    `json:"waitingApprove"`
+	Processing     int    `json:"processing"`
 }
 
 type QueueRecord struct {
@@ -48,9 +48,17 @@ func (s RequestStatusType) String() string {
 }
 
 type RequestDetails struct {
-	Details string
-	Status  RequestStatusType
-	Time    *time.Time
+	Details  string            `json:"details"`
+	Status   RequestStatusType `json:"status"`
+	QueueId  string            `json:"queueId"`
+	Time     *time.Time        `json:"time"`
+	UserId   string            `json:"userId"`
+	UserName string            `json:"userName"`
+}
+
+type RequestRecord struct {
+	RequestId string `json:"requestId"`
+	RequestDetails
 }
 
 func (db *FirestoreDB) CreateRequestsQueue(ctx context.Context, queueId string, qi *QueueInfo) (err error) {
@@ -248,10 +256,12 @@ func (db *FirestoreDB) GetQueuesToApproveAndHandle(ctx context.Context, userTags
 		}
 
 		data := doc.Data()
-		queuesToApprove[k] = int(data["RequestsWaitingApprove"].(int64))
+		val, _ := data["WaitingApprove"].(int64)
+		queuesToApprove[k] = int(val)
 
 		if _, found := queuesToHandle[k]; found {
-			queuesToHandle[k] = int(data["RequestsProcessing"].(int64))
+			val, _ = data["Processing"].(int64)
+			queuesToHandle[k] = int(val)
 		}
 	}
 	for k, v := range queuesToHandle {
@@ -262,14 +272,35 @@ func (db *FirestoreDB) GetQueuesToApproveAndHandle(ctx context.Context, userTags
 				return nil, nil, err
 			}
 			data := doc.Data()
-			queuesToHandle[k] = int(data["RequestsBeingProcessed"].(int64))
+			val, _ := data["Processing"].(int64)
+			queuesToHandle[k] = int(val)
 		}
 	}
 
 	return queuesToApprove, queuesToHandle, nil
 }
 
-func (db *FirestoreDB) GetUserRequests(ctx context.Context, userTags []string, squadsAdmin []string, squadsAll []string) (userQueues []string, userRequests []string, queuesToApprove []string, requestsToApprove []string, queuesToHandle []string, requestsToHandle []string, err error) {
+func (db *FirestoreDB) getRequestsFromQuery(ctx context.Context, query firestore.Query) (requests []RequestRecord, err error) {
+	requests = make([]RequestRecord, 0)
+	iter := query.Limit(10).Documents(ctx)
+	defer iter.Stop()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get queues: %w", err)
+		}
+		r := RequestRecord{}
+		doc.DataTo(&r)
+		r.RequestId = doc.Ref.ID
+		requests = append(requests, r)
+	}
+	return requests, nil
+}
+
+func (db *FirestoreDB) GetUserQueuesAndRequests(ctx context.Context, userId string, userTags []string, squadsAdmin []string, squadsAll []string) (userQueues []string, userRequests []RequestRecord, queuesToApprove []string, requestsToApprove []RequestRecord, queuesToHandle []string, requestsToHandle []RequestRecord, err error) {
 
 	// get maps with queue ids and -1 as value
 	queuesToApproveMap, queuesToHandleMap, err := db.getQueuesToApproveAndHandleIds(ctx, userTags, squadsAdmin)
@@ -284,16 +315,28 @@ func (db *FirestoreDB) GetUserRequests(ctx context.Context, userTags []string, s
 		queuesToApprove[i] = k
 		i++
 	}
+	if len(queuesToApprove) > 0 {
+		requestsToApprove, err = db.getRequestsFromQuery(ctx, db.Requests.Where("QueueId", "in", queuesToApprove).Where("Status", "==", WaitingApprove).OrderBy("Time", firestore.Desc))
+		if err != nil {
+			return nil, nil, nil, nil, nil, nil, err
+		}
+	}
+
 	queuesToHandle = make([]string, len(queuesToHandleMap))
 	i = 0
 	for k := range queuesToHandleMap {
 		queuesToHandle[i] = k
 		i++
 	}
+	if len(queuesToHandle) > 0 {
+		requestsToHandle, err = db.getRequestsFromQuery(ctx, db.Requests.Where("QueueId", "in", queuesToHandle).Where("Status", "==", Processing).OrderBy("Time", firestore.Desc))
+		if err != nil {
+			return nil, nil, nil, nil, nil, nil, err
+		}
+	}
 
 	// get queues from user squads (where she might file requests)
 	userQueues = make([]string, 0)
-	log.Printf("%v\n", squadsAll)
 	iter := db.RequestQueues.Where("SquadId", "in", squadsAll).Select().Documents(ctx)
 	defer iter.Stop()
 	for {
@@ -307,16 +350,22 @@ func (db *FirestoreDB) GetUserRequests(ctx context.Context, userTags []string, s
 		userQueues = append(userQueues, doc.Ref.ID)
 	}
 
-	return userQueues, nil, queuesToApprove, nil, queuesToHandle, nil, nil
-}
-
-func (db *FirestoreDB) CreateRequest(ctx context.Context, request *RequestDetails, queueId string, userId string) (requestId string, err error) {
-	if db.dev {
-		log.Println("Creating request in queue " + queueId)
+	// get user requests
+	userRequests, err = db.getRequestsFromQuery(ctx, db.Requests.Where("UserId", "==", userId).OrderBy("Time", firestore.Desc))
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
-	queueDoc := db.RequestQueues.Doc(queueId)
-	newRequestDoc := queueDoc.Collection(REQUESTS).NewDoc()
+	return userQueues, userRequests, queuesToApprove, requestsToApprove, queuesToHandle, requestsToHandle, nil
+}
+
+func (db *FirestoreDB) CreateRequest(ctx context.Context, request *RequestDetails) (requestId string, err error) {
+	if db.dev {
+		log.Printf("Creating request %+v\n", request)
+	}
+
+	queueDoc := db.RequestQueues.Doc(request.QueueId)
+	newRequestDoc := db.Requests.NewDoc()
 
 	batch := db.Client.Batch()
 
@@ -334,4 +383,38 @@ func (db *FirestoreDB) CreateRequest(ctx context.Context, request *RequestDetail
 	}
 
 	return newRequestDoc.ID, nil
+}
+
+func (db *FirestoreDB) GetUserRequests(ctx context.Context, userId string, from *time.Time) (requests []RequestRecord, err error) {
+
+	query := db.Requests.Where("UserId", "==", userId).OrderBy("Time", firestore.Desc)
+	if from != nil {
+		query = query.StartAfter(from)
+	}
+	requests, err = db.getRequestsFromQuery(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return requests, nil
+}
+
+func (db *FirestoreDB) GetRequestsByTag(ctx context.Context, tags []string, status string, from *time.Time) (requests []RequestRecord, err error) {
+
+	var query firestore.Query
+	if status == "WaitingApprove" {
+		query = db.Requests.Where("Approvers", "in", tags).Where("Status", "==", WaitingApprove).OrderBy("Time", firestore.Desc)
+	} else {
+		query = db.Requests.Where("Handlers", "in", tags).Where("Status", "==", Processing).OrderBy("Time", firestore.Desc)
+	}
+
+	if from != nil {
+		query = query.StartAfter(from)
+	}
+	requests, err = db.getRequestsFromQuery(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return requests, nil
 }

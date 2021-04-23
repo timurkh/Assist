@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"assist/db"
 	assist_db "assist/db"
@@ -118,7 +119,7 @@ func (app *App) methodGetSquadQueues(w http.ResponseWriter, r *http.Request) err
 	return err
 }
 
-func (app *App) methodGetUserQueues(w http.ResponseWriter, r *http.Request) error {
+func (app *App) methodGetUserQueuesAndRequests(w http.ResponseWriter, r *http.Request) error {
 	params := mux.Vars(r)
 	ctx := r.Context()
 
@@ -151,7 +152,7 @@ func (app *App) methodGetUserQueues(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	userQueues, userRequests, queuesToApprove, requestsToApprove, queuesToHandle, requestsToHandle, err := app.db.GetUserRequests(ctx, userData.UserTags, squadsAdmin, squadsAll)
+	userQueues, userRequests, queuesToApprove, requestsToApprove, queuesToHandle, requestsToHandle, err := app.db.GetUserQueuesAndRequests(ctx, userId, userData.UserTags, squadsAdmin, squadsAll)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -177,14 +178,19 @@ func (app *App) methodGetUserQueues(w http.ResponseWriter, r *http.Request) erro
 }
 
 func (app *App) methodCreateRequest(w http.ResponseWriter, r *http.Request) error {
-	params := mux.Vars(r)
 	ctx := r.Context()
 
-	queueId := params["queueId"]
-
-	queue, err := app.db.GetRequestQueue(ctx, queueId)
+	var request assist_db.RequestDetails
+	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		err := fmt.Errorf("Failed to get queue " + queueId + " details")
+		err = fmt.Errorf("Failed to decode request details from the HTTP request: %w", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	queue, err := app.db.GetRequestQueue(ctx, request.QueueId)
+	if err != nil {
+		err := fmt.Errorf("Failed to get queue " + request.QueueId + " details")
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -193,25 +199,21 @@ func (app *App) methodCreateRequest(w http.ResponseWriter, r *http.Request) erro
 	userId, authLevel := app.checkAuthorization(r, "me", queue.SquadId, squadAdmin|squadOwner|squadMember)
 
 	if authLevel == 0 {
-		err := fmt.Errorf("Current user is not authorized to to create requests in queue " + queueId)
+		err := fmt.Errorf("Current user is not authorized to to create requests in queue " + request.QueueId)
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return err
 	}
 
-	var request assist_db.RequestDetails
-	err = json.NewDecoder(r.Body).Decode(&request)
-	if err != nil {
-		err = fmt.Errorf("Failed to decode request details from the HTTP request: %w", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return err
-	}
+	request.UserId = userId
+	userData, err := app.db.GetUserData(ctx, userId)
+	request.UserName = userData.DisplayName
 
 	if queue.Approvers == "" {
 		request.Status = db.Processing
 	}
 
-	requestId, err := app.db.CreateRequest(ctx, &request, queueId, userId)
+	requestId, err := app.db.CreateRequest(ctx, &request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
@@ -223,17 +225,17 @@ func (app *App) methodCreateRequest(w http.ResponseWriter, r *http.Request) erro
 		var notification string
 		var err error
 		if request.Status == db.Processing {
-			notification = "New request in queue " + queueId + " waiting to be processed"
+			notification = "New request in queue " + request.QueueId + " waiting to be processed"
 			memberIds, err = app.db.GetSquadMemberIdsByTag(context.Background(), queue.SquadId, queue.Handlers)
 		} else {
-			notification = "New request in queue " + queueId + " waiting to be approved"
+			notification = "New request in queue " + request.QueueId + " waiting to be approved"
 			memberIds, err = app.db.GetSquadMemberIdsByTag(context.Background(), queue.SquadId, queue.Approvers)
 		}
 
 		if err != nil {
 			log.Println("Failed to get list of squad " + queue.SquadId + " members, will not be able to create notifications")
 		}
-		app.ntfs.createNotification(memberIds, "Request "+queueId, notification)
+		app.ntfs.createNotification(memberIds, "Request "+request.QueueId, notification)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -248,4 +250,68 @@ func (app *App) methodCreateRequest(w http.ResponseWriter, r *http.Request) erro
 	}
 
 	return nil
+}
+
+func (app *App) methodGetRequests(w http.ResponseWriter, r *http.Request) (err error) {
+	ctx := r.Context()
+
+	v := r.URL.Query()
+	from := v.Get("from")
+	var timeFrom time.Time
+	if from != "" {
+		timeFrom, err = time.Parse(time.RFC3339, from)
+		if err != nil {
+			err = fmt.Errorf("Failed to convert from to a time struct: %w", err)
+			log.Println(err.Error())
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return err
+		}
+	}
+	status := v.Get("status")
+
+	userId, authLevel := app.checkAuthorization(r, "me", "", myself)
+
+	if authLevel == 0 {
+		err := fmt.Errorf("Current user is not authorized to get requests for user " + userId)
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return err
+	}
+
+	var requests interface{}
+	if status == "WaitingApprove" || status == "Processing" {
+		userData, err := app.db.GetUserData(ctx, userId)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+		requests, err = app.db.GetRequestsByTag(ctx, userData.UserTags, status, &timeFrom)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+	} else if status == "User" {
+		requests, err = app.db.GetUserRequests(ctx, userId, &timeFrom)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return err
+		}
+
+	} else {
+		err = fmt.Errorf("Status not supported")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return err
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(requests)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err
+	}
+
+	return err
 }

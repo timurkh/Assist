@@ -159,11 +159,12 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 	// request queues
 	rm.Methods("POST").Path("/squads/{squadId}/queues").Handler(appHandler(app.methodCreateQueue))
 	rm.Methods("GET").Path("/squads/{squadId}/queues").Handler(appHandler(app.methodGetSquadQueues))
-	rm.Methods("GET").Path("/users/{userId}/queues").Handler(appHandler(app.methodGetUserQueues))
+	rm.Methods("GET").Path("/users/{userId}/queues").Handler(appHandler(app.methodGetUserQueuesAndRequests))
 	rm.Methods("DELETE").Path("/squads/{squadId}/queues/{queueId}").Handler(appHandler(app.methodDeleteQueue))
 
 	// requests
-	rm.Methods("POST").Path("/queues/{queueId}/requests").Handler(appHandler(app.methodCreateRequest))
+	rm.Methods("POST").Path("/requests").Handler(appHandler(app.methodCreateRequest))
+	rm.Methods("GET").Path("/requests").Handler(appHandler(app.methodGetRequests))
 
 	// notifications
 	rm.Methods("POST").Path("/users/{userId}/notifications").Handler(appHandler(app.methodSubscribeToNotifications))
