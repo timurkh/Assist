@@ -20,7 +20,7 @@ const app = createApp( {
 			this.eventsCount = res.data.eventsCount;
 
 			let pendingApprove = res.data.pendingApprove;
-			if(pendingApprove != null & pendingApprove.length > 0){
+			if(pendingApprove != null && pendingApprove.length > 0){
 				let pendingApproveCount = pendingApprove.reduce((a,c) => (a+c.count), 0);
 				this.requestsToMe.push({
 					name: "Join squads",
@@ -29,7 +29,7 @@ const app = createApp( {
 				});
 			}
 			let appliedParticipants = res.data.appliedParticipants;
-			if(appliedParticipants != null & appliedParticipants.length > 0){
+			if(appliedParticipants != null && appliedParticipants.length > 0){
 				this.requestsToMe.push({
 					name: "Participate in events",
 					url: "/events",
@@ -48,7 +48,9 @@ const app = createApp( {
 	},
 	methods: {
 		addQueue : function (queues, verb) {
-			let queuesCount = Object.keys(queues).length;
+			let queuesCount = 0;
+			if(queues != null)
+				queuesCount = Object.keys(queues).length;
 			if(queuesCount > 0){
 				let requestsCount = Object.values(queues).reduce((a,c) => a+c, 0);
 				this.requestsToMe.push({
@@ -70,7 +72,8 @@ const app = createApp( {
 			}
 		},
 		getRequestsToMeClass : function() {
-			if(this.requestsToMe.length > 0)
+
+			if(this.requestsToMe != null && this.requestsToMe.length > 0)
 				return "card-body bg-danger";
 			return "card-body bg-secondary";
 		},

@@ -104,16 +104,20 @@
 				<tbody class="table-sm table-bordered">
 					<tr class="" v-for="(request, index) in getRequests()"  >
 						<td class="border text-wrap" :title="request.queueId"> [[request.queueId]] </td>
-						<td class="border text-wrap" :title="request.queueId"> [[request.time]] ago</td>
+						<td class="border text-wrap" :title="request.queueId"> [[request.timeFrom]] ago</td>
 						<td v-if="mode!='User'" class="border text-wrap" :title="request.queueId"> [[request.userName]] </td>
 						<td class="border text-break d-none d-sm-table-cell" :title="getRequestStatusText(request.status)"> [[getRequestStatusText(request.status)]] </td>
 						<td class="border text-break d-none d-sm-table-cell" :title="request.details"> [[request.details]] </td>
 						<td class="border text-wrap" align="center"> 
-							<span>
-								<a title="Add Tag" data-toggle="tooltip" v-on:click.stop.prevent="tagMember(member, index)" href="#"><i class="fas fa-tag fa-lg p-1"></i></a>
+							<span v-if="mode=='WaitingApprove'">
+								<a title="Approve" data-toggle="tooltip" v-on:click.stop.prevent="setRequestStatus(request, 'Processing')" href="#"><i class="fas fa-check-circle fa-lg p-1"></i></a>
+								<a title="Decline" data-toggle="tooltip" v-on:click.stop.prevent="setRequestStatus(request, 'Declined')" href="#"><i class="fas fa-ban fa-lg p-1"></i></a>
 							</span>
-							<span>
-								<a title="Add Note" data-toggle="tooltip" v-on:click.stop.prevent="addNote(member, index)" href="#"><i class="fas fa-edit fa-lg p-1"></i></a>
+							<span v-if="mode=='Processing'" style="color: Green;">
+								<a title="Mark Completed" data-toggle="tooltip" v-on:click.stop.prevent="setRequestStatus(request, 'Completed')" href="#"><i class="fas fa-check-circle fa-lg p-1"></i></a>
+							</span>
+							<span v-if="mode=='User'">
+								<a title="Cancel" data-toggle="tooltip" v-on:click.stop.prevent="setRequestStatus(request, 'Cancelled')" href="#"><i class="fas fa-times-circle fa-lg p-1"></i></a>
 							</span>
 						</td>
 					</tr>

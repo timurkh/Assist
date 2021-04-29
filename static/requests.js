@@ -19,31 +19,29 @@ const app = createApp( {
 		},
 	},
 	created:function() {
-		axios.all([
-			axios.get(`/methods/users/me/queues`),
-		])
-		.then(axios.spread((queues) => {
-		
-			this.queues["User"] = queues.data.userQueues;
-			this.requests["User"] = queues.data.userRequests;
+		axios({
+			method: 'GET',
+			url: `/methods/users/me/queues`,
+		})
+		.then(res => {
 
-			this.queues["Processing"] = queues.data.queuesToHandle;
-			this.requests["Processing"] = queues.data.requestsToHanle;
-
-			this.queues["WaitingApprove"] = queues.data.queuesToApprove;
-			this.requests["WaitingApprove"] = queues.data.requestsToApprove;
-
+			this.queues["User"] = res.data.userQueues;
+			this.requests["User"] = res.data.userRequests;
+			this.queues["Processing"] = res.data.queuesToHandle;
+			this.requests["Processing"] = res.data.requestsToHanle;
+			this.queues["WaitingApprove"] = res.data.queuesToApprove;
+			this.requests["WaitingApprove"] = res.data.requestsToApprove;
 			for(m of ["User", "Processing", "WaitingApprove"]) {
 				if(this.requests[m] != null) {
 					this.moreRequestsAvailable[m] = this.requests[m].length == 10;
-					this.requests[m] = this.requests[m].map(x => {x.time = this.getDurationFrom(new Date(x.time)); return x;});
+					this.requests[m] = this.requests[m].map(x => {x.timeFrom = this.getDurationFrom(new Date(x.time)); return x;});
 				}
 			}
 
 			this.loading = false;
-		}))
-		.catch(errors => {
-			this.error_message = "Failed to retrieve request queues details: " + this.getAxiosErrorMessage(errors);
+		})
+		.catch(error => {
+			this.error_message = "Failed to retrieve request queues details: " + this.getAxiosErrorMessage(error);
 			this.loading = false;
 		});
 	},

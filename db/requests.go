@@ -34,6 +34,7 @@ const (
 	Processing
 	Completed
 	Declined
+	Cancelled
 )
 
 func (s RequestStatusType) String() string {
@@ -42,6 +43,7 @@ func (s RequestStatusType) String() string {
 		"Processing",
 		"Completed",
 		"Declined",
+		"Cancelled",
 	}
 
 	return texts[s]
@@ -122,7 +124,7 @@ func (db *FirestoreDB) getQueuesFromQuery(ctx context.Context, query firestore.Q
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get queues: %w", err)
+			return nil, fmt.Errorf("Failed to get queues from query: %w", err)
 		}
 
 		qi := &QueueRecord{}
@@ -155,74 +157,78 @@ func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userT
 
 	var errs [3]error
 	var wg sync.WaitGroup
-
-	// get ids of queues that this user should approve
 	var mxApprove, mxHandle sync.Mutex
-	wg.Add(1)
-	go func() {
-		iter := db.RequestQueues.Where("ApproversPath", "in", userTags).Select().Documents(ctx)
-		defer iter.Stop()
-		for {
-			doc, err := iter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				errs[0] = fmt.Errorf("Failed to get queues: %w", err)
-				return
-			}
-			mxApprove.Lock()
-			queuesToApprove[doc.Ref.ID] = -1
-			mxApprove.Unlock()
-		}
-		wg.Done()
-	}()
 
-	// get ids of queues that this user should approve
-	wg.Add(1)
-	go func() {
-		iter := db.RequestQueues.Where("HandlersPath", "in", userTags).Select().Documents(ctx)
-		defer iter.Stop()
-		for {
-			doc, err := iter.Next()
-			if err == iterator.Done {
-				break
+	if len(userTags) > 0 {
+		// get ids of queues that this user should approve
+		wg.Add(1)
+		go func() {
+			iter := db.RequestQueues.Where("ApproversPath", "in", userTags).Select().Documents(ctx)
+			defer iter.Stop()
+			defer wg.Done()
+			for {
+				doc, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					errs[0] = fmt.Errorf("Failed to get queues to approve: %w", err)
+					break
+				}
+				mxApprove.Lock()
+				queuesToApprove[doc.Ref.ID] = -1
+				mxApprove.Unlock()
 			}
-			if err != nil {
-				errs[1] = fmt.Errorf("Failed to get queues: %w", err)
-				return
-			}
-			mxApprove.Lock()
-			queuesToHandle[doc.Ref.ID] = -1
-			mxApprove.Unlock()
-		}
-		wg.Done()
-	}()
+		}()
 
-	// get ids of queues from squads that this user is administrating
-	wg.Add(1)
-	go func() {
-		iter := db.RequestQueues.Where("SquadId", "in", squadsAdmin).Select().Documents(ctx)
-		defer iter.Stop()
-		for {
-			doc, err := iter.Next()
-			if err == iterator.Done {
-				break
+		// get ids of queues that this user should approve
+		wg.Add(1)
+		go func() {
+			iter := db.RequestQueues.Where("HandlersPath", "in", userTags).Select().Documents(ctx)
+			defer iter.Stop()
+			defer wg.Done()
+			for {
+				doc, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					errs[1] = fmt.Errorf("Failed to get queues to handle: %w", err)
+					break
+				}
+				mxApprove.Lock()
+				queuesToHandle[doc.Ref.ID] = -1
+				mxApprove.Unlock()
 			}
-			if err != nil {
-				errs[2] = fmt.Errorf("Failed to get queues: %w", err)
-				return
-			}
-			mxApprove.Lock()
-			queuesToApprove[doc.Ref.ID] = -1
-			mxApprove.Unlock()
+		}()
+	}
 
-			mxHandle.Lock()
-			queuesToHandle[doc.Ref.ID] = -1
-			mxHandle.Unlock()
-		}
-		wg.Done()
-	}()
+	if len(squadsAdmin) > 0 {
+		// get ids of queues from squads that this user is administrating
+		wg.Add(1)
+		go func() {
+			iter := db.RequestQueues.Where("SquadId", "in", squadsAdmin).Select().Documents(ctx)
+			defer iter.Stop()
+			defer wg.Done()
+			for {
+				doc, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					errs[2] = fmt.Errorf("Failed to get queues where user is admin: %w", err)
+					break
+				}
+				mxApprove.Lock()
+				queuesToApprove[doc.Ref.ID] = -1
+				mxApprove.Unlock()
+
+				mxHandle.Lock()
+				queuesToHandle[doc.Ref.ID] = -1
+				mxHandle.Unlock()
+			}
+		}()
+	}
 
 	wg.Wait()
 
@@ -290,7 +296,7 @@ func (db *FirestoreDB) getRequestsFromQuery(ctx context.Context, query firestore
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get queues: %w", err)
+			return nil, fmt.Errorf("Failed to get requests from query: %w", err)
 		}
 		r := RequestRecord{}
 		doc.DataTo(&r)
@@ -309,51 +315,78 @@ func (db *FirestoreDB) GetUserQueuesAndRequests(ctx context.Context, userId stri
 		return nil, nil, nil, nil, nil, nil, err
 	}
 
+	// approvers should be able to see requests they approved and being processed now, so queuesToHandle will be a superset for queuesToApprove
 	queuesToApprove = make([]string, len(queuesToApproveMap))
+	queuesToHandle = make([]string, len(queuesToApproveMap), len(queuesToHandleMap)+len(queuesToApproveMap))
 	i := 0
 	for k := range queuesToApproveMap {
 		queuesToApprove[i] = k
+		queuesToHandle[i] = k
+
 		i++
 	}
+
+	var wg sync.WaitGroup
+	var errs [4]error
+
 	if len(queuesToApprove) > 0 {
-		requestsToApprove, err = db.getRequestsFromQuery(ctx, db.Requests.Where("QueueId", "in", queuesToApprove).Where("Status", "==", WaitingApprove).OrderBy("Time", firestore.Desc))
-		if err != nil {
-			return nil, nil, nil, nil, nil, nil, err
+		wg.Add(1)
+		go func() {
+			requestsToApprove, errs[0] = db.getRequestsFromQuery(ctx, db.Requests.Where("QueueId", "in", queuesToApprove).Where("Status", "==", WaitingApprove).OrderBy("Time", firestore.Desc))
+			wg.Done()
+		}()
+	}
+
+	for k := range queuesToHandleMap {
+		if _, found := queuesToApproveMap[k]; !found {
+			queuesToHandle[i] = k
+			i++
 		}
 	}
 
-	queuesToHandle = make([]string, len(queuesToHandleMap))
-	i = 0
-	for k := range queuesToHandleMap {
-		queuesToHandle[i] = k
-		i++
-	}
 	if len(queuesToHandle) > 0 {
-		requestsToHandle, err = db.getRequestsFromQuery(ctx, db.Requests.Where("QueueId", "in", queuesToHandle).Where("Status", "==", Processing).OrderBy("Time", firestore.Desc))
-		if err != nil {
-			return nil, nil, nil, nil, nil, nil, err
-		}
+		wg.Add(1)
+		go func() {
+			requestsToHandle, errs[1] = db.getRequestsFromQuery(ctx, db.Requests.Where("QueueId", "in", queuesToHandle).Where("Status", "==", Processing).OrderBy("Time", firestore.Desc))
+			wg.Done()
+		}()
 	}
 
 	// get queues from user squads (where she might file requests)
 	userQueues = make([]string, 0)
-	iter := db.RequestQueues.Where("SquadId", "in", squadsAll).Select().Documents(ctx)
-	defer iter.Stop()
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, nil, nil, nil, nil, nil, fmt.Errorf("Failed to get queues: %w", err)
-		}
-		userQueues = append(userQueues, doc.Ref.ID)
+	if len(squadsAll) > 0 {
+		wg.Add(1)
+		go func() {
+			iter := db.RequestQueues.Where("SquadId", "in", squadsAll).Select().Documents(ctx)
+			defer iter.Stop()
+			for {
+				doc, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					errs[2] = fmt.Errorf("Failed to get user queues: %w", err)
+					break
+				}
+				userQueues = append(userQueues, doc.Ref.ID)
+			}
+			wg.Done()
+		}()
 	}
 
 	// get user requests
-	userRequests, err = db.getRequestsFromQuery(ctx, db.Requests.Where("UserId", "==", userId).OrderBy("Time", firestore.Desc))
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, err
+	wg.Add(1)
+	go func() {
+		userRequests, errs[3] = db.getRequestsFromQuery(ctx, db.Requests.Where("UserId", "==", userId).OrderBy("Time", firestore.Desc))
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	for _, err := range errs {
+		if err != nil {
+			return nil, nil, nil, nil, nil, nil, err
+		}
 	}
 
 	return userQueues, userRequests, queuesToApprove, requestsToApprove, queuesToHandle, requestsToHandle, nil
