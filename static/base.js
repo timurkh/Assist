@@ -15,6 +15,18 @@ const globalMixin = {
 				    year:  '2-digit'
 				  });
 		},
+		getRequestStatusText:function(s) {
+			switch(s) {
+				case 0:
+					return "Pending Approve";
+				case 1:
+					return "Being Processed";
+				case 2:
+					return "Completed";
+				case 3:
+					return "Declined";
+			}
+		},
 		getEventStatusText : function(status) {
 
 			switch(status) {

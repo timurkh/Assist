@@ -7,6 +7,7 @@ const app = createApp( {
 			squads:[],
 			events:[],
 			requestsToMe:[],
+			myRequests:[],
 		};
 	},
 	created:function() {
@@ -38,6 +39,7 @@ const app = createApp( {
 			}
 			this.addQueue(res.data.queuesToApprove, "waiting approve");
 			this.addQueue(res.data.queuesToHandle, "to be processed");
+			this.myRequests = res.data.userRequests;
 			
 			this.loading = false;
 		})
@@ -64,27 +66,33 @@ const app = createApp( {
 			if(this.squads != null)
 				return this.squads.reduce((a,c) => a+c, 0);
 		},
+		getCardBodyClass : function() {
+			return "card-body pb-0 ";
+		},
 		getSquadsClass : function() {
-			if(this.getSquadsCount() > 0) {
-				return "card-body bg-success";
-			} else {
-				return "card-body bg-secondary";
-			}
+			if(this.getSquadsCount() > 0)
+				return this.getCardBodyClass() + "bg-success";
+			else
+				return this.getCardBodyClass() + "bg-secondary";
 		},
 		getRequestsToMeClass : function() {
 
 			if(this.requestsToMe != null && this.requestsToMe.length > 0)
-				return "card-body bg-danger";
-			return "card-body bg-secondary";
+				return this.getCardBodyClass() + "bg-danger";
+			else
+				return this.getCardBodyClass() + "bg-secondary";
 		},
 		getMyRequestsClass : function() {
-			return "card-body bg-secondary";
+			if(this.myRequests != null && this.myRequests.length > 0)
+				return this.getCardBodyClass() + "bg-warning";
+			else 
+				return this.getCardBodyClass() + "bg-secondary";
 		},
 		getEventsClass : function() {
 			if(this.events != null && this.events.length > 0) {
-				return "card-body bg-warning";
+				return this.getCardBodyClass() + "bg-warning";
 			} else {
-				return "card-body bg-secondary";
+				return this.getCardBodyClass() + "bg-secondary";
 			}
 		},
 	},

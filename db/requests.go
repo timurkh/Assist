@@ -339,8 +339,7 @@ func (db *FirestoreDB) GetUserQueuesAndRequests(ctx context.Context, userId stri
 
 	for k := range queuesToHandleMap {
 		if _, found := queuesToApproveMap[k]; !found {
-			queuesToHandle[i] = k
-			i++
+			queuesToHandle = append(queuesToHandle, k)
 		}
 	}
 

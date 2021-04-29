@@ -102,18 +102,6 @@ const app = createApp( {
 				});
 			}
 		},
-		getRequestStatusText:function(s) {
-			switch(s) {
-				case 0:
-					return "Pending Approve";
-				case 1:
-					return "Being Processed";
-				case 2:
-					return "Completed";
-				case 3:
-					return "Declined";
-			}
-		},
 		getDurationFrom:function(time) {
 			let now = new Date();
 			let duration = (now.getTime() - time.getTime())/1000;

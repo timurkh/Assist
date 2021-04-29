@@ -83,8 +83,8 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 	userId = app.sd.getCurrentUserID(r)
 	sd := app.sd.getCurrentUserData(r)
 
-	var errs [6]error
-	var squads, pendingApprove, events, eventsCount, appliedParticipants, queuesToApprove, queuesToHandle interface{}
+	var errs [7]error
+	var squads, pendingApprove, events, eventsCount, appliedParticipants, queuesToApprove, queuesToHandle, userRequests interface{}
 	var wg sync.WaitGroup
 
 	// squads
@@ -133,6 +133,13 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 		wg.Done()
 	}()
 
+	// user requests
+	wg.Add(1)
+	go func() {
+		userRequests, errs[6] = app.db.GetUserRequests(ctx, userId, nil)
+		wg.Done()
+	}()
+
 	wg.Wait()
 
 	for _, e := range errs {
@@ -154,7 +161,8 @@ func (app *App) methodGetHome(w http.ResponseWriter, r *http.Request) error {
 			AppliedParticipants interface{} `json:"appliedParticipants"`
 			QueuesToApprove     interface{} `json:"queuesToApprove"`
 			QueuesToHandle      interface{} `json:"queuesToHandle"`
-		}{squads, pendingApprove, events, eventsCount, appliedParticipants, queuesToApprove, queuesToHandle})
+			UserRequests        interface{} `json:"userRequests"`
+		}{squads, pendingApprove, events, eventsCount, appliedParticipants, queuesToApprove, queuesToHandle, userRequests})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
