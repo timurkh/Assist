@@ -34,11 +34,11 @@
 			var messagingToken = "{{.MessagingToken}}";
 		{{if .Session }}
 			var userId = "{{.Session.UID}}"; 
-			var devMode = {{.Dev}}; 
 			var notificationsCount = {{.NotificationsCount}};
 		{{else}}
 			var notificationsCount = 0;
 		{{end}}
+			var devMode = {{.Dev}}; 
 		</script>
 
 		<nav id="navbar" class="navbar navbar-expand-sm bg-dark navbar-dark">
