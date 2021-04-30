@@ -27,6 +27,15 @@ type UserData struct {
 	Admin    bool
 }
 
+func (ud *UserData) HasTag(tag string) bool {
+	for _, t := range ud.UserTags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
 type UserInfoRecord struct {
 	ID string `json:"id"`
 	UserInfo

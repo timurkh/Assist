@@ -37,6 +37,14 @@ const (
 	Cancelled
 )
 
+var RequestStatusTypes = []RequestStatusType{
+	WaitingApprove,
+	Processing,
+	Completed,
+	Declined,
+	Cancelled,
+}
+
 func (s RequestStatusType) String() string {
 	texts := []string{
 		"WaitingApprove",
@@ -47,6 +55,15 @@ func (s RequestStatusType) String() string {
 	}
 
 	return texts[s]
+}
+
+func RequestStatusFromString(s string) RequestStatusType {
+	for _, t := range RequestStatusTypes {
+		if t.String() == s {
+			return t
+		}
+	}
+	return WaitingApprove
 }
 
 type RequestDetails struct {
@@ -93,6 +110,18 @@ func (db *FirestoreDB) CreateRequestsQueue(ctx context.Context, queueId string, 
 	}
 
 	return err
+}
+
+func (db *FirestoreDB) GetRequest(ctx context.Context, requestId string) (request *RequestDetails, err error) {
+	doc, err := db.Requests.Doc(requestId).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	r := &RequestDetails{}
+	doc.DataTo(r)
+
+	return r, nil
 }
 
 func (db *FirestoreDB) GetRequestQueue(ctx context.Context, queueId string) (queueInfo *QueueInfo, err error) {
@@ -178,6 +207,10 @@ func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userT
 				mxApprove.Lock()
 				queuesToApprove[doc.Ref.ID] = -1
 				mxApprove.Unlock()
+
+				mxHandle.Lock()
+				queuesToHandle[doc.Ref.ID] = -1
+				mxHandle.Unlock()
 			}
 		}()
 
@@ -196,9 +229,9 @@ func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userT
 					errs[1] = fmt.Errorf("Failed to get queues to handle: %w", err)
 					break
 				}
-				mxApprove.Lock()
+				mxHandle.Lock()
 				queuesToHandle[doc.Ref.ID] = -1
-				mxApprove.Unlock()
+				mxHandle.Unlock()
 			}
 		}()
 	}
@@ -223,6 +256,7 @@ func (db *FirestoreDB) getQueuesToApproveAndHandleIds(ctx context.Context, userT
 				queuesToApprove[doc.Ref.ID] = -1
 				mxApprove.Unlock()
 
+				// approvers should be able to see requests they approved and being processed now, so queuesToHandle will be a superset for queuesToApprove
 				mxHandle.Lock()
 				queuesToHandle[doc.Ref.ID] = -1
 				mxHandle.Unlock()
@@ -315,14 +349,12 @@ func (db *FirestoreDB) GetUserQueuesAndRequests(ctx context.Context, userId stri
 		return nil, nil, nil, nil, nil, nil, err
 	}
 
-	// approvers should be able to see requests they approved and being processed now, so queuesToHandle will be a superset for queuesToApprove
 	queuesToApprove = make([]string, len(queuesToApproveMap))
-	queuesToHandle = make([]string, len(queuesToApproveMap), len(queuesToHandleMap)+len(queuesToApproveMap))
+	queuesToHandle = make([]string, len(queuesToHandleMap))
+
 	i := 0
 	for k := range queuesToApproveMap {
 		queuesToApprove[i] = k
-		queuesToHandle[i] = k
-
 		i++
 	}
 
@@ -337,10 +369,10 @@ func (db *FirestoreDB) GetUserQueuesAndRequests(ctx context.Context, userId stri
 		}()
 	}
 
+	i = 0
 	for k := range queuesToHandleMap {
-		if _, found := queuesToApproveMap[k]; !found {
-			queuesToHandle = append(queuesToHandle, k)
-		}
+		queuesToHandle[i] = k
+		i++
 	}
 
 	if len(queuesToHandle) > 0 {
@@ -431,14 +463,24 @@ func (db *FirestoreDB) GetUserRequests(ctx context.Context, userId string, from 
 	return requests, nil
 }
 
-func (db *FirestoreDB) GetRequestsByTag(ctx context.Context, tags []string, status string, from *time.Time) (requests []RequestRecord, err error) {
+func (db *FirestoreDB) GetRequestsByTag(ctx context.Context, tags []string, squadsAdmin []string, status RequestStatusType, from *time.Time) (requests []RequestRecord, err error) {
 
-	var query firestore.Query
-	if status == "WaitingApprove" {
-		query = db.Requests.Where("Approvers", "in", tags).Where("Status", "==", WaitingApprove).OrderBy("Time", firestore.Desc)
-	} else {
-		query = db.Requests.Where("Handlers", "in", tags).Where("Status", "==", Processing).OrderBy("Time", firestore.Desc)
+	if db.dev {
+		log.Printf("Getting requests %v by %v, from %v", status, tags, from)
 	}
+
+	queuesMap, queuesToHandleMap, err := db.getQueuesToApproveAndHandleIds(ctx, tags, squadsAdmin)
+	if status == Processing {
+		queuesMap = queuesToHandleMap
+	}
+
+	queues := make([]string, len(queuesMap))
+	i := 0
+	for k := range queuesToHandleMap {
+		queues[i] = k
+		i++
+	}
+	query := db.Requests.Where("QueueId", "in", queues).Where("Status", "==", status).OrderBy("Time", firestore.Desc)
 
 	if from != nil {
 		query = query.StartAfter(from)
@@ -448,5 +490,39 @@ func (db *FirestoreDB) GetRequestsByTag(ctx context.Context, tags []string, stat
 		return nil, err
 	}
 
+	log.Println(requests)
+
 	return requests, nil
+}
+
+func (db *FirestoreDB) SetRequestStatus(ctx context.Context, requestId string, status RequestStatusType) error {
+	request, err := db.GetRequest(ctx, requestId)
+	if err != nil {
+		return err
+	}
+
+	if request.Status != status {
+		batch := db.Client.Batch()
+		docRequest := db.Requests.Doc(requestId)
+		batch.Update(docRequest, []firestore.Update{{Path: "Status", Value: status}})
+		if err != nil {
+			return fmt.Errorf("Failed to set request "+requestId+" status: %w", err)
+		}
+
+		docQueue := db.RequestQueues.Doc(request.QueueId)
+
+		batch.Update(docQueue, []firestore.Update{
+			{Path: request.Status.String(), Value: firestore.Increment(-1)},
+		})
+		batch.Update(docQueue, []firestore.Update{
+			{Path: status.String(), Value: firestore.Increment(1)},
+		})
+
+		_, err = batch.Commit(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to set request "+requestId+" status: %w", err)
+		}
+	}
+
+	return nil
 }

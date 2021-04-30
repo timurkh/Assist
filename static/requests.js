@@ -28,7 +28,7 @@ const app = createApp( {
 			this.queues["User"] = res.data.userQueues;
 			this.requests["User"] = res.data.userRequests;
 			this.queues["Processing"] = res.data.queuesToHandle;
-			this.requests["Processing"] = res.data.requestsToHanle;
+			this.requests["Processing"] = res.data.requestsToHandle;
 			this.queues["WaitingApprove"] = res.data.queuesToApprove;
 			this.requests["WaitingApprove"] = res.data.requestsToApprove;
 			for(m of ["User", "Processing", "WaitingApprove"]) {
@@ -71,7 +71,8 @@ const app = createApp( {
 				url: `/methods/${url}?from=${lastMember.time}&status=${this.mode}`,
 			})
 			.then(res => {
-				this.requests[this.mode] =  [...requests, ...res.data]; 
+				let moreRequests = res.data.map(x => {x.timeFrom = this.getDurationFrom(new Date(x.time)); return x;});
+				this.requests[this.mode] =  [...requests, ...moreRequests]; 
 				this.moreRequestsAvailable = res.data.length == 10;
 				this.getting_more = false;
 			})
@@ -93,8 +94,9 @@ const app = createApp( {
 				.then(res => {
 					request.id = res.data.requestId;
 					request.status = res.data.status;
-					request.time = "Just added";
+					request.timeFrom = "Just added";
 					this.requests["User"].unshift(request); 
+
 					this.newRequest = {};
 				})
 				.catch(err => {
@@ -104,7 +106,7 @@ const app = createApp( {
 		},
 		getDurationFrom:function(time) {
 			let now = new Date();
-			let duration = (now.getTime() - time.getTime())/1000;
+			let duration = (now.getTime() - time.getTime())/1000 >> 0;
 
 			let dimensions = ['second', 'minute', 'hour', 'day'];
 			let vals = [];
@@ -123,9 +125,26 @@ const app = createApp( {
 			let last = vals.length - 1;
 			let text = vals[last] + " " + dimensions[last];
 			text += vals[last] > 1 ? "s" : "";
+			text += " ago";
 
 			return text;
 		},
+		setRequestStatus:function(request, index, status) {
+			axios({
+				method: 'PUT',
+				url: `/methods/requests/${request.requestId}`,
+				data: { status : status},
+				headers: { "X-CSRF-Token": csrfToken },
+			})
+			.then( res => {
+				this.getRequests()[index].status = status;
+				this.getRequests()[index].modified = true;
+				this.error_message = "";
+			})
+			.catch(err => {
+				this.error_message = "Error while updating request: " + this.getAxiosErrorMessage(err);
+			});
+		}
 	},
 	mixins: [globalMixin],
 }).mount("#app");

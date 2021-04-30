@@ -164,6 +164,7 @@ func (app *App) registerMethodHandlers(rm *mux.Router) {
 
 	// requests
 	rm.Methods("POST").Path("/requests").Handler(appHandler(app.methodCreateRequest))
+	rm.Methods("PUT").Path("/requests/{requestId}").Handler(appHandler(app.methodSetRequestStatus))
 	rm.Methods("GET").Path("/requests").Handler(appHandler(app.methodGetRequests))
 
 	// notifications

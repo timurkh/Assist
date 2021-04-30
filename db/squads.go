@@ -31,18 +31,14 @@ var MemberStatusTypes = []MemberStatusType{
 }
 
 func (s MemberStatusType) String() string {
-	switch s {
-	case PendingApprove:
-		return "Pending Approve"
-	case Member:
-		return "Member"
-	case Admin:
-		return "Admin"
-	case Owner:
-		return "Owner"
+	texts := []string{
+		"Pending Approve",
+		"Member",
+		"Admin",
+		"Owner",
 	}
 
-	return "Unknown Status"
+	return texts[s]
 }
 
 func statusFromString(s string) int {

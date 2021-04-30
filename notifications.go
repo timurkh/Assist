@@ -53,7 +53,7 @@ func (ntfs *Notifications) logDev(format string, v ...interface{}) {
 func (ntfs *Notifications) createNotification(userIds []string, title string, notification string) {
 
 	if ntfs.dev {
-		log.Printf("createNotification %v:%v %+v\n", title, notification, userIds)
+		log.Printf("createNotification %v: %v %+v\n", title, notification, userIds)
 	}
 
 	n := Notification{

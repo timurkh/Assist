@@ -1,10 +1,17 @@
-const { createApp } = Vue
+const { createApp } = Vue;
 
 const globalMixin = {
 	data() {
 		return {
 			loading:true,
 			error_message:"",
+			requestStatusesEnum : {
+				WaitingApprove: 0,
+				Processing: 1,
+				Completed: 2,
+				Declined: 3,
+				Cancelled: 4,
+			},
 		}
 	},
 	methods: {
