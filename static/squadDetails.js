@@ -1,3 +1,5 @@
+import {AddNoteDialog} from "/static/components/notes.js";
+
 const app = createApp( {
 	delimiters: ['[[', ']]'],
 	components: {

@@ -1,3 +1,6 @@
+import {ChangeStatusDialog} from "/static/components/members.js";
+import {AddParticipantDialog} from "/static/components/eventParticipants.js";
+
 const app = createApp( {
 	delimiters: ['[[', ']]'],
 	components: {

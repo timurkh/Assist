@@ -38,7 +38,11 @@
 		{{else}}
 			var notificationsCount = 0;
 		{{end}}
-			var devMode = {{.Dev}}; 
+		{{if .Dev}}
+			var devMode = true;
+		{{else}}
+			var devMode = false;
+		{{end}}
 		</script>
 
 		<nav id="navbar" class="navbar navbar-expand-sm bg-dark navbar-dark">

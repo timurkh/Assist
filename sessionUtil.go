@@ -63,8 +63,8 @@ func (su *SessionUtil) sessionLogin(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 
-	// Set session expiration to 5 days.
-	expiresIn := time.Hour * 24 * 5
+	// Set session expiration to 14 days.
+	expiresIn := time.Hour * 24 * 14
 
 	// Create the session cookie. This will also verify the ID token in the process.
 	// The session cookie will have the same claims as the ID token.

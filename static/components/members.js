@@ -226,3 +226,5 @@ const ShowNoteDialog = {
 	</div>
 `
 };
+
+export {AddMemberDialog, ChangeStatusDialog, AddTagDialog, ShowNoteDialog};

@@ -1,3 +1,6 @@
+import {AddNoteDialog} from "/static/components/notes.js";
+import {AddMemberDialog, ChangeStatusDialog, AddTagDialog, ShowNoteDialog} from "/static/components/members.js";
+
 const app = createApp( {
 	delimiters: ['[[', ']]'],
 	components: {

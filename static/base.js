@@ -160,7 +160,7 @@ const navbar = createApp( {
 		// Register service worker
 		navigator.serviceWorker.register('/static/firebase-messaging-sw.js')
 		.then((registration) => {
-			if(devMode != null && devMode)
+			if(devMode)
 				console.log("Service worker registered");
 			this.messaging = firebase.messaging();
 			this.messaging.useServiceWorker(registration);

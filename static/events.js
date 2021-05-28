@@ -1,3 +1,5 @@
+import {AddEventDialog} from "/static/components/events.js";
+
 const app = createApp( {
 	delimiters: ['[[', ']]'],
 	components: {

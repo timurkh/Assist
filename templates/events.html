@@ -30,7 +30,7 @@
 			</div>
 
 			<div v-if="!showArchived && Object.keys(squads).length>0"  class="ml-auto p-0 mr-1 my-1">
-				<button type="button" class="btn btn-info add-new p-1 ml-1" data-toggle="modal" data-target="#addEventModal"><i class="fa fa-plus"></i> Create Event</button>
+				<button type="button" class="btn btn-info add-new p-1" data-toggle="modal" data-target="#addEventModal"><i class="fa fa-plus"></i> Create Event</button>
 			</div>
 		</div>
 		<div v-if="error_message.length > 0" class="alert alert-danger m-1 mt-2 text-wrap text-break" role="alert">
@@ -101,5 +101,4 @@
 	</div>
 </div>
 
-<script src="/static/components/events.js"></script>
-<script src="/static/events.js"></script>
+<script type="module" src="/static/events.js"></script>

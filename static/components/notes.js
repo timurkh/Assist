@@ -44,3 +44,5 @@ const AddNoteDialog = {
 
 `
 };
+
+export {AddNoteDialog};

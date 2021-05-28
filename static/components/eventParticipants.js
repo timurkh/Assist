@@ -54,3 +54,5 @@ const AddParticipantDialog = {
 		</div>
 `};
 
+
+export {AddParticipantDialog};

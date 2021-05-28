@@ -70,3 +70,5 @@ const AddEventDialog = {
 	</div>
 `
 };
+
+export {AddEventDialog};
